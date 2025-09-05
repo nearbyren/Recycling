@@ -140,13 +140,13 @@ class SocketClient(
                 connectAndServe()
                 attempt = 0 // reset backoff after successful session
             } catch (e: CancellationException) {
-                println("调试socket runMainLoop catch1 ${e.message}")
+                println("调试socket runMainLoop catch1 ${e.message} running $running")
                 break
             } catch (e: Exception) {
                 // Swallow and backoff
-                println("调试socket runMainLoop catch2 ${e.message}")
+                println("调试socket runMainLoop catch2 ${e.message} running $running")
             } finally {
-                println("调试socket runMainLoop finally ")
+                println("调试socket runMainLoop finally running $running")
                 closeSocketQuietly()
                 if (!running) break
                 _state.value = ConnectionState.DISCONNECTED
@@ -184,7 +184,6 @@ class SocketClient(
 
         val reader = clientScope.launch { readLoop(input) }
         val writer = clientScope.launch { writeLoopByte(output) }
-//        val writer = clientScope.launch { writeLoopStr(output) }
 //        val monitor = clientScope.launch { heartbeatAndIdleMonitor() }
         println("调试socket connectAndServe 已连接")
         _state.value = ConnectionState.CONNECTED

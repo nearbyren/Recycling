@@ -159,7 +159,7 @@ import java.util.concurrent.TimeUnit
             vmClient?.start()
             println("调试socket ioScope ${Thread.currentThread().name} vmClient = $vmClient | state = ${vmClient?.state}")
             vmClient?.state?.collect {
-                println("调试socket 连接成功1: $it ${Thread.currentThread().name}")
+                println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
                 when (it) {
                     ConnectionState.START -> {
 
@@ -259,7 +259,7 @@ import java.util.concurrent.TimeUnit
                 }
             }
             cabinetVM.vmClient?.state?.collect {
-                println("调试socket 连接成功1: $it ${Thread.currentThread().name}")
+                println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
                 when (it) {
                     ConnectionState.START -> {
 

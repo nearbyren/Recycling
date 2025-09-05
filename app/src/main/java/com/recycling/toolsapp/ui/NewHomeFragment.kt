@@ -53,6 +53,11 @@ import kotlin.random.Random
 
 
     override fun initialize(savedInstanceState: Bundle?) {
+
+        binding.tvValue2.setOnClickListener {
+            mActivity?.navigateTo(fragmentClass = TestSocketFragment::class.java)
+
+        }
         binding.clMobile.setOnClickListener {
             mActivity?.navigateTo(fragmentClass = DeliveryFragment::class.java)
         }
@@ -143,7 +148,7 @@ import kotlin.random.Random
             client?.start()
             println("调试socket client = $client | state = ${client?.state}")
             client?.state?.collect {
-                println("调试socket 连接成功1: $it ${Thread.currentThread().name}")
+                println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
                 when (it) {
                     ConnectionState.START -> {
 
