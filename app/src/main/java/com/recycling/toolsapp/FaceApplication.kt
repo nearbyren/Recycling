@@ -1,0 +1,225 @@
+package com.recycling.toolsapp
+
+import android.app.Activity
+import android.app.Application
+import android.os.Build
+import android.os.Bundle
+import android.text.TextUtils
+import androidx.annotation.Nullable
+import com.hzmct.enjoysdkv2.api.EnjoySDKV2
+import com.hzmct.enjoysdkv2.transform.McStateCode
+import com.mc.android.mcinstall.AppRule
+import com.orhanobut.logger.AndroidLogAdapter
+import com.orhanobut.logger.Logger
+import com.orhanobut.logger.PrettyFormatStrategy
+import com.recycling.toolsapp.utils.CrashHandlerManager
+import com.recycling.toolsapp.utils.CurrentActivity.Config.Companion.CURRENT_ROOM_TYPE
+import com.recycling.toolsapp.utils.Define
+import com.recycling.toolsapp.utils.NetworkStateMonitor
+import com.serial.port.CabinetSdk
+import com.serial.port.utils.AppUtils
+import com.serial.port.utils.Loge
+import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import nearby.lib.netwrok.response.CorHttp
+import nearby.lib.netwrok.response.SPreUtil
+import com.recycling.toolsapp.http.HttpUrl
+import java.io.BufferedReader
+import java.io.FileReader
+import java.io.IOException
+
+
+/**
+ * global param init
+ *
+ *
+ */
+@HiltAndroidApp class FaceApplication : Application() {
+
+    private val ioScope = CoroutineScope(Dispatchers.IO)
+
+    companion object {
+        var BASE_URL = "https://dl.fmnet.vip:33/api"
+        lateinit var enjoySDK: EnjoySDKV2
+        lateinit var networkMonitor: NetworkStateMonitor
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        initLog()
+        AppUtils.init(this)
+        initEnjoySDK()
+        initSerialPort()
+        initNetWork()
+        // activity栈管理
+        registerActivityLifecycleCallbacks(mActivityLifecycleCallbacks)
+        initCrash()
+        initHttp()
+    }
+
+    /****
+     * 异常崩溃重启
+     */
+    private fun initCrash() {
+        CrashHandlerManager(this).init()
+    }
+
+
+
+    /****
+     * 日志输出
+     */
+    private fun initLog() {
+        val loggerBuild =
+                PrettyFormatStrategy.newBuilder().showThreadInfo(true).tag("cabinet").build()
+        Logger.addLogAdapter(object : AndroidLogAdapter(loggerBuild) {
+            override fun isLoggable(priority: Int, @Nullable tag: String?): Boolean {
+                //debug 才显示日志
+                return BuildConfig.DEBUG
+            }
+        })
+    }
+
+    /***
+     * 网络请求
+     */
+    private fun initHttp() {
+        CorHttp.getInstance().init(this, true, baseIp = BASE_URL, codes = arrayListOf(401))
+
+    }
+    fun isGJGFormat(input: String): Boolean {
+        val pattern = "^GJG".toRegex()
+        return pattern.containsMatchIn(input)
+    }
+    /***
+     * 迈冲sdk 状态栏 导航栏
+     */
+    private fun initEnjoySDK() {
+        //读取设备工具柜编号用于网络请求接口
+        val toolgID = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Build.getSerial()
+        } else {
+            Define.DEFAULT_CABINET_NO
+        }
+        Loge.d("安装 读取到设备工具柜编号了：${toolgID}")
+        if(isGJGFormat(toolgID)){
+            Loge.d("安装 存读取数据")
+            SPreUtil.put(AppUtils.getContext(), HttpUrl.TOOLG_ID, toolgID)
+        }else{
+            Loge.d("安装 设置默认数据")
+            SPreUtil.put(AppUtils.getContext(), HttpUrl.TOOLG_ID, Define.DEFAULT_CABINET_NO)
+        }
+        //初始化迈冲sdk 控制状态栏导航栏显示
+        enjoySDK = EnjoySDKV2(this)
+        enjoySDK.setSecurePasswd("Abc12345", "Abc12345")
+        enjoySDK.registSafeProgram("Abc12345")
+        //控制系统状态栏的隐藏/显示
+//        enjoySDK.setStatusBarShowStatus(0)
+        //控制系统导航栏的隐藏/显示。
+//        enjoySDK.setNavigationBarShowStatus(0)
+        //设置静默安装状态
+        enjoySDK.silentInstallRulesSwitch(true)
+        val appRule = AppRule("com.recycling.toolsapp", true)
+        val startPackName = enjoySDK.homePackage
+//        enjoySDK.setHomePackage("com.android.launcher3")
+//        enjoySDK.setHomePackage("com.recycling.toolsapp")
+        //添加APP至 静默安装列表中
+        enjoySDK.addSilentInstallRules(appRule)
+        //获取 静默安装开关状态
+        val isRules = enjoySDK.isEnableSilentInstallRules
+        //获取静默安装列表
+        val startRules = enjoySDK.silentInstallList
+        //获取 是否打开了 安装后启动功能
+        val autoStartRules = enjoySDK.isEnableInstallAutoStartRules
+        //设置 安装后启动 开关状态
+        enjoySDK.installAutoStartSwitch(true)
+        //添加应用至 安装后启动 应用列表中
+        enjoySDK.addInstallAutoStartRules(appRule)
+//        从 安装后启动 应用列表中删除APP
+//        enjoySDK.removeInstallAutoStartRules(appRule)
+        //清空 安装后启动 应用列表
+//        enjoySDK.clearInstallAutoStartRules()
+        //时间配置参数
+        enjoySDK.switchAutoDateAndTime(true)
+        //自动配置时区功能开关函数。
+        enjoySDK.switchAutoTimeZone(true)
+        //设置系统时间显示格式 24小时制/12小时制。
+        enjoySDK.setTimeFormat(McStateCode.TIME_HOUR_24)
+        Loge.d("安装 静默安装状态：$isRules | 静默安装个数：${startRules.size} | 安装启动状态：$autoStartRules | 安装启动个数：${enjoySDK.getInstallAutoStartRules()} |  当前桌面：${startPackName} ")
+    }
+
+    /***
+     * 网络状态监听
+     */
+    private fun initNetWork() {
+        //注册网络监听
+        networkMonitor = NetworkStateMonitor(this)
+    }
+
+
+    /***
+     * 获取进程号对应的进程名
+     * @param pid 进程号
+     * @return 进程名
+     */
+    private fun getProcessName(pid: Int): String? {
+        var reader: BufferedReader? = null
+        try {
+            reader = BufferedReader(FileReader("/proc/$pid/cmdline"))
+            var processName: String = reader.readLine()
+            if (!TextUtils.isEmpty(processName)) {
+                processName = processName.trim { it <= ' ' }
+            }
+            return processName
+        } catch (throwable: Throwable) {
+            throwable.printStackTrace()
+        } finally {
+            try {
+                reader?.close()
+            } catch (exception: IOException) {
+                exception.printStackTrace()
+            }
+        }
+        return null
+    }
+
+    private val mActivityList: MutableList<Activity> = ArrayList()
+    private val mActivityLifecycleCallbacks: ActivityLifecycleCallbacks =
+            object : ActivityLifecycleCallbacks {
+                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                    mActivityList.add(activity)
+                    when (activity) {
+
+                    }
+                    Loge.d("测试当前界面 $CURRENT_ROOM_TYPE")
+                }
+
+                override fun onActivityStarted(activity: Activity) {}
+                override fun onActivityResumed(activity: Activity) {}
+                override fun onActivityPaused(activity: Activity) {}
+                override fun onActivityStopped(activity: Activity) {}
+                override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+                override fun onActivityDestroyed(activity: Activity) {
+                    mActivityList.remove(activity)
+                }
+            }
+
+    open fun finishAllActivity() {
+        for (activity in mActivityList) {
+            activity.finish()
+        }
+    }
+
+
+    /**
+     * 串口初始化
+     */
+    private fun initSerialPort(){
+        ioScope.launch {
+            CabinetSdk.init()
+        }
+    }
+
+}
