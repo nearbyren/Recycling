@@ -211,8 +211,10 @@ class SocketClient(
                 if (read == -1) throw IOException("Stream closed")
                 lastReceivedAtMillis = System.currentTimeMillis()
                 val frame = buffer.copyOf(read)
+                println("调试socket readLoop ${ByteUtils.toHexString(frame)}")
                 _incoming.emit(frame)
             } catch (e: IOException) {
+                println("调试socket readLoop catch ${e.message}")
                 break
             }
         }
@@ -233,8 +235,10 @@ class SocketClient(
                     output.flush()
                 }
             } catch (e: CancellationException) {
+                println("调试socket writeLoop catch1 ${e.message}")
                 break
             } catch (e: IOException) {
+                println("调试socket writeLoop catch2 ${e.message}")
                 break
             }
         }
