@@ -4,8 +4,9 @@ import android.os.Bundle
 import androidx.annotation.AnimRes
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import com.recycling.toolsapp.FaceApplication
 import com.recycling.toolsapp.R
-import com.recycling.toolsapp.ui.NewHomeFragment
+import com.recycling.toolsapp.ui.TouSingleFragment
 import com.serial.port.utils.Loge
 import java.util.Stack
 
@@ -81,7 +82,7 @@ class FragmentCoordinator private constructor(
             override fun onFragmentResumed(fm: FragmentManager, f: Fragment) {
                 lifecycleCallbacks[f.tag]?.onFragmentResumed(f)
                 Loge.d("FragmentCoordinator onFragmentResumed")
-                if (f is NewHomeFragment) {
+                if (f is TouSingleFragment) {
 
                 }
             }
@@ -188,7 +189,16 @@ class FragmentCoordinator private constructor(
         return false
     }
 
+    /***
+     * @param fragmentClass
+     * 导航回到指定fragment
+     */
     fun navigateBackTo(fragmentClass: Class<out Fragment>): Boolean {
+        val isAppForeground = FaceApplication.getInstance().isAppForeground.value ?: true
+        Loge.d("FragmentCoordinator navigateBackTo 是否已保存状态：${fragmentManager.isStateSaved} 前台：$isAppForeground")
+        if (!isAppForeground) {
+            return false
+        }
         val index = fragmentStack.indexOfFirst { it.fragmentClass == fragmentClass }
         Loge.d("FragmentCoordinator navigateBackTo $index = simpleName = ${fragmentClass.simpleName}")
         if (index != -1) {
@@ -247,7 +257,7 @@ class FragmentCoordinator private constructor(
 
     fun getCurrentFragment(): Fragment? {
         fragmentStack.forEach { i ->
-            Loge.d("FragmentCoordinator getCurrentFragment for = ${i?.tag}")
+            Loge.d("FragmentCoordinator getCurrentFragment 所有堆栈 = ${i?.tag}")
         }
         return if (fragmentStack.isNotEmpty()) {
             val current = fragmentStack.peek()

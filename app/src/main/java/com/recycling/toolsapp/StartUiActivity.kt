@@ -13,11 +13,13 @@ import com.recycling.toolsapp.socket.SocketClient.ConnectionState
 import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.SocketManager
 import com.recycling.toolsapp.vm.CabinetVM
+import com.serial.port.utils.AppUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import nearby.lib.netwrok.response.SPreUtil
 
 class StartUiActivity : AppCompatActivity() {
     private val cabinetVM: CabinetVM by viewModels()
@@ -26,24 +28,25 @@ class StartUiActivity : AppCompatActivity() {
         setContentView(R.layout.activity_start_ui)
         //这里http获取业务ID
         CoroutineScope(Dispatchers.Main).launch {
-            delay(50)
-            startActivity(Intent(this@StartUiActivity, OneActivity::class.java))
-
+            val init = SPreUtil[AppUtils.getContext(), "init", false] as Boolean
+            if (init) {
+                println("调试socket startUI 进入主界面")
+                startActivity(Intent(this@StartUiActivity, OneActivity::class.java))
+            } else {
+                println("调试socket startUI 进入初始化")
+                startActivity(Intent(this@StartUiActivity, InitFactoryActivity::class.java))
+            }
 //            initSocket()
         }
     }
 
     private fun initSocket() {
         cabinetVM.ioScope.launch {
-//            SocketManager.initializeSocketClient(host = "58.251.251.79", port = 9095)
-//            SocketManager.socketClient.start()
-
-            val vmClient =
-                    SocketClient(SocketClient.Config(host = "58.251.251.79", port = 9095, heartbeatIntervalMillis = 10_000, heartbeatPayload = "PING".toByteArray()))
-            cabinetVM.vmClient = vmClient
-            vmClient.start()
+            SocketManager.initializeSocketClient(host = "58.251.251.79", port = 9095)
+            cabinetVM.vmClient = SocketManager.socketClient
+            SocketManager.socketClient.start()
             delay(500)
-            val state = vmClient.state.value
+            val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
             println("调试socket startUI 当前线程：${Thread.currentThread().name} | state $state")
             when (state) {
                 ConnectionState.START -> {

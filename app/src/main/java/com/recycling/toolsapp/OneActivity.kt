@@ -21,9 +21,9 @@ import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindActivity
 import com.recycling.toolsapp.socket.DoorOpenDto
 import com.recycling.toolsapp.socket.InitConfigDto
 import com.recycling.toolsapp.socket.LoginDto
-import com.recycling.toolsapp.socket.SocketClient
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
-import com.recycling.toolsapp.ui.NewHomeFragment
+import com.recycling.toolsapp.ui.TouSingleFragment
+import com.recycling.toolsapp.ui.TouDoubleFragment
 import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.FragmentCoordinator
 import com.recycling.toolsapp.utils.HexConverter
@@ -34,11 +34,9 @@ import com.recycling.toolsapp.vm.CountdownTimer
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.LiveBus
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -60,6 +58,23 @@ import java.util.concurrent.TimeUnit
                 navigateToHome()
             }
         } ?: navigateToHome()
+
+        initNetworkState()
+//        countdownUI()
+//        lifeUpgradeApk()
+//        netUpdateApk()
+
+//        lifeUpgradeChip()
+//        netUpdateChip()
+
+        val initSocket = SPreUtil.get(AppUtils.getContext(), "initSocket", false) as Boolean
+        if (initSocket) {
+            initSocket()
+        }
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.M) private fun initNetworkState() {
         //全局处理提示信息
         lifecycleScope.launch {
             cabinetVM._isNetworkMessage.collect {
@@ -73,136 +88,38 @@ import java.util.concurrent.TimeUnit
         }
         networkMonitor.register()
         // 注册监听（传统回调方式）
-//        networkMonitor.addNetworkStateListener { isConnected ->
-//            runOnUiThread {
-//                updateNetworkStatus(isConnected)
-//            }
-//        }
-
-//        countdownUI()
-
-//        lifeUpgradeApk()
-//        netUpdateApk()
-
-//        lifeUpgradeChip()
-//        netUpdateChip()
-//        initSocket()
-//        initSocket2()
-
+        networkMonitor.addNetworkStateListener { isConnected ->
+            runOnUiThread {
+                updateNetworkStatus(isConnected)
+            }
+        }
     }
 
-    var vmClient: SocketClient? = null
-    var job: Job? = null
-    val scope = CoroutineScope(Dispatchers.IO + Job())
     private fun initSocket() {
-        cabinetVM.ioScope.launch {
-            vmClient =
-                    SocketClient(SocketClient.Config(host = "58.251.251.79", port = 9095, heartbeatIntervalMillis = 10_000, heartbeatPayload = "PING".toByteArray()))
-            cabinetVM.vmClient = vmClient
-            job = scope.launch {
-                println("调试socket job = scope.launch ${Thread.currentThread().name}")
-                vmClient?.incoming?.collect { bytes ->
-                    println("调试socket recv: ${String(bytes)}")
-                    val json = String(bytes)
-                    val cmd = CommandParser.parseCommand(json)
-                    when (cmd) {
-
-                        "heartBeat" -> {
-                            println("调试socket recv: 接收心跳成功")
-                        }
-
-                        "login" -> {
-                            println("调试socket recv: 接收登录成功")
-                            val loginModel = Gson().fromJson(json, LoginDto::class.java)
-//                            val heartbeatIntervalMillis =
-//                                    loginModel.config.heartBeatInterval?.toLong() ?: 3
-//                            client?.config?.heartbeatIntervalMillis1 =
-//                                    TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
-                            vmClient?.sendHeartbeat()
-                        }
-
-                        "initConfig" -> {
-                            val initConfigModel = Gson().fromJson(json, InitConfigDto::class.java)
-                            println("调试socket recv: 接收 initConfig 成功")
-                        }
-
-                        "openDoor" -> {
-                            println("调试socket recv: 接收 openDoor 成功")
-                        }
-
-                        "closeDoor" -> {
-                            println("调试socket recv: 接收 closeDoor成功")
-                        }
-
-                        "phoneNumberLogin" -> {
-                            println("调试socket recv: 接收 phoneNumberLogin 成功")
-                        }
-
-                        "phoneUserOpenDoor" -> {
-                            println("调试socket recv: 接收 phoneUserOpenDoor 成功")
-                        }
-
-                        "restart" -> {
-                            println("调试socket recv: 接收 restart 成功")
-                        }
-
-                        "uploadLog" -> {
-                            println("调试socket recv: 接收 uploadLog 成功")
-                        }
-
-                        "ota" -> {
-                            println("调试socket recv: 接收 OTA 成功")
-                        }
-                    }
-                }
-            }
-            vmClient?.start()
-            println("调试socket ioScope ${Thread.currentThread().name} vmClient = $vmClient | state = ${vmClient?.state}")
-            vmClient?.state?.collect {
-                println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
-                when (it) {
-                    ConnectionState.START -> {
-
-                    }
-
-                    ConnectionState.DISCONNECTED -> {
-
-                    }
-
-                    ConnectionState.CONNECTING -> {
-
-                    }
-
-                    ConnectionState.CONNECTED -> {
-                        cabinetVM.toGoCmdLogin()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun initSocket2() {
-        cabinetVM.vmClient = SocketManager.socketClient
-        val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
-        println("调试socket OneActivity 当前线程：${Thread.currentThread().name} | state $state")
-        when (state) {
-            ConnectionState.START -> {
-
-            }
-
-            ConnectionState.DISCONNECTED -> {
-
-            }
-
-            ConnectionState.CONNECTING -> {
-
-            }
-
-            ConnectionState.CONNECTED -> {
-                cabinetVM.toGoCmdLogin()
-            }
-        }
         lifecycleScope.launch {
+            cabinetVM.vmClient = SocketManager.socketClient
+            val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
+            println("调试socket OneActivity 当前线程：${Thread.currentThread().name} | state $state")
+            when (state) {
+                ConnectionState.START -> {
+                    println("调试socket OneActivity 取 开始：${Thread.currentThread().name} | state $state")
+
+                }
+
+                ConnectionState.DISCONNECTED -> {
+                    println("调试socket OneActivity 取 已断开连接：${Thread.currentThread().name} | state $state")
+
+                }
+
+                ConnectionState.CONNECTING -> {
+                    println("调试socket OneActivity 取 正在连接：${Thread.currentThread().name} | state $state")
+                }
+
+                ConnectionState.CONNECTED -> {
+                    println("调试socket OneActivity 取 已连接：${Thread.currentThread().name} | state $state")
+                    cabinetVM.toGoCmdLogin()
+                }
+            }
             println("调试socket lifecycleScope ${Thread.currentThread().name} vmClient = ${cabinetVM.vmClient} | state = ${cabinetVM.vmClient?.state}")
             cabinetVM.vmClient?.incoming?.collect { bytes ->
                 println("调试socket recv: ${String(bytes)}")
@@ -217,11 +134,22 @@ import java.util.concurrent.TimeUnit
                     "login" -> {
                         println("调试socket recv: 接收登录成功")
                         val loginModel = Gson().fromJson(json, LoginDto::class.java)
-//                            val heartbeatIntervalMillis =
-//                                    loginModel.config.heartBeatInterval?.toLong() ?: 3
-//                            client?.config?.heartbeatIntervalMillis1 =
-//                                    TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
-                        vmClient?.sendHeartbeat()
+                        val heartbeatIntervalMillis =
+                                loginModel.config.heartBeatInterval?.toLong() ?: 10
+                        cabinetVM.vmClient?.config?.heartbeatIntervalMillis1 =
+                                TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
+                        println("调试socket recv: 心跳秒：$heartbeatIntervalMillis")
+                        cabinetVM.vmClient?.config?.heartbeatIntervalMillis1 =
+                                TimeUnit.SECONDS.toMillis(10)
+                        //保存所有配置
+                        loginModel.sn?.let { sn ->
+                            cabinetVM.toGetSaveConfigEntity(sn, loginModel.config)
+                        }
+                        //保存箱体
+                        cabinetVM.toGetSaveCabins(loginModel.config.list)
+                        delay(500)
+                        //发送心跳
+                        cabinetVM.vmClient?.sendHeartbeat()
                     }
 
                     "initConfig" -> {
@@ -231,6 +159,8 @@ import java.util.concurrent.TimeUnit
 
                     "openDoor" -> {
                         println("调试socket recv: 接收 openDoor 成功")
+                        val doorOpenModel = Gson().fromJson(json, DoorOpenDto::class.java)
+                        cabinetVM.toGoDownDoorOpen(doorOpenModel)
                     }
 
                     "closeDoor" -> {
@@ -262,18 +192,21 @@ import java.util.concurrent.TimeUnit
                 println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
                 when (it) {
                     ConnectionState.START -> {
+                        println("调试socket OneActivity 监 开始：${Thread.currentThread().name} | state $state")
 
                     }
 
                     ConnectionState.DISCONNECTED -> {
+                        println("调试socket OneActivity 监 已断开连接：${Thread.currentThread().name} | state $state")
 
                     }
 
                     ConnectionState.CONNECTING -> {
-
+                        println("调试socket OneActivity 监 正在连接：${Thread.currentThread().name} | state $state")
                     }
 
                     ConnectionState.CONNECTED -> {
+                        println("调试socket OneActivity 监 已连接：${Thread.currentThread().name} | state $state")
                         cabinetVM.toGoCmdLogin()
                     }
                 }
@@ -297,7 +230,6 @@ import java.util.concurrent.TimeUnit
                 }
             }
         })
-
 
     }
 
@@ -509,6 +441,8 @@ import java.util.concurrent.TimeUnit
                 isNetworkStatusFirst = false
                 // 网络已连接
                 SnackbarUtils.show(activity = this@OneActivity, message = "网络状态已打开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
+            } else {
+                binding.tvNetwork.text = "网络已经连接"
             }
         } else {
             // 网络断开
@@ -520,15 +454,47 @@ import java.util.concurrent.TimeUnit
     }
 
     private fun navigateToHome() {
-        // 示例：打开首页时使用淡入动画
-//        navigateTo(fragmentClass = HomeFragment::class.java, addToBackStack = true, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
-//        navigateTo(fragmentClass = NewHomeFragment::class.java, addToBackStack = true, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
-        navigateTo(fragmentClass = NewHomeFragment::class.java, addToBackStack = true, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
-            override fun onFragmentResumed(fragment: Fragment) {
-                super.onFragmentResumed(fragment)
-                hide()
+        val typeGrid = SPreUtil[AppUtils.getContext(), "type_grid", -1]
+        println("调试socket navigateToHome $typeGrid")
+        val sn = SPreUtil[AppUtils.getContext(), "sn", ""]
+        val typeText = when (typeGrid) {
+            1 -> {
+                "单口"
             }
-        })
+
+            2 -> {
+                "双口"
+            }
+
+            3 -> {
+                "子母口"
+            }
+
+            else -> {
+                "-"
+            }
+        }
+        binding.tvSn.text = "$typeText sn：$sn"
+        binding.tvVersion.text = "版本号：v${AppUtils.getVersionName()}"
+        when (typeGrid) {
+            1, 3 -> {
+                navigateTo(fragmentClass = TouSingleFragment::class.java, addToBackStack = true, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
+                    override fun onFragmentResumed(fragment: Fragment) {
+                        super.onFragmentResumed(fragment)
+                        hide()
+                    }
+                })
+            }
+
+            2 -> {
+                navigateTo(fragmentClass = TouDoubleFragment::class.java, addToBackStack = true, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
+                    override fun onFragmentResumed(fragment: Fragment) {
+                        super.onFragmentResumed(fragment)
+                        hide()
+                    }
+                })
+            }
+        }
     }
 
     fun hide() {

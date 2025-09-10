@@ -262,7 +262,7 @@ class SocketClient(
                 try {
                     println("调试socket heartbeatAndIdleMonitor trySend")
                     val stateList = DatabaseManager.queryStateList(AppUtils.getContext())
-                    println("回收柜 stateList：${stateList.size}")
+                    println("调试socket stateList：${stateList.size}")
                     val root = JsonObject()
 
                     val gson = GsonBuilder().setPrettyPrinting().create()
@@ -280,9 +280,9 @@ class SocketClient(
                     root.addProperty("cmd", "heartBeat")
                     root.addProperty("signal", 13)
                     root.add("stateList", array)
-                    println("回收柜 $root")
+                    println("调试socket $root")
                     val newJson = gson.toJson(root).toByteArray(Charsets.UTF_8)
-
+                    sendQueueByte.trySend(newJson)
                     val json =
                             DynamicJsonBuilder().addPrimitive("cmd", "heartBeat").addPrimitive("signal", 13)
 //                        .addObject("gps") {  }
@@ -296,7 +296,7 @@ class SocketClient(
 //                                        addPrimitive("cabinId", "20250118161240405726")
                                     }
                                 }.addPrimitive("timestamp", System.currentTimeMillis()).build().toByteArray(Charsets.UTF_8)
-                    sendQueueByte.trySend(json)
+//                    sendQueueByte.trySend(json)
 //                    sendQueueByte.trySend(config.heartbeatPayload)
 
                 } catch (e: Exception) {

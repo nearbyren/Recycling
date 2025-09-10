@@ -6,17 +6,18 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/white"
         tools:ignore="MissingConstraints">
 
         <com.recycling.toolsapp.view.CircleProgressView
             android:id="@+id/cpv_view"
             android:layout_width="@dimen/dp_100"
             android:layout_height="@dimen/dp_100"
-            android:layout_marginTop="@dimen/dp_20"
+            android:layout_marginTop="@dimen/dp_5"
             app:backgroundColor="#E0E0E0"
             app:cpv_maxProgress="100"
             app:cpv_progress="50"
-            app:cpv_progressColor="#FF4081"
+            app:cpv_progressColor="#1365FF"
             app:cpv_strokeWidth="10dp"
             app:cpv_textColor="#333333"
             app:cpv_textSize="24sp"
@@ -62,7 +63,7 @@
             android:layout_marginEnd="@dimen/dp_10"
             android:text="本次投递重量"
             android:textColor="@color/black"
-            android:textSize="@dimen/sp_18"
+            android:textSize="@dimen/sp_14"
             android:textStyle="bold"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/gline" />
@@ -75,7 +76,7 @@
             android:layout_marginTop="@dimen/dp_10"
             android:text="本次预计获得金额"
             android:textColor="@color/black"
-            android:textSize="@dimen/sp_18"
+            android:textSize="@dimen/sp_14"
             android:textStyle="bold"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/gline" />
@@ -88,7 +89,7 @@
             android:layout_marginTop="@dimen/dp_5"
             android:text="0.00公斤"
             android:textColor="@color/black"
-            android:textSize="@dimen/sp_16"
+            android:textSize="@dimen/sp_12"
             android:textStyle="bold"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tv_weight" />
@@ -101,7 +102,7 @@
             android:layout_marginEnd="@dimen/dp_10"
             android:text="0.00元"
             android:textColor="@color/black"
-            android:textSize="@dimen/sp_16"
+            android:textSize="@dimen/sp_12"
             android:textStyle="bold"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tv_money" />
@@ -126,14 +127,16 @@
 
         <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/tv_operation"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/dp_32"
+            android:layout_marginLeft="@dimen/dp_10"
+            android:layout_marginRight="@dimen/dp_10"
             android:layout_marginBottom="@dimen/dp_5"
-            android:background="@color/blue"
-            android:padding="@dimen/dp_3"
+            android:background="@drawable/btn_oepn_close_bg"
+            android:gravity="center"
             android:text="正在打开仓门"
             android:textColor="@color/white"
-            android:textSize="@dimen/sp_10"
+            android:textSize="@dimen/sp_8"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent" />

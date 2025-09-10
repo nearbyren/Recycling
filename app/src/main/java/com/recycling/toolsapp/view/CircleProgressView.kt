@@ -113,7 +113,7 @@ class CircleProgressView @JvmOverloads constructor(
         canvas.drawArc(rectF, -90f, sweepAngle, false, progressPaint)
 
         // 绘制中间文字
-        val text = "$progress%"
+        val text = "$progress"
         val x = width / 2f
         val y = height / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
         canvas.drawText(text, x, y, textPaint)

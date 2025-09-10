@@ -10,7 +10,7 @@ import androidx.fragment.app.viewModels
 import com.google.gson.Gson
 import com.recycling.toolsapp.FaceApplication.Companion.enjoySDK
 import com.recycling.toolsapp.R
-import com.recycling.toolsapp.databinding.FragmentNewHomeBinding
+import com.recycling.toolsapp.databinding.FragmentTestSocketBinding
 import com.recycling.toolsapp.fitsystembar.base.BaseActivity
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.socket.InitConfigDto
@@ -34,14 +34,14 @@ import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 
-@AndroidEntryPoint class TestSocketFragment : BaseBindFragment<FragmentNewHomeBinding>() {
+@AndroidEntryPoint class TestSocketFragment : BaseBindFragment<FragmentTestSocketBinding>() {
     // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
     private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
 
     // 创建任务队列
     val taskQueue = PriorityTaskQueue<Int>()
     override fun layoutRes(): Int {
-        return R.layout.fragment_new_home
+        return R.layout.fragment_test_socket
     }
 
     override fun isShowActionBar(): Boolean {
@@ -99,6 +99,8 @@ import kotlin.random.Random
                                     loginModel.config.heartBeatInterval?.toLong() ?: 3
                             client?.config?.heartbeatIntervalMillis1 =
                                     TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
+                            client?.config?.heartbeatIntervalMillis1 =
+                                    TimeUnit.SECONDS.toMillis(3)
                             client?.sendHeartbeat()
                         }
 

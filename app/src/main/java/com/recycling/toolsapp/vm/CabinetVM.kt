@@ -11,6 +11,7 @@ import com.recycling.toolsapp.http.RepoImpl
 import com.recycling.toolsapp.http.VersionDto
 import com.recycling.toolsapp.model.CabinEntity
 import com.recycling.toolsapp.model.ConfigEntity
+import com.recycling.toolsapp.model.StateEntity
 import com.recycling.toolsapp.model.TransEntity
 import com.recycling.toolsapp.socket.CabinBox
 import com.recycling.toolsapp.socket.DoorCloseDto
@@ -124,103 +125,106 @@ import javax.inject.Inject
     /******************************************* socket通信 *************************************************/
     var vmClient: SocketClient? = null
 
-    fun initSocket() {
-        println("调试socket cabinetVM initSocket")
-        ioScope.launch {
-            delay(5000)
-            println("调试socket cabinetVM initSocket start")
-            vmClient =
-                    SocketClient(SocketClient.Config(host = "58.251.251.79", port = 9095, heartbeatIntervalMillis = 10_000, heartbeatPayload = "PING".toByteArray()))
-            println("调试socket cabinetVM initSocket client $vmClient")
-            vmClient?.incoming?.collect { bytes ->
-                println("调试socket recv: ${String(bytes)}")
-                val json = String(bytes)
-                val cmd = CommandParser.parseCommand(json)
-                when (cmd) {
-                    "heartBeat" -> {
-                        println("调试socket recv: 接收心跳成功")
-                        //记录日志
-                    }
-
-                    "login" -> {
-                        println("调试socket recv: 接收登录成功")
-                        val loginModel = Gson().fromJson(json, LoginDto::class.java)
-
-                        val heartbeatIntervalMillis =
-                                loginModel.config.heartBeatInterval?.toLong() ?: 3
-                        vmClient?.config?.heartbeatIntervalMillis1 =
-                                TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
-                        //保存配置
-                        loginModel.sn?.let { sn ->
-                            toGetSaveConfigEntity(sn, loginModel.config)
+    /*
+        fun initSocket() {
+            println("调试socket cabinetVM initSocket")
+            ioScope.launch {
+                delay(5000)
+                println("调试socket cabinetVM initSocket start")
+                vmClient =
+                        SocketClient(SocketClient.Config(host = "58.251.251.79", port = 9095, heartbeatIntervalMillis = 10_000, heartbeatPayload = "PING".toByteArray()))
+                println("调试socket cabinetVM initSocket client $vmClient")
+                vmClient?.incoming?.collect { bytes ->
+                    println("调试socket recv: ${String(bytes)}")
+                    val json = String(bytes)
+                    val cmd = CommandParser.parseCommand(json)
+                    when (cmd) {
+                        "heartBeat" -> {
+                            println("调试socket recv: 接收心跳成功")
+                            //记录日志
                         }
-                        //保存箱体
-                        toGetSaveCabins(loginModel.config.list)
-                        vmClient?.sendHeartbeat()
-                    }
 
-                    "initConfig" -> {
-                        val initConfigModel = Gson().fromJson(json, InitConfigDto::class.java)
-                        println("调试socket recv: 接收 initConfig 成功")
-                    }
+                        "login" -> {
+                            println("调试socket recv: 接收登录成功")
+                            val loginModel = Gson().fromJson(json, LoginDto::class.java)
 
-                    "openDoor" -> {
-                        println("调试socket recv: 接收 openDoor 成功")
-                        val doorOpenModel = Gson().fromJson(json, DoorOpenDto::class.java)
-                        toGoDownDoorOpen(doorOpenModel)
-                    }
+                            val heartbeatIntervalMillis =
+                                    loginModel.config.heartBeatInterval?.toLong() ?: 3
+                            vmClient?.config?.heartbeatIntervalMillis1 =
+                                    TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
+                            //保存配置
+                            loginModel.sn?.let { sn ->
+                                toGetSaveConfigEntity(sn, loginModel.config)
+                            }
+                            //保存箱体
+                            toGetSaveCabins(loginModel.config.list)
+                            delay(500)
+                            vmClient?.sendHeartbeat()
+                        }
 
-                    "closeDoor" -> {
-                        println("调试socket recv: 接收 closeDoor成功")
-                    }
+                        "initConfig" -> {
+                            val initConfigModel = Gson().fromJson(json, InitConfigDto::class.java)
+                            println("调试socket recv: 接收 initConfig 成功")
+                        }
 
-                    "phoneNumberLogin" -> {
-                        println("调试socket recv: 接收 phoneNumberLogin 成功")
-                    }
+                        "openDoor" -> {
+                            println("调试socket recv: 接收 openDoor 成功")
+                            val doorOpenModel = Gson().fromJson(json, DoorOpenDto::class.java)
+                            toGoDownDoorOpen(doorOpenModel)
+                        }
 
-                    "phoneUserOpenDoor" -> {
-                        println("调试socket recv: 接收 phoneUserOpenDoor 成功")
-                    }
+                        "closeDoor" -> {
+                            println("调试socket recv: 接收 closeDoor成功")
+                        }
 
-                    "restart" -> {
-                        println("调试socket recv: 接收 restart 成功")
-                    }
+                        "phoneNumberLogin" -> {
+                            println("调试socket recv: 接收 phoneNumberLogin 成功")
+                        }
 
-                    "uploadLog" -> {
-                        println("调试socket recv: 接收 uploadLog 成功")
-                    }
+                        "phoneUserOpenDoor" -> {
+                            println("调试socket recv: 接收 phoneUserOpenDoor 成功")
+                        }
 
-                    "ota" -> {
-                        println("调试socket recv: 接收 OTA 成功")
+                        "restart" -> {
+                            println("调试socket recv: 接收 restart 成功")
+                        }
+
+                        "uploadLog" -> {
+                            println("调试socket recv: 接收 uploadLog 成功")
+                        }
+
+                        "ota" -> {
+                            println("调试socket recv: 接收 OTA 成功")
+                        }
                     }
                 }
-            }
-            //启动socket连接
-            vmClient?.start()
-            println("调试socket client = $vmClient | state = ${vmClient?.state}")
-            vmClient?.state?.collect {
-                println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
-                when (it) {
-                    ConnectionState.START -> {
-                        println("调试socket START 开始")
-                    }
+                //启动socket连接
+                vmClient?.start()
+                println("调试socket client = $vmClient | state = ${vmClient?.state}")
+                vmClient?.state?.collect {
+                    println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
+                    when (it) {
+                        ConnectionState.START -> {
+                            println("调试socket START 开始")
+                        }
 
-                    ConnectionState.DISCONNECTED -> {
-                        println("调试socket DISCONNECTED 已断开连接")
-                    }
+                        ConnectionState.DISCONNECTED -> {
+                            println("调试socket DISCONNECTED 已断开连接")
+                        }
 
-                    ConnectionState.CONNECTING -> {
-                        println("调试socket CONNECTING 正在连接")
-                    }
+                        ConnectionState.CONNECTING -> {
+                            println("调试socket CONNECTING 正在连接")
+                        }
 
-                    ConnectionState.CONNECTED -> {
-                        println("调试socket CONNECTED 已连接")
-                        toGoCmdLogin()
+                        ConnectionState.CONNECTED -> {
+                            println("调试socket CONNECTED 已连接")
+                            toGoCmdLogin()
+                        }
                     }
                 }
             }
         }
-    }
+    */
 
     fun convertToJsonString(obj: Any): String {
         return Gson().toJson(obj)
@@ -229,7 +233,7 @@ import javax.inject.Inject
     fun toGoCmdLogin() {
         ioScope.launch {
             val m =
-                    mapOf("cmd" to "login", "sn" to "0136004ST00041", "imei" to "868408061812125", "iccid" to "898604A70821C0049781", "version" to "1.0.0", "timestamp" to System.currentTimeMillis())
+                    mapOf("cmd" to "login", "sn" to "0136004ST00041", "imsi" to "460086096808642", "imei" to "868408061812125", "iccid" to "898604A70821C0049781", "version" to "1.0.0", "timestamp" to System.currentTimeMillis())
             val json = convertToJsonString(m)
             vmClient?.sendText(json)
         }
@@ -287,45 +291,47 @@ import javax.inject.Inject
      * @param config 配置信息
      * 保存配置信息
      */
-    fun toGetSaveConfigEntity(snCode: String, config: LoginConfig): Long {
-        println("回收柜 开始添加配置")
-        var row = -1L
-        val saveConfig = ConfigEntity().apply {
-            sn = snCode
-            heartBeatInterval = config.heartBeatInterval
-            turnOnLight = config.turnOnLight
-            turnOffLight = config.turnOffLight
-            lightTime = config.lightTime
-            uploadPhotoURL = config.uploadPhotoURL
-            uploadLogURL = config.uploadLogURL
-            qrCode = config.qrCode
-            logLevel = config.logLevel
-            status = config.status
-            debugPasswd = config.debugPasswd
-            irDefaultState = config.irDefaultState
-            weightSensorMode = config.weightSensorMode
+    fun toGetSaveConfigEntity(snCode: String, config: LoginConfig) {
+        ioScope.launch {
+            println("调试socket 开始添加配置 ${Thread.currentThread().name}")
+            var row = -1L
+            val saveConfig = ConfigEntity().apply {
+                sn = snCode
+                heartBeatInterval = config.heartBeatInterval
+                turnOnLight = config.turnOnLight
+                turnOffLight = config.turnOffLight
+                lightTime = config.lightTime
+                uploadPhotoURL = config.uploadPhotoURL
+                uploadLogURL = config.uploadLogURL
+                qrCode = config.qrCode
+                logLevel = config.logLevel
+                status = config.status
+                debugPasswd = config.debugPasswd
+                irDefaultState = config.irDefaultState
+                weightSensorMode = config.weightSensorMode
+            }
+            val queryConfig = DatabaseManager.queryInitConfig(AppUtils.getContext(), snCode)
+            if (queryConfig == null) {
+                row = DatabaseManager.insertInitConfig(AppUtils.getContext(), saveConfig)
+                println("调试socket 添加配置")
+            } else {
+                queryConfig.heartBeatInterval = config.heartBeatInterval
+                queryConfig.heartBeatInterval = config.heartBeatInterval
+                queryConfig.turnOnLight = config.turnOnLight
+                queryConfig.turnOffLight = config.turnOffLight
+                queryConfig.lightTime = config.lightTime
+                queryConfig.uploadPhotoURL = config.uploadPhotoURL
+                queryConfig.uploadLogURL = config.uploadLogURL
+                queryConfig.qrCode = config.qrCode
+                queryConfig.logLevel = config.logLevel
+                queryConfig.status = config.status
+                queryConfig.debugPasswd = config.debugPasswd
+                queryConfig.irDefaultState = config.irDefaultState
+                queryConfig.weightSensorMode = config.weightSensorMode
+                println("调试socket  更新配置")
+            }
+//            return row
         }
-        val queryConfig = DatabaseManager.queryInitConfig(AppUtils.getContext(), snCode)
-        if (queryConfig == null) {
-            row = DatabaseManager.insertInitConfig(AppUtils.getContext(), saveConfig)
-            println("回收柜 添加配置")
-        } else {
-            queryConfig.heartBeatInterval = config.heartBeatInterval
-            queryConfig.heartBeatInterval = config.heartBeatInterval
-            queryConfig.turnOnLight = config.turnOnLight
-            queryConfig.turnOffLight = config.turnOffLight
-            queryConfig.lightTime = config.lightTime
-            queryConfig.uploadPhotoURL = config.uploadPhotoURL
-            queryConfig.uploadLogURL = config.uploadLogURL
-            queryConfig.qrCode = config.qrCode
-            queryConfig.logLevel = config.logLevel
-            queryConfig.status = config.status
-            queryConfig.debugPasswd = config.debugPasswd
-            queryConfig.irDefaultState = config.irDefaultState
-            queryConfig.weightSensorMode = config.weightSensorMode
-            println("回收柜 更新配置")
-        }
-        return row
     }
 
     /***
@@ -333,55 +339,77 @@ import javax.inject.Inject
      * 保存箱体信息
      */
     fun toGetSaveCabins(cabinBoxs: List<CabinBox>?) {
-        println("回收柜 开始保存箱体信息")
-        cabinBoxs?.let {
-            for (cabinBox in cabinBoxs) {
-                val saveConfig = CabinEntity().apply {
-                    cabinId = cabinBox.cabinId
-                    capacity = cabinBox.capacity
-                    createTime = cabinBox.createTime
-                    delFlag = cabinBox.delFlag
-                    doorStatus = cabinBox.doorStatus
-                    filledTime = cabinBox.filledTime
-                    netId = cabinBox.id
-                    ir = cabinBox.ir
-                    overweight = cabinBox.overweight
-                    price = cabinBox.price
-                    rodHinderValue = cabinBox.rodHinderValue
-                    sn = cabinBox.sn
-                    smoke = cabinBox.smoke
-                    sort = cabinBox.sort
-                    sync = cabinBox.sync
-                    volume = cabinBox.volume
-                    weight = cabinBox.weight
+        ioScope.launch {
+            println("调试socket 开始保存箱体信息 ${Thread.currentThread().name}")
+            val stateBox = mutableListOf<StateEntity>()
+            cabinBoxs?.let {
+                for (cabinBox in cabinBoxs) {
+                    val saveConfig = CabinEntity().apply {
+                        cabinId = cabinBox.cabinId
+                        capacity = cabinBox.capacity
+                        createTime = cabinBox.createTime
+                        delFlag = cabinBox.delFlag
+                        doorStatus = cabinBox.doorStatus
+                        filledTime = cabinBox.filledTime
+                        netId = cabinBox.id
+                        ir = cabinBox.ir
+                        overweight = cabinBox.overweight
+                        price = cabinBox.price
+                        rodHinderValue = cabinBox.rodHinderValue
+                        sn = cabinBox.sn
+                        smoke = cabinBox.smoke
+                        sort = cabinBox.sort
+                        sync = cabinBox.sync
+                        volume = cabinBox.volume
+                        weight = cabinBox.weight
+                    }
+                    val queryCabin =
+                            cabinBox.cabinId?.let { cabinId -> DatabaseManager.queryCabinEntity(AppUtils.getContext(), cabinId) }
+                    if (queryCabin == null) {
+                        val rowCabin =
+                                DatabaseManager.insertCabin(AppUtils.getContext(), saveConfig)
+                        println("调试socket 添加箱体信息 $rowCabin")
+                        val setCapacity = cabinBox.capacity?.toInt() ?: 0
+                        val setIrState = cabinBox.ir
+                        val setWeigh = cabinBox.weight?.toFloat() ?: 0f
+                        val setCabinId = cabinBox.cabinId ?: ""
+                        stateBox.add( StateEntity().apply {
+                            smoke = 0
+                            capacity = setCapacity
+                            irState = setIrState
+                            weigh = setWeigh
+                            doorStatus = 0
+                            cabinId = setCabinId
+                            time = AppUtils.getDateYMDHMS()
+                        })
+                    } else {
+                        queryCabin.cabinId = cabinBox.cabinId
+                        queryCabin.capacity = cabinBox.capacity
+                        queryCabin.createTime = cabinBox.createTime
+                        queryCabin.delFlag = cabinBox.delFlag
+                        queryCabin.doorStatus = cabinBox.doorStatus
+                        queryCabin.filledTime = cabinBox.filledTime
+                        queryCabin.netId = cabinBox.id
+                        queryCabin.ir = cabinBox.ir
+                        queryCabin.overweight = cabinBox.overweight
+                        queryCabin.price = cabinBox.price
+                        queryCabin.rodHinderValue = cabinBox.rodHinderValue
+                        queryCabin.sn = cabinBox.sn
+                        queryCabin.smoke = cabinBox.smoke
+                        queryCabin.sort = cabinBox.sort
+                        queryCabin.sync = cabinBox.sync
+                        queryCabin.volume = cabinBox.volume
+                        queryCabin.weight = cabinBox.weight
+                        println("调试socket  更新箱体信息")
+                    }
                 }
-                val queryCabin =
-                        cabinBox.cabinId?.let { cabinId -> DatabaseManager.queryCabinEntity(AppUtils.getContext(), cabinId) }
-                if (queryCabin == null) {
-                    DatabaseManager.insertCabin(AppUtils.getContext(), saveConfig)
-                    println("回收柜 添加箱体信息")
-                } else {
-                    queryCabin.cabinId = cabinBox.cabinId
-                    queryCabin.capacity = cabinBox.capacity
-                    queryCabin.createTime = cabinBox.createTime
-                    queryCabin.delFlag = cabinBox.delFlag
-                    queryCabin.doorStatus = cabinBox.doorStatus
-                    queryCabin.filledTime = cabinBox.filledTime
-                    queryCabin.netId = cabinBox.id
-                    queryCabin.ir = cabinBox.ir
-                    queryCabin.overweight = cabinBox.overweight
-                    queryCabin.price = cabinBox.price
-                    queryCabin.rodHinderValue = cabinBox.rodHinderValue
-                    queryCabin.sn = cabinBox.sn
-                    queryCabin.smoke = cabinBox.smoke
-                    queryCabin.sort = cabinBox.sort
-                    queryCabin.sync = cabinBox.sync
-                    queryCabin.volume = cabinBox.volume
-                    queryCabin.weight = cabinBox.weight
-                    println("回收柜 更新箱体信息")
+                for (state in stateBox) {
+                    val rowState = DatabaseManager.insertState(AppUtils.getContext(), state)
+                    println("调试socket 添加心跳信息 $rowState")
                 }
             }
         }
+
     }
 
     /******************************************* socket通信 *************************************************/

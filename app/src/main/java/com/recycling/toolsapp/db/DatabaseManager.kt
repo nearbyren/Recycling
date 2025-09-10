@@ -63,7 +63,7 @@ object DatabaseManager {
                                 super.onCreate(db)
                                 CoroutineScope(Dispatchers.IO).launch {
                                     //初始化信息
-                                    initState()
+//                                    initState()
                                 }
                             }
                         }).build()
@@ -74,18 +74,18 @@ object DatabaseManager {
     }
 
     private fun initState() {
-        println("回收柜 initState")
+        println("调试socket  initState")
         val state = StateEntity().apply {
             smoke = 0
             capacity = 0
             irState = 0
-            weigh = 0
+            weigh = 0f
             doorStatus = 0
             cabinId = "12345679"
             time = AppUtils.getDateYMDHMS()
         }
         val row = insertState(AppUtils.getContext(), state)
-        println("回收柜 initState row $row")
+        println("调试socket  initState row $row")
     }
 
     fun copyDatabase(context: Context, databaseName: String = DATABASE_NAME) {
@@ -270,7 +270,7 @@ object DatabaseManager {
     /***
      * 提供外部 API 方法
      * @param context 上下文
-     * @param trensEntity 交易
+     * @param trensEntity 插入一条记录
      */
     fun insertTrans(context: Context, trensEntity: TransEntity): Long {
         return getTransFlowDao(context).insert(trensEntity)

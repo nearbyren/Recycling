@@ -9,8 +9,11 @@ import android.os.Message
 import android.view.MotionEvent
 import android.view.View
 import androidx.fragment.app.Fragment
-import com.recycling.toolsapp.ui.NewHomeFragment
+import com.recycling.toolsapp.ui.TouSingleFragment
+import com.recycling.toolsapp.ui.TouDoubleFragment
+import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
+import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.LiveBus
 
 
@@ -58,6 +61,7 @@ abstract class BaseLazyLoadFragment : Fragment() {
 
     // 倒计时相关
     private val LOCK_COUNTDOWN = Any()
+
     //2分钟半150 1分钟半90
     val DEFAULT_COUNTDOWN: Int = 520
     private var mSaveCountdown = DEFAULT_COUNTDOWN
@@ -191,11 +195,24 @@ abstract class BaseLazyLoadFragment : Fragment() {
 //        }
 //        val bool = mActivity?.navigateBackTo(fragmentClass = NewHomeFragment::class.java)
 
-        if (fragment is NewHomeFragment) {
+        if (fragment is TouSingleFragment) {
             return
         }
-        val bool = mActivity?.navigateBackTo(fragmentClass = NewHomeFragment::class.java)
-        Loge.d("FragmentCoordinator navigateToHome bool = $bool")
+        if (fragment is TouDoubleFragment) {
+            return
+        }
+        val typeGrid = SPreUtil[AppUtils.getContext(), "type_grid", -1]
+        when (typeGrid) {
+            1 -> {
+                val bool = mActivity?.navigateBackTo(fragmentClass = TouSingleFragment::class.java)
+                Loge.d("FragmentCoordinator navigateToHome 跳转是否成功：$bool")
+            }
+
+            2 -> {
+                val bool = mActivity?.navigateBackTo(fragmentClass = TouDoubleFragment::class.java)
+                Loge.d("FragmentCoordinator navigateToHome 跳转是否成功：$bool")
+            }
+        }
     }
 
     protected fun setShowActionBar(showActionBar: Boolean) {

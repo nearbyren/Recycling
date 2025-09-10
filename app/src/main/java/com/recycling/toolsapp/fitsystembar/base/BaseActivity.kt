@@ -13,16 +13,15 @@ import android.view.animation.AnimationUtils
 import android.widget.TextView
 import androidx.annotation.LayoutRes
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
+import com.recycling.toolsapp.FaceApplication
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.dialog.LoadingDialog
-import com.recycling.toolsapp.ui.NewHomeFragment
 import com.recycling.toolsapp.utils.FragmentCoordinator
 import com.serial.port.utils.Loge
 import nearby.lib.signal.livebus.LiveBus
@@ -31,6 +30,26 @@ import java.lang.ref.WeakReference
 
 abstract class BaseActivity : AppCompatActivity() {
     private val weakFragment by lazy { WeakReference(LoadingDialog()) }
+
+    private var activityCount = 0 // 用于判断是否有Activity处于前台
+
+    override fun onStart() {
+        super.onStart()
+        activityCount++
+        if (activityCount == 1) {
+            // 从后台回到前台
+            FaceApplication.getInstance().isAppForeground.value = true
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        activityCount--
+        if (activityCount == 0) {
+            // 应用切换到后台
+            FaceApplication.getInstance().isAppForeground.value = false
+        }
+    }
 
     //    private val weakFragment by lazy { WeakReference(LoadingNativeDialog()) }
 // 淡入淡出动画
@@ -44,13 +63,6 @@ abstract class BaseActivity : AppCompatActivity() {
         initContentView()
         findViewById<TextView>(R.id.toolbar_left_title)?.setOnClickListener {
             val curClazz = fragmentCoordinator?.getCurrentFragment()
-            val clazz = when (curClazz) {
-                is NewHomeFragment -> {
-                    setActionBarVisibility(View.GONE)
-                    NewHomeFragment::class.java
-                }
-                else -> NewHomeFragment::class.java
-            }
             Loge.d("FragmentCoordinator toolbar_ic_left 返回键 $curClazz")
             fragmentCoordinator.navigateBack()
         }

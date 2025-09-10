@@ -108,6 +108,12 @@
               </intent-filter>-->
         </activity>
         <activity
+            android:name="com.recycling.toolsapp.InitFactoryActivity"
+            android:configChanges="keyboard|keyboardHidden"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+        </activity>
+        <activity
             android:name="com.recycling.toolsapp.StartUiActivity"
             android:exported="true"
             android:configChanges="keyboard|keyboardHidden"

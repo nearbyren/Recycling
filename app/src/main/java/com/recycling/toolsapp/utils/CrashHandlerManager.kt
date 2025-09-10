@@ -20,6 +20,7 @@ import com.serial.port.utils.Loge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import nearby.lib.netwrok.response.SPreUtil
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -80,7 +81,10 @@ class CrashHandlerManager(private val mContext: Context) : Thread.UncaughtExcept
             if (mContext is Application) {
                 (mContext as FaceApplication).finishAllActivity()
             }
-            restartApp(mContext, 5 * 1000L)
+            val crash = SPreUtil[AppUtils.getContext(), "crash", 1] as Int
+            if (crash < 5) {
+                restartApp(mContext, 5 * 1000L)
+            }
         }
     }
 
@@ -124,6 +128,9 @@ class CrashHandlerManager(private val mContext: Context) : Thread.UncaughtExcept
         throwable.printStackTrace()
         //收集設備信息
         collectDeviceInfo()
+        val crash = SPreUtil.get(AppUtils.getContext(), "crash", 1) as Int
+        val save = crash + 1
+        SPreUtil.put(AppUtils.getContext(), "crash", save)
         //保存異常日誌到文件
         val name = saveCrashInfoToFile(throwable)
         if (!BuildConfig.DEBUG) {

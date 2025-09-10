@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.text.TextUtils
 import androidx.annotation.Nullable
+import androidx.lifecycle.MutableLiveData
 import com.hzmct.enjoysdkv2.api.EnjoySDKV2
 import com.hzmct.enjoysdkv2.transform.McStateCode
 import com.mc.android.mcinstall.AppRule
@@ -39,15 +40,23 @@ import java.io.IOException
 @HiltAndroidApp class FaceApplication : Application() {
 
     private val ioScope = CoroutineScope(Dispatchers.IO)
-
+    /***
+     * false 在后台
+     * true 不在后台
+     */
+    val isAppForeground = MutableLiveData<Boolean>()
     companion object {
         var BASE_URL = "https://dl.fmnet.vip:33/api"
         lateinit var enjoySDK: EnjoySDKV2
         lateinit var networkMonitor: NetworkStateMonitor
+        private lateinit var instance: FaceApplication
+
+        fun getInstance() = instance
     }
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         initLog()
         AppUtils.init(this)
         initEnjoySDK()
@@ -121,22 +130,22 @@ import java.io.IOException
 //        enjoySDK.setNavigationBarShowStatus(0)
         //设置静默安装状态
         enjoySDK.silentInstallRulesSwitch(true)
-        val appRule = AppRule("com.recycling.toolsapp", true)
-        val startPackName = enjoySDK.homePackage
+//        val appRule = AppRule("com.recycling.toolsapp", true)
+//        val startPackName = enjoySDK.homePackage
 //        enjoySDK.setHomePackage("com.android.launcher3")
 //        enjoySDK.setHomePackage("com.recycling.toolsapp")
         //添加APP至 静默安装列表中
-        enjoySDK.addSilentInstallRules(appRule)
+//        enjoySDK.addSilentInstallRules(appRule)
         //获取 静默安装开关状态
-        val isRules = enjoySDK.isEnableSilentInstallRules
+//        val isRules = enjoySDK.isEnableSilentInstallRules
         //获取静默安装列表
-        val startRules = enjoySDK.silentInstallList
+//        val startRules = enjoySDK.silentInstallList
         //获取 是否打开了 安装后启动功能
-        val autoStartRules = enjoySDK.isEnableInstallAutoStartRules
+//        val autoStartRules = enjoySDK.isEnableInstallAutoStartRules
         //设置 安装后启动 开关状态
-        enjoySDK.installAutoStartSwitch(true)
+//        enjoySDK.installAutoStartSwitch(true)
         //添加应用至 安装后启动 应用列表中
-        enjoySDK.addInstallAutoStartRules(appRule)
+//        enjoySDK.addInstallAutoStartRules(appRule)
 //        从 安装后启动 应用列表中删除APP
 //        enjoySDK.removeInstallAutoStartRules(appRule)
         //清空 安装后启动 应用列表
@@ -147,7 +156,7 @@ import java.io.IOException
         enjoySDK.switchAutoTimeZone(true)
         //设置系统时间显示格式 24小时制/12小时制。
         enjoySDK.setTimeFormat(McStateCode.TIME_HOUR_24)
-        Loge.d("安装 静默安装状态：$isRules | 静默安装个数：${startRules.size} | 安装启动状态：$autoStartRules | 安装启动个数：${enjoySDK.getInstallAutoStartRules()} |  当前桌面：${startPackName} ")
+//        Loge.d("安装 静默安装状态：$isRules | 静默安装个数：${startRules.size} | 安装启动状态：$autoStartRules | 安装启动个数：${enjoySDK.getInstallAutoStartRules()} |  当前桌面：${startPackName} ")
     }
 
     /***
