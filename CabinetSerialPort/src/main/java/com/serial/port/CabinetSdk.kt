@@ -82,5 +82,15 @@ class CabinetSdk private constructor() {
         fun queryStatus(onBoxStatus: (lowerMachines: MutableList<PortDeviceInfo>) -> Unit, sendCallback: (String) -> Unit) {
             serialPortCore?.queryStatus(onBoxStatus, sendCallback)
         }
+
+        /***
+         *
+         * @param onBoxStatus
+         * @param sendCallback 发送是否成功
+         */
+        fun queryDoorStatus(boxCode: Int, onDoorStatus: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.queryDoorStatus(boxCode, onDoorStatus, sendCallback)
+        }
+
     }
 }

@@ -20,23 +20,24 @@ data class DoorCloseDto(
     //终端上发
     var timestamp: String? = null,
     //重量减重后
-    var afterDownWeight: String? = null,
+    var afterDownWeight: Float? = null,
     //重量减重前
-    var beforeDownWeight: String? = null,
+    var beforeDownWeight: Float? = null,
     //重量修改后
-    var afterUpWeight: String? = null,
+    var afterUpWeight: Float? = null,
     //重量修改前
-    var beforeUpWeight: String? = null,
+    var beforeUpWeight: Float? = null,
     //刷新重量
-    var refWeight: String? = null,
+    var refWeight: Float? = null,
     //改变重量
-    var changeWeight: String? = null,
+    var changeWeight: Float? = null,
     //当前重量
-    var curWeight: String? = null,
+    var curWeight: Float? = null,
     //手机号
-    var phoneNumber: String? = null,
+    var phoneNumber: Float? = null,
     //舱门编号
     var cabinId: String? = null,
 ) {
-    constructor() : this(null, null, 0, null, null, null, null, null, null, null, null, null, null, null)
+    constructor() : this(null, null, 0, null, null, null,
+        null, null, null, null, null, null, null, null)
 }

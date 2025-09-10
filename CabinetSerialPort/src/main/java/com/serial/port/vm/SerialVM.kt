@@ -8,6 +8,7 @@ import com.serial.port.EnumTextBoxInfo
 import com.serial.port.EnumToolsStatus
 import com.serial.port.EnumTxStatus
 import com.serial.port.PortDeviceInfo
+import com.serial.port.call.CommandDoorResultListener
 import com.serial.port.call.CommandOpenResultListener
 import com.serial.port.call.CommandQueryBeanResultListener
 import com.serial.port.call.CommandQueryInternalListResultListener
@@ -18,6 +19,7 @@ import com.serial.port.call.CommandSendResultListener
 import com.serial.port.call.CommandStatus
 import com.serial.port.call.CommandUpgrade232ResultListener
 import com.serial.port.call.CommandUpgrade485ResultListener
+import com.serial.port.call.DoorStatus
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.ByteUtils
 import com.serial.port.utils.HexConverter
@@ -271,6 +273,18 @@ class SerialVM : ViewModel() {
         this.commandOpenResultListener = CommandOpenResultListener { number, status ->
             // 调用传递的回调
             callback(number, status)
+        }
+    }
+
+    /***
+     *
+     *
+     */
+    private var commandDoorResultListener: CommandDoorResultListener? = null
+    fun addCommandDoorResultListener(callback: (Int) -> Unit) {
+        this.commandDoorResultListener = CommandDoorResultListener { status ->
+            // 调用传递的回调
+            callback(status)
         }
     }
 
@@ -823,6 +837,7 @@ class SerialVM : ViewModel() {
 
                 }
             }
+
             //查询箱体门电量sn信息
             2.toByte() -> {
                 //取出完整数据
@@ -948,73 +963,32 @@ class SerialVM : ViewModel() {
                 }
                 commandQueryListResultListener?.queryResult(list)
             }
-            //查询箱体工具信息
+
             3.toByte() -> {
                 //取出完整数据
                 val toIndex = 4 + dataLength
                 if (before != toIndex) {
                     Loge.i("串口232", "接232 3.toByte 数据长度与数据域不匹配")
-                    commandQueryInternalListResultListener?.queryResult(mutableMapOf())
+                    commandDoorResultListener?.openResult(DoorStatus.FAIL)
                     return
                 }
-                val data = packet.copyOfRange(4, 5 + dataLength)
+                val data = packet.copyOfRange(4, 4 + dataLength)
                 Loge.i("串口232", "接232 3.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
-                val boxMaps = mutableMapOf<Int, BoxInternal>()
-                boxMaps.clear()
-                for (i in data.indices step 5) {
-                    //箱号
-                    var number = 1
-                    //地址
-                    var address = -1
-                    //电量
-                    var elec = 0
-                    //在仓
-                    var isNot: Int = -1
-                    //故障
-                    var status = -1
-                    // 防止最后一组数据不足5字节
-                    val end = (i + 5).coerceAtMost(data.size)
+                for (i in data.indices step 2) {
+                    val end = (i + 2).coerceAtMost(data.size)
                     val group = data.copyOfRange(i, end)
                     val size = group.size
-                    Loge.i("串口232", "接232 3.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
-                    if (size > 0) {
-                        number = group[0].toUByte().toInt()
+                    Loge.i("串口232", "接232 1.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
+                    val locker = group[0].toInt()
+                    val status = group[1].toInt()
+                    if(status==1){
+                        commandDoorResultListener?.openResult(DoorStatus.SUCCEED)
+                    }else {
+                        commandDoorResultListener?.openResult(DoorStatus.FAIL)
                     }
-                    //地址
-                    if (size > 1) {
-                        address = group[1].toUByte().toInt()
-                    }
-                    //电量
-                    if (size > 2) {
-                        elec = group[2].toUByte().toInt()
-                    }
-                    //在仓
-                    if (size > 3) {
-                        isNot = group[3].toInt()
-                    }
-                    //故障
-                    if (size > 4) {
-                        status = group[4].toInt()
-                    }
-                    if (group.size >= 5) {
-                        Loge.i("串口232", "接232 3.toByte 仓位：${number}| 电量：${elec} | 在仓：${isNot}|${EnumToolsStatus.getDescByCode(isNot)} | 状态：${status}|${EnumTxStatus.getDescByCode(status)} | 地址：${address}|${EnumTextBoxInfo.fromName(address)} ")
-                        boxMaps[address] = BoxInternal().apply {
-                            boxCode = number
-                            boxAddress = address.toString()
-                            boxElectric = elec
-                            boxIn = EnumToolsStatus.getDescByCode(isNot)
-                            boxSignal = EnumTxStatus.getDescByCode(status)
-                        }
-                    }
-                    Loge.i("串口232", "接232 3.toByte -----------------------------------------------------------")
                 }
-                commandQueryInternalListResultListener?.queryResult(boxMaps)
+            }
 
-            }
-            //上报大箱剥线器 电量
-            4.toByte() -> {
-                commandReportResultListener?.reportResult(CommandStatus.SUCCEED)
-            }
             //查询升级校验结果
             9.toByte() -> {
                 //取出完整数据
@@ -1107,7 +1081,7 @@ class SerialVM : ViewModel() {
                     Loge.i("串口232", "接232 11.toByte ----------${a}-${b}-${c}-${d}----------------------------------------------")
                     if (a == "255" && b == "255" && c == "255" && d == "255") {
                         commandUpgrade232ResultListener?.upgradeResult(20250101)
-                    }else{
+                    } else {
                         val size = HexConverter.byteArrayToInt(data)
                         commandUpgrade232ResultListener?.upgradeResult(size)
                     }
@@ -1151,58 +1125,6 @@ class SerialVM : ViewModel() {
                     commandUpgrade232ResultListener?.upgradeResult(CommandStatus.FAIL)
                 }
             }
-
-//            5.toByte() -> {
-//                //取出完整数据
-//                val toIndex = 4 + dataLength
-//                if (before != toIndex) {
-//                    Loge.i("串口232","接232 4.toByte 数据长度与数据域不匹配")
-//                    commandUpgradeResultListener?.upgradeResult(CommandStatus.FAIL)
-//                    return
-//                }
-//                val data = packet.copyOfRange(4, 4 + dataLength)
-//                Loge.i("串口232","接232 4.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
-//                isUpgradeRecData.set(true)
-//                if (data.size == 3) {
-//                    isUpgradeStatus.set(true)
-//                    commandUpgradeResultListener?.upgradeResult(CommandStatus.SUCCEED)
-//                } else {
-//                    isUpgradeStatus.set(false)
-//                    commandUpgradeResultListener?.upgradeResult(CommandStatus.FAIL)
-//                }
-//            }
-            //查询单个仓的信息 换方案了 暂时屏蔽
-            /* 3.toByte() -> {
-                 val data = packet.copyOfRange(4, 4 + dataLength)
-                 Loge.i("串口232", "接 3.toByte ${data.joinToString(" ") { "%02X".format(it) }}")
-                 for (i in data.indices step 4) {
-                     val end = (i + 4).coerceAtMost(data.size)
-                     val group = data.copyOfRange(i, end)
-                     Loge.i("串口232", "接 3.toByte end $end | size ${group.size} | group ${ByteUtils.toHexString(group)}")
-                     val locker = group[0].toInt()
-                     val status = group[1].toInt()
-                     val elec = group[2].toInt()
-                     val sn = group[3].toInt()
-                     val mType = when (locker) {
-                         1, 2, 3, 4, 5, 6, 7, 8 -> EnumBoxType.getDescByCode(1)
-                         9, 10 -> EnumBoxType.getDescByCode(2)
-                         11 -> EnumBoxType.getDescByCode(3)
-                         12 -> EnumBoxType.getDescByCode(4)
-                         else -> {
-                             EnumBoxType.getDescByCode(5)
-                         }
-                     }
-                     Loge.i("串口232", "接 3.toByte 仓号：$locker | 状态：$status")
-                     commandQueryBeanResultListener?.queryResult(PortDeviceInfo().apply {
-                         boxType =mType
-                         boxCode = locker.toString()
-                         whElec = elec.toString()
-                         boxStatus = status.toString()
-                         whSerial = sn.toString()
-                     })
-                 }
-
-             }*/
         }
     }
 
@@ -1868,7 +1790,7 @@ class SerialVM : ViewModel() {
                     if (a == "255" && b == "255" && c == "255" && d == "255") {
                         Loge.i("串口485", "接485 11.toByte ----------${a}-${b}-${c}-${d}----------------------------------------------")
                         commandUpgrade485ResultListener?.upgradeResult(20250101)
-                    }else{
+                    } else {
                         val size = HexConverter.byteArrayToInt(data)
                         commandUpgrade485ResultListener?.upgradeResult(size)
                     }

@@ -13,6 +13,10 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "TransEntity") class TransEntity(
     @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "id", typeAffinity = INTEGER) val id: Long = 0,
     /***
+     * 指令
+     */
+    @ColumnInfo(name = "cmd", typeAffinity = TEXT, defaultValue = "") var cmd: String? = null,
+    /***
      * 事务ID
      */
     @ColumnInfo(name = "transId", typeAffinity = TEXT, defaultValue = "") var transId: String? = null,
@@ -34,6 +38,7 @@ import androidx.room.PrimaryKey
     @ColumnInfo(name = "time", typeAffinity = TEXT) var time: String? = null, ) {
     @Ignore constructor() : this(
         0,
+        null,
         null,
         0,
         null,

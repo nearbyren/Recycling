@@ -61,16 +61,23 @@ import kotlin.random.Random
             HexConverter.restartApp2(AppUtils.getContext(), 2 * 500L)
         }
         binding.tvValue2.setOnClickListener {
-            mActivity?.navigateTo(fragmentClass = TestSocketFragment::class.java)
+//            mActivity?.navigateTo(fragmentClass = TestSocketFragment::class.java)
+            mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
 
         }
+        binding.logo.setOnClickListener {
+            //接收到服务器指令了
+            cabinetVM.addQueueCommand(3)
+        }
         binding.clMobile.setOnClickListener {
-            mActivity?.navigateTo(fragmentClass = DeliveryFragment::class.java)
+//            mActivity?.navigateTo(fragmentClass = DeliveryFragment::class.java)
+            cabinetVM.testToGoDownDoorOpen()
         }
         binding.acivCode.setOnClickListener {
             createCode()
         }
     }
+
     private fun createCode() {
         val bitmap = BitmapFactory.decodeResource(resources, R.drawable.ic_yilaguan)
         AwesomeQRCode.Renderer().contents("hahahah").size(R.dimen.dp_130).logo(bitmap).margin(R.dimen.dp_5).renderAsync(object : AwesomeQRCode.Callback {

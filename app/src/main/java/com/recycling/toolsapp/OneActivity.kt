@@ -22,8 +22,10 @@ import com.recycling.toolsapp.socket.DoorOpenDto
 import com.recycling.toolsapp.socket.InitConfigDto
 import com.recycling.toolsapp.socket.LoginDto
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
+import com.recycling.toolsapp.ui.DeliveryFragment
 import com.recycling.toolsapp.ui.TouSingleFragment
 import com.recycling.toolsapp.ui.TouDoubleFragment
+import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.FragmentCoordinator
 import com.recycling.toolsapp.utils.HexConverter
@@ -60,6 +62,7 @@ import java.util.concurrent.TimeUnit
         } ?: navigateToHome()
 
         initNetworkState()
+        initPort()
 //        countdownUI()
 //        lifeUpgradeApk()
 //        netUpdateApk()
@@ -73,6 +76,10 @@ import java.util.concurrent.TimeUnit
         }
     }
 
+    private fun initPort() {
+        cabinetVM.timingStatus()
+    }
+
 
     @RequiresApi(Build.VERSION_CODES.M) private fun initNetworkState() {
         //全局处理提示信息
@@ -80,6 +87,46 @@ import java.util.concurrent.TimeUnit
             cabinetVM._isNetworkMessage.collect {
                 Loge.d("全局提示信息  $it ${Thread.currentThread().name}")
                 SnackbarUtils.show(activity = this@OneActivity, message = it, duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
+            }
+
+        }
+        lifecycleScope.launch {
+            cabinetVM.isOpenDoor.collect {
+                Loge.d("调试socket 收到开仓指令 $it")
+                if (it) {
+                    navigateTo(fragmentClass = DeliveryFragment::class.java)
+                }
+
+            }
+        }
+        lifecycleScope.launch {
+            cabinetVM.isDeliveryTypeEnd.collect { endType ->
+                //开启定时查询门状态是否关闭完成，后续上传业务
+                Loge.d("调试socket 接收到称重页结束类型 $endType")
+                when (endType) {
+                    //点击
+                    1 -> {
+
+                    }
+                    //倒计时结束
+                    2 -> {
+
+                    }
+                    //门已经开了
+                    310 -> {
+                        //门已经开了 通知服务器
+                        cabinetVM.sendUpRec(CmdValue.CMD_OPEN_DOOR)
+                    }
+
+                    //门已经关闭
+                    301 -> {
+                        //门已经关闭了 通知服务器
+                        cabinetVM.sendUpRec(CmdValue.CMD_CLOSE_DOOR)
+
+                    }
+
+                }
+
             }
         }
         LiveBus.get("netMessage").observeForever {

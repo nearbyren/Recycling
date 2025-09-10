@@ -16,12 +16,8 @@ import com.recycling.toolsapp.model.TransEntity
 import com.recycling.toolsapp.socket.CabinBox
 import com.recycling.toolsapp.socket.DoorCloseDto
 import com.recycling.toolsapp.socket.DoorOpenDto
-import com.recycling.toolsapp.socket.InitConfigDto
 import com.recycling.toolsapp.socket.LoginConfig
-import com.recycling.toolsapp.socket.LoginDto
 import com.recycling.toolsapp.socket.SocketClient
-import com.recycling.toolsapp.socket.SocketClient.ConnectionState
-import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.HexConverter
 import com.serial.port.CabinetSdk
 import com.serial.port.PortDeviceInfo
@@ -49,7 +45,6 @@ import nearby.lib.netwrok.download.SingleDownloader
 import nearby.lib.netwrok.response.CorHttp
 import java.io.File
 import java.io.FileInputStream
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel class CabinetVM @Inject constructor() : ViewModel() {
@@ -112,6 +107,14 @@ import javax.inject.Inject
     //处理网络提示语
     private val flowIsNetworkMessage = MutableSharedFlow<String>(replay = 1)
     val _isNetworkMessage = flowIsNetworkMessage.asSharedFlow()
+
+    //openDoor
+    private val flowIsOpenDoor = MutableSharedFlow<Boolean>(replay = 1)
+    val isOpenDoor = flowIsOpenDoor.asSharedFlow()
+
+    //倒计时结束  countdownEnd
+    private val flowDeliveryTypeEnd = MutableSharedFlow<Int>(replay = 1)
+    val isDeliveryTypeEnd = flowDeliveryTypeEnd.asSharedFlow()
 
     /***
      * 提示语
@@ -239,29 +242,146 @@ import javax.inject.Inject
         }
     }
 
+    var currentDoor: Int = -1
+
+    /*****************************************监听仓门是否关闭******************************************/
+    var doorJob: Job? = null
+
+    //实时查询仓门是否打开
+    fun pollingDoor() {
+        doorJob = ioScope.launch {
+            while (isActive) {
+
+            }
+        }
+    }
+
+    fun cancelDoorJob() {
+        doorJob?.cancel()
+        doorJob = null
+    }
+    /*****************************************监听仓门是否关闭******************************************/
+
+    /***
+     * @param typeEnd
+     * 1.点击
+     * 2.计时结束
+     */
+    fun testTypeEnd(typeEnd: Int) {
+        ioScope.launch {
+            flowDeliveryTypeEnd.emit(typeEnd)
+        }
+    }
+
+    fun testToGoDownDoorOpen() {
+        ioScope.launch {
+            val model = DoorOpenDto().apply {
+                //指令
+                cmd = "openDoor"
+                //事务id
+                transId = AppUtils.getUUID()
+                //舱门编码
+                cabinId = "20250102125515989511"
+                //服务下发
+                openType = 1
+                //终端上发
+                //状态 0.成功 1.失败
+                retCode = 0
+                //手机号
+                phoneNumber = "18938844110"
+                //当前重量
+                curWeight = 50f
+                //时间戳
+                timestamp = AppUtils.getDateYMDHMS()
+            }
+            val trensEntity = TransEntity().apply {
+                cmd = "openDoor"
+                transId = model.transId
+                openType = model.openType
+                cabinId = model.cabinId
+                upStatus = 0
+                time = AppUtils.getDateYMDHMS()
+            }
+            val row = DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)
+            println("调试socket 添加开仓记录 $row")
+            //构建上发数据
+            val doorOpen = DoorOpenDto().apply {
+                cmd = "openDoor"
+                transId = "closeDoor"
+                cabinId = "closeDoor"
+                phoneNumber = "closeDoor"
+                curWeight = 0.0f
+                retCode = 0
+                timestamp = AppUtils.getDateYMDHMS()
+            }
+            flowIsOpenDoor.emit(true)
+        }
+    }
+
     /***
      * 打开舱门
      */
     fun toGoDownDoorOpen(model: DoorOpenDto) {
-        val trensEntity = TransEntity().apply {
-            transId = model.transId
-            openType = model.openType
-            cabinId = model.cabinId
-            upStatus = 0
-            time = AppUtils.getDateYMDHMS()
+        ioScope.launch {
+            val trensEntity = TransEntity().apply {
+                transId = model.transId
+                openType = model.openType
+                cabinId = model.cabinId
+                upStatus = 0
+                time = AppUtils.getDateYMDHMS()
+            }
+            val row = DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)
+            println("调试socket 添加开仓记录 $row")
+            //构建上发数据
+            val doorOpen = DoorOpenDto().apply {
+                cmd = "openDoor"
+                transId = "closeDoor"
+                cabinId = "closeDoor"
+                phoneNumber = "closeDoor"
+                curWeight = 0.0f
+                retCode = 0
+                timestamp = AppUtils.getDateYMDHMS()
+            }
+            flowIsOpenDoor.emit(true)
         }
-        DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)
-        //构建上发数据
-        val doorOpen = DoorOpenDto().apply {
-            cmd = "openDoor"
-            transId = "closeDoor"
-            cabinId = "closeDoor"
-            phoneNumber = "closeDoor"
-            curWeight = 0.0f
-            retCode = 0
-            timestamp = AppUtils.getDateYMDHMS()
-        }
+    }
 
+    fun sendUpRec(type: String) {
+        println("调试串口 上发类型 $type")
+        when (type) {
+            "openDoor" -> {
+                //当下发指令开仓成功，上发回应成功
+                val doorOpen = DoorOpenDto().apply {
+                    cmd = "openDoor"
+                    transId = ""
+                    cabinId = ""
+                    phoneNumber = ""
+                    curWeight = 0.0f
+                    retCode = 0
+                    timestamp = AppUtils.getDateYMDHMS()
+                }
+
+            }
+
+            "closeDoor" -> {
+                //当上发个服务器接收关闭后，则更新本地记录信息
+                val doorClose = DoorCloseDto().apply {
+                    cmd = "closeDoor"
+                    transId = ""
+                    cabinId = ""
+                    phoneNumber = 0.0f
+                    curWeight = 0.0f
+                    changeWeight = 0.0f
+                    refWeight = 0.0f
+                    beforeUpWeight = 0.0f
+                    afterUpWeight = 0.0f
+                    beforeDownWeight = 0.0f
+                    afterDownWeight = 0.0f
+                    timestamp = AppUtils.getDateYMDHMS()
+                }
+
+            }
+        }
     }
 
     /***
@@ -271,16 +391,16 @@ import javax.inject.Inject
         //构建上发数据
         val doorClose = DoorCloseDto().apply {
             cmd = "closeDoor"
-            transId = "closeDoor"
-            cabinId = "closeDoor"
-            phoneNumber = "closeDoor"
-            curWeight = "closeDoor"
-            changeWeight = "closeDoor"
-            refWeight = "closeDoor"
-            beforeUpWeight = "closeDoor"
-            afterUpWeight = "closeDoor"
-            beforeDownWeight = "closeDoor"
-            afterDownWeight = "closeDoor"
+            transId = ""
+            cabinId = ""
+            phoneNumber = 0.0f
+            curWeight = 0.0f
+            changeWeight = 0.0f
+            refWeight = 0.0f
+            beforeUpWeight = 0.0f
+            afterUpWeight = 0.0f
+            beforeDownWeight = 0.0f
+            afterDownWeight = 0.0f
             timestamp = AppUtils.getDateYMDHMS()
         }
 
@@ -373,7 +493,7 @@ import javax.inject.Inject
                         val setIrState = cabinBox.ir
                         val setWeigh = cabinBox.weight?.toFloat() ?: 0f
                         val setCabinId = cabinBox.cabinId ?: ""
-                        stateBox.add( StateEntity().apply {
+                        stateBox.add(StateEntity().apply {
                             smoke = 0
                             capacity = setCapacity
                             irState = setIrState
@@ -425,7 +545,43 @@ import javax.inject.Inject
 
     //定时查询状态
     fun timingStatus() {
-        CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
+        println("调试串口 进来 timingStatus")
+        ioScope.launch {
+            while (isActive) {
+                val commandType = commandQueue.receive()  // 从Channel中接收指令
+                println("调试串口 进来 while $commandType")
+                if (commandType == 0) {
+                    CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
+                    //箱体状态查询
+                    addQueueCommand(0)
+                    delay(500)
+                } else if (commandType == 3) {
+                    CabinetSdk.queryDoorStatus(1, onDoorStatus = { status ->
+                        println("调试串口 接收回调 $status")
+                        testPortResult(status)
+                    }, sendCallback)
+                }
+            }
+        }
+    }
+
+    fun testPortResult(status: Int) {
+        ioScope.launch {
+            println("调试串口 通知锁状态 $status")
+            if (status == 0) {
+                flowDeliveryTypeEnd.emit(301)
+            } else if (status == 1) {
+                flowDeliveryTypeEnd.emit(310)
+            }
+        }
+    }
+
+    fun addQueueCommand(commandType: Int) {
+        ioScope.launch {
+            println("调试串口 进来 addQueueCommand $commandType")
+            // 将指令依次加入队列
+            commandQueue.send(commandType)
+        }
     }
 
     private val lockerListStatusCallback: (MutableList<PortDeviceInfo>) -> Unit = { lowerMachines ->

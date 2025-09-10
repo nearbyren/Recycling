@@ -293,6 +293,27 @@ class SerialPortCore {
     }
 
     /***
+     */
+    @Synchronized
+    fun queryDoorStatus(boxCode: Int, openCallback: (Int) -> Unit, sendCallback: (String) -> Unit) {
+        SerialPortManager.instance.serialVM?.addCommandDoorResultListener { status ->
+            openCallback( status)
+        }
+
+        SerialPortManager.instance.serialVM?.addSendCommandStatusListener { msg ->
+            sendCallback(msg)
+        }
+
+        sendSingleCmd[boxCode]?.let {
+            val command =0x03.toByte()
+            val data = it
+            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            SerialPortManager.instance.issuedStatus(byte)
+
+        }
+    }
+
+    /***
      * 根据工具箱箱号查询内部工具箱信息集合查询指令发送响应
      * @param commandType 0x01-0x0b
      * @param onBoxToolStatusCallback 下发指令接收反馈信息
