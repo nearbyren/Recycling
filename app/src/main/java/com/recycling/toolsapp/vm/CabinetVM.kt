@@ -359,7 +359,7 @@ import kotlin.random.Random
                         delay(500)
                         addDoorQueue(CmdType.CMD3)
                     } else if (getDoorOpenClose.value) {
-                        println("调试串口 pollingDoor 停止")
+                        println("调试串口 pollingDoor 停止查询门状态")
                         flowIsDoorOpenClose.value = false
                         cancelDoorJob()
                     }
@@ -373,6 +373,10 @@ import kotlin.random.Random
                         println("调试串口 pollingDoor 继续")
                         delay(500)
                         addDoorQueue(CmdType.CMD4)
+                    }else if (getCurWeight.value) {
+                        println("调试串口 pollingDoor 停止查询重量")
+                        flowCurWeight.value = false
+                        cancelDoorJob()
                     }
                 }
             }
