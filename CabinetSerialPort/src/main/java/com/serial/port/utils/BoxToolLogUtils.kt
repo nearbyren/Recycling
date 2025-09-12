@@ -3,6 +3,8 @@ package com.serial.port.utils
 import android.annotation.SuppressLint
 import android.os.Environment
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.serial.port.BoxInternal
 import com.serial.port.PortDeviceInfo
 import java.io.BufferedOutputStream
@@ -18,6 +20,35 @@ import java.util.Locale
 object BoxToolLogUtils {
     @SuppressLint("SimpleDateFormat")
     private val formatdate = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
+    /***
+     * 记录socket日志
+     */
+    fun recordSocket(type: String, json: String) {
+        try {
+            val builder = StringBuilder()
+            val time = AppUtils.getDateYMDHMS()
+            builder.append(time).append("\n").append(json).append('\n')
+            val fileName = "socket-${type}--${AppUtils.getDateYMD()}.txt"
+            val path =
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket/"
+            val dirs = File(path)
+            if (!dirs.exists()) {
+                dirs.mkdirs()
+            }
+            val file = File(path, fileName)
+            if (!file.exists()) {
+                file.createNewFile()
+            }
+            // 追加写入模式
+            val fos = FileOutputStream(file, true)
+            val bos = BufferedOutputStream(fos)
+            bos.write(builder.toString().toByteArray())
+            bos.flush()
+            bos.close()
+        } catch (e: SecurityException) {
+            Loge.d("BoxToolLogUtils recordLowerBox an error occured while writing file...$e")
+        }
+    }
 
     /****
      * 工具箱集合信息
@@ -28,20 +59,14 @@ object BoxToolLogUtils {
         val time = AppUtils.getDateYMDHMS()
         for (box in lowerMachines) {
             val boxCode = String.format(Locale.CHINA, "%02d", box.boxCode)
-            builder
-                .append(time).append(" | ")
-                .append(boxCode).append(" | ")
-                .append(box.boxDoorStatus).append(" | ")
-                .append(box.boxSn).append(" | ")
-                .append(box.boxElectric)
-                .append('\n')
+            builder.append(time).append(" | ").append(boxCode).append(" | ").append(box.boxDoorStatus).append(" | ").append(box.boxSn).append(" | ").append(box.boxElectric).append('\n')
 
         }
-        builder.append("---------------------------------------------------")
-            .append('\n')
+        builder.append("---------------------------------------------------").append('\n')
         try {
             val fileName = "box--${AppUtils.getDateYMD()}.txt"
-            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
+            val path =
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -74,21 +99,14 @@ object BoxToolLogUtils {
             val data = entry1.value
             val boxCode = String.format(Locale.CHINA, "%02d", data.boxCode)
             val address = String.format(Locale.CHINA, "%02d", key)
-            builder
-                .append(time).append(" | ")
-                .append(boxCode).append(" | ")
-                .append(address).append(" | ")
-                .append(data.boxSignal).append(" | ")
-                .append(data.boxIn).append(" | ")
-                .append(data.boxElectric)
-                .append('\n')
+            builder.append(time).append(" | ").append(boxCode).append(" | ").append(address).append(" | ").append(data.boxSignal).append(" | ").append(data.boxIn).append(" | ").append(data.boxElectric).append('\n')
 
         }
-        builder.append("---------------------------------------------------")
-            .append('\n')
+        builder.append("---------------------------------------------------").append('\n')
         try {
             val fileName = "tool--${AppUtils.getDateYMD()}.txt"
-            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
+            val path =
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -133,17 +151,12 @@ object BoxToolLogUtils {
     fun receiveOriginalLower(typePort: Int, packet: ByteArray) {
         val builder = StringBuilder()
         val time = AppUtils.getDateYMDHMS()
-        builder
-            .append(time).append(" | ")
-            .append(typePort).append(" | ")
-            .append(ByteUtils.toHexString(packet))
-            .append('\n')
-            .append("----------------------------------------------------------------------------------------------------------------")
-            .append('\n')
+        builder.append(time).append(" | ").append(typePort).append(" | ").append(ByteUtils.toHexString(packet)).append('\n').append("----------------------------------------------------------------------------------------------------------------").append('\n')
 
         try {
             val fileName = "receive-lower-${typePort}--${AppUtils.getDateYMD()}.txt"
-            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
+            val path =
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -163,7 +176,6 @@ object BoxToolLogUtils {
         }
     }
 
-
     /***
      * @param typePort 232 或者 485
      * 发送给下位机数据
@@ -171,17 +183,12 @@ object BoxToolLogUtils {
     fun sendOriginalLower(typePort: Int, packet: String) {
         val builder = StringBuilder()
         val time = AppUtils.getDateYMDHMS()
-        builder
-            .append(time).append(" | ")
-            .append(typePort).append(" | ")
-            .append(packet)
-            .append('\n')
-            .append("----------------------------------------------------------------------------------------------------------------")
-            .append('\n')
+        builder.append(time).append(" | ").append(typePort).append(" | ").append(packet).append('\n').append("----------------------------------------------------------------------------------------------------------------").append('\n')
 
         try {
             val fileName = "send-lower-${typePort}--${AppUtils.getDateYMD()}.txt"
-            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
+            val path =
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -208,17 +215,12 @@ object BoxToolLogUtils {
     fun sendOriginalLowerStatus(typePort: Int, packet: String) {
         val builder = StringBuilder()
         val time = AppUtils.getDateYMDHMS()
-        builder
-            .append(time).append(" | ")
-            .append(typePort).append(" | ")
-            .append(packet)
-            .append('\n')
-            .append("----------------------------------------------------------------------------------------------------------------")
-            .append('\n')
+        builder.append(time).append(" | ").append(typePort).append(" | ").append(packet).append('\n').append("----------------------------------------------------------------------------------------------------------------").append('\n')
 
         try {
             val fileName = "send-lower-status-${typePort}--${AppUtils.getDateYMD()}.txt"
-            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
+            val path =
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()

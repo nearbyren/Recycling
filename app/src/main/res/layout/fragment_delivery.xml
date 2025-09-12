@@ -9,6 +9,8 @@
         android:background="@color/white"
         tools:ignore="MissingConstraints">
 
+
+
         <com.recycling.toolsapp.view.CircleProgressView
             android:id="@+id/cpv_view"
             android:layout_width="@dimen/dp_100"
@@ -112,6 +114,10 @@
             android:id="@+id/cl_camera_photo"
             android:layout_width="match_parent"
             android:layout_height="0dp"
+            android:paddingLeft="@dimen/dp_10"
+            android:paddingTop="@dimen/dp_5"
+            android:paddingRight="@dimen/dp_10"
+            android:paddingBottom="@dimen/dp_5"
             app:layout_constraintBottom_toTopOf="@+id/tv_operation"
             app:layout_constraintTop_toBottomOf="@+id/tv_weight_value">
 
@@ -122,6 +128,12 @@
                 android:src="@drawable/ic_pai"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent" />
+
+
+            <com.youth.banner.Banner xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:id="@+id/banner"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

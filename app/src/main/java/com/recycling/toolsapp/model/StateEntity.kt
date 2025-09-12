@@ -18,7 +18,12 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "smoke", typeAffinity = INTEGER) var smoke: Int = 0,
     /***
-     * 容量
+     *
+     * capacity 是当前箱体的超重状态值
+     * 0正常
+     * 1是红外遮挡
+     * 2是重量达到（initConfig-箱体配置：overflow）满溢
+     * 3是红外遮挡并且重量达到（initConfig：irOverflow）
      */
     @ColumnInfo(name = "capacity", typeAffinity = INTEGER) var capacity: Int = 0,
     /***
@@ -30,9 +35,13 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "weigh", typeAffinity = REAL) var weigh: Float = 0f,
     /**
-     * 门状态
+     * 投口门
      */
     @ColumnInfo(name = "doorStatus", typeAffinity = INTEGER) var doorStatus: Int = 0,
+    /**
+     * 清运锁
+     */
+    @ColumnInfo(name = "lockStatus", typeAffinity = INTEGER) var lockStatus: Int = 0,
     /***
      * 舱门编码
      */
@@ -49,12 +58,13 @@ import androidx.room.PrimaryKey
         0,
         0f,
         0,
+        0,
         null,
         null,
         )
 
     override fun toString(): String {
-        return "id=$id," + "smoke=${smoke}," + "capacity=${capacity}," + "irState=${irState}," + "weigh=${weigh}," + "doorStatus=${doorStatus}," + "cabinId=${cabinId}," + "time=${time}"
+        return "id=$id," + "smoke=${smoke}," + "capacity=${capacity}," + "irState=${irState}," + "weigh=${weigh}," + "doorStatus=${doorStatus},"+ "lockStatus=${lockStatus}," + "cabinId=${cabinId}," + "time=${time}"
     }
 }
 

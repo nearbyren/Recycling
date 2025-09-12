@@ -1,8 +1,10 @@
 package com.recycling.toolsapp.ui
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.fragment.app.viewModels
 import com.recycling.toolsapp.R
+import com.recycling.toolsapp.R.drawable.btn_tab_2_bg
 import com.recycling.toolsapp.databinding.FragmentDebugTypeBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.vm.CabinetVM
@@ -32,6 +34,19 @@ import dagger.hilt.android.AndroidEntryPoint
 
     override fun initialize(savedInstanceState: Bundle?) {
         setCountdown(300)
+        binding.actvLeft.setOnClickListener {
+            binding.actvLeft.setBackgroundResource(R.drawable.btn_tab_1_bg)
+            binding.actvRight.setBackgroundResource(btn_tab_2_bg)
+            binding.actvLeft.setTextColor(Color.WHITE)
+            binding.actvRight.setTextColor(Color.BLACK)
+
+        }
+        binding.actvRight.setOnClickListener {
+            binding.actvLeft.setBackgroundResource(btn_tab_2_bg)
+            binding.actvRight.setBackgroundResource(R.drawable.btn_tab_1_bg)
+            binding.actvLeft.setTextColor(Color.BLACK)
+            binding.actvRight.setTextColor(Color.WHITE)
+        }
 
     }
 }

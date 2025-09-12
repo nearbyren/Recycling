@@ -45,6 +45,14 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "qrCode", typeAffinity = TEXT, defaultValue = "") var qrCode: String? = null,
     /***
+     * 满溢 服务器下发的配置
+     */
+    @ColumnInfo(name = "overflow", typeAffinity = INTEGER) var overflow: Int = 0,
+    /***
+     * 红外达到的满溢
+     */
+    @ColumnInfo(name = "irOverflow", typeAffinity = INTEGER) var irOverflow: Int = 0,
+    /***
      * 日志等级
      */
     @ColumnInfo(name = "logLevel", typeAffinity = INTEGER) var logLevel: Int = 0,
@@ -79,6 +87,8 @@ import androidx.room.PrimaryKey
         null,
         0,
         0,
+        0,
+        0,
         null,
         0,
         0
@@ -94,6 +104,8 @@ import androidx.room.PrimaryKey
                 "uploadPhotoURL=${uploadPhotoURL}," +
                 "uploadLogURL=${uploadLogURL}," +
                 "qrCode=${qrCode}," +
+                "overflow=${overflow}," +
+                "irOverflow=${irOverflow}," +
                 "logLevel=${logLevel}," +
                 "status=${status}," +
                 "debugPasswd=${debugPasswd}," +

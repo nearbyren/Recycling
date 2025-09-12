@@ -4,19 +4,12 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
-import com.google.gson.Gson
-import com.recycling.toolsapp.socket.InitConfigDto
-import com.recycling.toolsapp.socket.LoginDto
-import com.recycling.toolsapp.socket.SocketClient
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
-import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.SocketManager
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
@@ -31,7 +24,7 @@ class StartUiActivity : AppCompatActivity() {
             val init = SPreUtil[AppUtils.getContext(), "init", false] as Boolean
             if (init) {
                 println("调试socket startUI 进入主界面")
-                startActivity(Intent(this@StartUiActivity, OneActivity::class.java))
+                startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
             } else {
                 println("调试socket startUI 进入初始化")
                 startActivity(Intent(this@StartUiActivity, InitFactoryActivity::class.java))
@@ -62,7 +55,7 @@ class StartUiActivity : AppCompatActivity() {
                 }
 
                 ConnectionState.CONNECTED -> {
-                    startActivity(Intent(this@StartUiActivity, OneActivity::class.java))
+                    startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
                 }
             }
         }

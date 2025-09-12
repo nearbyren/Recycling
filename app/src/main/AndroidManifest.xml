@@ -69,8 +69,9 @@
         android:name="com.recycling.toolsapp.FaceApplication"
         android:allowBackup="true"
         android:debuggable="true"
-        android:icon="@drawable/ic_yilaguan"
+        android:icon="@drawable/ic_launcher_gdw"
         android:label="回收柜"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:largeHeap="true"
         android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
@@ -88,7 +89,7 @@
         </provider>
 
         <activity
-            android:name="com.recycling.toolsapp.OneActivity"
+            android:name="com.recycling.toolsapp.HomeActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             tools:ignore="Instantiatable">

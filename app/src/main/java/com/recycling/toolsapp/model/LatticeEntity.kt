@@ -8,16 +8,21 @@ import androidx.room.Ignore
 import androidx.room.PrimaryKey
 
 /***
- * 箱体信息
+ * 格口信息
  */
-@Entity(tableName = "CabinEntity") class CabinEntity(
+@Entity(tableName = "LatticeEntity") class LatticeEntity(
     @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "id", typeAffinity = INTEGER) val id: Long = 0,
     /***
-     * 舱门编码
+     * 格口id
      */
     @ColumnInfo(name = "cabinId", typeAffinity = TEXT, defaultValue = "") var cabinId: String? = null,
     /***
-     * 容量
+     *
+     * capacity 是当前箱体的超重状态值
+     * 0正常
+     * 1是红外遮挡
+     * 2是重量达到（initConfig-箱体配置：overflow）满溢
+     * 3是红外遮挡并且重量达到（initConfig：irOverflow）
      */
     @ColumnInfo(name = "capacity", typeAffinity = TEXT, defaultValue = "") var capacity: String? = null,
     /***

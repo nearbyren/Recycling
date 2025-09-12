@@ -8,19 +8,19 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.recycling.toolsapp.FaceApplication.Companion.networkMonitor
-import com.recycling.toolsapp.databinding.ActivityOneBinding
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
+import com.recycling.toolsapp.databinding.ActivityHomeBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindActivity
-import com.recycling.toolsapp.socket.DoorOpenDto
-import com.recycling.toolsapp.socket.InitConfigDto
-import com.recycling.toolsapp.socket.LoginDto
+import com.recycling.toolsapp.socket.DoorOpenBean
+import com.recycling.toolsapp.socket.ConfigBean
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
 import com.recycling.toolsapp.ui.DeliveryFragment
 import com.recycling.toolsapp.ui.TouSingleFragment
@@ -34,6 +34,8 @@ import com.recycling.toolsapp.utils.SocketManager
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.CountdownTimer
 import com.serial.port.utils.AppUtils
+import com.serial.port.utils.BoxToolLogUtils
+import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -43,26 +45,23 @@ import nearby.lib.signal.livebus.LiveBus
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-@AndroidEntryPoint class OneActivity : BaseBindActivity<ActivityOneBinding>() {
-
+@AndroidEntryPoint class HomeActivity : BaseBindActivity<ActivityHomeBinding>() {
     private val cabinetVM: CabinetVM by viewModels()
-    private var downTime = 0L
     private var isNetworkStatusFirst = true
     override fun layoutRes(): Int {
-        return R.layout.activity_one
+        return R.layout.activity_home
     }
 
     @RequiresApi(Build.VERSION_CODES.M) override fun initialize(savedInstanceState: Bundle?) {
-        // 处理深度链接
         intent.data?.toString()?.let { deepLink ->
             if (!fragmentCoordinator.handleDeepLink(deepLink)) {
-                // 如果没有匹配的深度链接，打开首页
                 navigateToHome()
             }
         } ?: navigateToHome()
-
         initNetworkState()
+        initDoorStatus()
         initPort()
+
 //        countdownUI()
 //        lifeUpgradeApk()
 //        netUpdateApk()
@@ -74,46 +73,42 @@ import java.util.concurrent.TimeUnit
         if (initSocket) {
             initSocket()
         }
+        cabinetVM.ioScope.launch {
+            // 预热相机Provider 快速启动相机能从6秒到2秒
+            cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
+        }
     }
 
     private fun initPort() {
         cabinetVM.timingStatus()
     }
 
-
-    @RequiresApi(Build.VERSION_CODES.M) private fun initNetworkState() {
-        //全局处理提示信息
-        lifecycleScope.launch {
-            cabinetVM._isNetworkMessage.collect {
-                Loge.d("全局提示信息  $it ${Thread.currentThread().name}")
-                SnackbarUtils.show(activity = this@OneActivity, message = it, duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
-            }
-
-        }
+    private fun initDoorStatus() {
         lifecycleScope.launch {
             cabinetVM.isOpenDoor.collect {
                 Loge.d("调试socket 收到开仓指令 $it")
                 if (it) {
                     navigateTo(fragmentClass = DeliveryFragment::class.java)
                 }
-
             }
         }
+        //门开 门关 状态上报
         lifecycleScope.launch {
             cabinetVM.isDeliveryTypeEnd.collect { endType ->
                 //开启定时查询门状态是否关闭完成，后续上传业务
-                Loge.d("调试socket 接收到称重页结束类型 $endType")
+                Loge.d("调试串口 接收到称重页结束类型 $endType")
                 when (endType) {
                     //点击
                     1 -> {
-
+                        cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
                     }
                     //倒计时结束
                     2 -> {
-
+                        cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
                     }
                     //门已经开了
                     310 -> {
+                        cabinetVM.testToGoDownDoorOpen()
                         //门已经开了 通知服务器
                         cabinetVM.sendUpRec(CmdValue.CMD_OPEN_DOOR)
                     }
@@ -129,9 +124,20 @@ import java.util.concurrent.TimeUnit
 
             }
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M) private fun initNetworkState() {
+        //全局处理提示信息
+        lifecycleScope.launch {
+            cabinetVM._isNetworkMessage.collect {
+                Loge.d("全局提示信息  $it ${Thread.currentThread().name}")
+                SnackbarUtils.show(activity = this@HomeActivity, message = it, duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
+            }
+
+        }
         LiveBus.get("netMessage").observeForever {
             Loge.d("网络导入用户信息 用户信息异常")
-            SnackbarUtils.show(activity = this@OneActivity, message = it.toString(), duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
+            SnackbarUtils.show(activity = this@HomeActivity, message = it.toString(), duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
         }
         networkMonitor.register()
         // 注册监听（传统回调方式）
@@ -171,16 +177,18 @@ import java.util.concurrent.TimeUnit
             cabinetVM.vmClient?.incoming?.collect { bytes ->
                 println("调试socket recv: ${String(bytes)}")
                 val json = String(bytes)
+                BoxToolLogUtils.recordSocket(CmdValue.RECEIVE,json)
                 val cmd = CommandParser.parseCommand(json)
                 when (cmd) {
 
-                    "heartBeat" -> {
+                    CmdValue.CMD_HEART_BEAT -> {
                         println("调试socket recv: 接收心跳成功")
+
                     }
 
-                    "login" -> {
+                    CmdValue.CMD_LOGIN -> {
                         println("调试socket recv: 接收登录成功")
-                        val loginModel = Gson().fromJson(json, LoginDto::class.java)
+                        val loginModel = Gson().fromJson(json, ConfigBean::class.java)
                         val heartbeatIntervalMillis =
                                 loginModel.config.heartBeatInterval?.toLong() ?: 10
                         cabinetVM.vmClient?.config?.heartbeatIntervalMillis1 =
@@ -188,49 +196,51 @@ import java.util.concurrent.TimeUnit
                         println("调试socket recv: 心跳秒：$heartbeatIntervalMillis")
                         cabinetVM.vmClient?.config?.heartbeatIntervalMillis1 =
                                 TimeUnit.SECONDS.toMillis(10)
-                        //保存所有配置
+                        //保存基础配置信息
                         loginModel.sn?.let { sn ->
                             cabinetVM.toGetSaveConfigEntity(sn, loginModel.config)
                         }
-                        //保存箱体
+                        //保存箱体信息
                         cabinetVM.toGetSaveCabins(loginModel.config.list)
+                        //保存资源配置
+                        cabinetVM.toGetResource(loginModel.config.resourceList)
                         delay(500)
                         //发送心跳
                         cabinetVM.vmClient?.sendHeartbeat()
                     }
 
-                    "initConfig" -> {
-                        val initConfigModel = Gson().fromJson(json, InitConfigDto::class.java)
+                    CmdValue.CMD_INIT_CONFIG -> {
+                        val initConfigModel = Gson().fromJson(json, ConfigBean::class.java)
                         println("调试socket recv: 接收 initConfig 成功")
                     }
 
-                    "openDoor" -> {
+                    CmdValue.CMD_OPEN_DOOR -> {
                         println("调试socket recv: 接收 openDoor 成功")
-                        val doorOpenModel = Gson().fromJson(json, DoorOpenDto::class.java)
+                        val doorOpenModel = Gson().fromJson(json, DoorOpenBean::class.java)
                         cabinetVM.toGoDownDoorOpen(doorOpenModel)
                     }
 
-                    "closeDoor" -> {
+                    CmdValue.CMD_CLOSE_DOOR -> {
                         println("调试socket recv: 接收 closeDoor成功")
                     }
 
-                    "phoneNumberLogin" -> {
+                    CmdValue.CMD_PHONE_NUMBER_LOGIN -> {
                         println("调试socket recv: 接收 phoneNumberLogin 成功")
                     }
 
-                    "phoneUserOpenDoor" -> {
+                    CmdValue.CMD_PHONE_USER_OPEN_DOOR -> {
                         println("调试socket recv: 接收 phoneUserOpenDoor 成功")
                     }
 
-                    "restart" -> {
+                    CmdValue.CMD_RESTART -> {
                         println("调试socket recv: 接收 restart 成功")
                     }
 
-                    "uploadLog" -> {
+                    CmdValue.CMD_UPLOAD_LOG -> {
                         println("调试socket recv: 接收 uploadLog 成功")
                     }
 
-                    "ota" -> {
+                    CmdValue.CMD_OTA -> {
                         println("调试socket recv: 接收 OTA 成功")
                     }
                 }
@@ -261,12 +271,6 @@ import java.util.concurrent.TimeUnit
         }
     }
 
-
-    private fun open() {
-        cabinetVM.issuedCmd(1, onResponseResult = { type, openStatus, success ->
-
-        })
-    }
 
     private fun getMasterVersion(isUpgrade: Boolean = false) {
         cabinetVM.executeVersion232(isUpgrade, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
@@ -487,7 +491,8 @@ import java.util.concurrent.TimeUnit
             if (!isNetworkStatusFirst) {
                 isNetworkStatusFirst = false
                 // 网络已连接
-                SnackbarUtils.show(activity = this@OneActivity, message = "网络状态已打开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
+                SnackbarUtils.show(activity = this@HomeActivity, message = "网络状态已打开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
+                binding.tvNetwork.text = "网络已经连接"
             } else {
                 binding.tvNetwork.text = "网络已经连接"
             }
@@ -495,7 +500,10 @@ import java.util.concurrent.TimeUnit
             // 网络断开
             if (!isNetworkStatusFirst) {
                 isNetworkStatusFirst = false
-                SnackbarUtils.show(activity = this@OneActivity, message = "网络状态已断开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
+                SnackbarUtils.show(activity = this@HomeActivity, message = "网络状态已断开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
+                binding.tvNetwork.text = "网络已经断开"
+            } else {
+                binding.tvNetwork.text = "网络未链接"
             }
         }
     }

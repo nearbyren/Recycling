@@ -1,12 +1,59 @@
 package com.serial.port
 
 
+import com.serial.port.utils.CmdCode
 import com.serial.port.utils.HexConverter
 import com.serial.port.utils.SendByteData
 import com.serial.port.utils.SendByteData.getOpenCommand
 
 
 class SerialPortCore {
+
+    /***
+     * 启动格口开关
+     */
+    private val startDoor: MutableMap<Int, ByteArray> = mutableMapOf(
+        //格口一
+        CmdCode.GE10 to byteArrayOf(0x01, 0x00),//关
+        CmdCode.GE11 to byteArrayOf(0x01, 0x01),//开
+        //格口二
+        CmdCode.GE20 to byteArrayOf(0x02, 0x00),//关
+        CmdCode.GE21 to byteArrayOf(0x02, 0x01),//开
+
+    )
+
+    /***
+     * 启动格口状态查询
+     */
+    private val startDoorStatus: MutableMap<Int, ByteArray> = mutableMapOf(
+        //格口一
+        CmdCode.GE1 to byteArrayOf(0x01, 0x01),
+        //格口二
+        CmdCode.GE2 to byteArrayOf(0x02, 0x01),
+
+        )
+
+    /***
+     * 启动清运门
+     */
+    private val clearDoor: MutableMap<Int, ByteArray> = mutableMapOf(
+        //格口一
+        1 to byteArrayOf(0x01, 0x01),
+        //格口二
+        2 to byteArrayOf(0x02, 0x01),
+        //子母格口
+        3 to byteArrayOf(0x03, 0x01),
+    )
+
+    /***
+     * 查询重量
+     */
+    private val weightDoor: MutableMap<Int, ByteArray> = mutableMapOf(
+        //格口一
+        CmdCode.GE1 to byteArrayOf(0x01, 0x01),
+        //格口二
+        CmdCode.GE2 to byteArrayOf(0x02, 0x01),
+    )
 
     /***
      * 发起开启单仓指令
@@ -200,7 +247,7 @@ class SerialPortCore {
             sendCallback(msg)
         }
         val byte = SendByteData.createSendCheckSumByte(0x0B.toByte(), 0x00.toByte(), data)
-        SerialPortManager.instance.issuedYSD(commandType,byte)
+        SerialPortManager.instance.issuedYSD(commandType, byte)
     }
 
     /***
@@ -221,13 +268,12 @@ class SerialPortCore {
     }
 
     /***
-     * 开仓指令
-     * @param boxCode 仓位
+     * @param code 仓位
      * @param openCallback 下发指令接收反馈信息
      * @param sendCallback 下发指令是否成功回调
      */
     @Synchronized
-    fun openCommand(boxCode: Int, openCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+    fun openClear(code: Int, openCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
         SerialPortManager.instance.serialVM?.addCommandOpenResultListener { number, status ->
             openCallback(number, status)
         }
@@ -236,37 +282,11 @@ class SerialPortCore {
             sendCallback(msg)
         }
 
-        sendSingleCmd[boxCode]?.let {
-            val command = SendByteData.CMD_OPEN_STATUS_COMMAND
+        clearDoor[code]?.let {
+            val command = 0x02.toByte()
             val data = it
             val byte = SendByteData.createSendNotCheckSumByte(command, data)
-            SerialPortManager.instance.issuedOpen(boxCode, byte)
-
-        }
-    }
-
-    /***
-     * 下发故障
-     * @param boxCode 仓位
-     * @param openCallback 下发指令接收反馈信息
-     * @param sendCallback 下发指令是否成功回调
-     */
-    @Synchronized
-    fun openFault(boxCode: Int, openCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
-        SerialPortManager.instance.serialVM?.addCommandOpenResultListener { number, status ->
-            openCallback(number, status)
-        }
-
-        SerialPortManager.instance.serialVM?.addSendCommandStatusListener { msg ->
-            sendCallback(msg)
-        }
-
-        sendSingleCmd[boxCode]?.let {
-            val command = SendByteData.CMD_OPEN_FAULT_COMMAND
-            val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
-            SerialPortManager.instance.issuedFault(boxCode, byte)
-
+            SerialPortManager.instance.issuedOpen(code, byte)
         }
     }
 
@@ -293,19 +313,61 @@ class SerialPortCore {
     }
 
     /***
+     * 启动格口开关
      */
     @Synchronized
-    fun queryDoorStatus(boxCode: Int, openCallback: (Int) -> Unit, sendCallback: (String) -> Unit) {
+    fun turnDoor(code: Int, turnDoorCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+        SerialPortManager.instance.serialVM?.addCommandTurnResultListener { number, status ->
+            turnDoorCallback(number, status)
+        }
+        SerialPortManager.instance.serialVM?.addSendCommandStatusListener { msg ->
+            sendCallback(msg)
+        }
+        startDoor[code]?.let {
+            val command = 0x01.toByte()
+            val data = it
+            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            SerialPortManager.instance.issuedStatus(byte)
+
+        }
+    }
+
+    /***
+     * 启动格口状态查询
+     */
+    @Synchronized
+    fun turnDoorStatus(boxCode: Int, openCallback: (Int) -> Unit, sendCallback: (String) -> Unit) {
         SerialPortManager.instance.serialVM?.addCommandDoorResultListener { status ->
-            openCallback( status)
+            openCallback(status)
         }
 
         SerialPortManager.instance.serialVM?.addSendCommandStatusListener { msg ->
             sendCallback(msg)
         }
 
-        sendSingleCmd[boxCode]?.let {
-            val command =0x03.toByte()
+        startDoorStatus[boxCode]?.let {
+            val command = 0x03.toByte()
+            val data = it
+            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            SerialPortManager.instance.issuedStatus(byte)
+        }
+    }
+
+    /***
+     * 启动格口重量
+     */
+    @Synchronized
+    fun queryWeight(code: Int, weightCallback: (Int) -> Unit, sendCallback: (String) -> Unit) {
+        SerialPortManager.instance.serialVM?.addCommandWeightResultListener { weight ->
+            weightCallback(weight)
+        }
+
+        SerialPortManager.instance.serialVM?.addSendCommandStatusListener { msg ->
+            sendCallback(msg)
+        }
+
+        weightDoor[code]?.let {
+            val command = 0x04.toByte()
             val data = it
             val byte = SendByteData.createSendNotCheckSumByte(command, data)
             SerialPortManager.instance.issuedStatus(byte)

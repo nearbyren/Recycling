@@ -11,18 +11,22 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.recycling.toolsapp.dao.CabinFlowDao
-import com.recycling.toolsapp.dao.InitConfigFlowDao
-import com.recycling.toolsapp.dao.LogInfoFlowDao
+import com.recycling.toolsapp.dao.LatticeFlowDao
+import com.recycling.toolsapp.dao.ConfigFlowDao
+import com.recycling.toolsapp.dao.LogFlowDao
+import com.recycling.toolsapp.dao.ResFlowDao
 import com.recycling.toolsapp.dao.StateFlowDao
 import com.recycling.toolsapp.dao.TransFlowDao
+import com.recycling.toolsapp.dao.WeightFlowDao
 import com.recycling.toolsapp.http.MailConfig
 import com.recycling.toolsapp.http.MailSender
-import com.recycling.toolsapp.model.CabinEntity
+import com.recycling.toolsapp.model.LatticeEntity
 import com.recycling.toolsapp.model.ConfigEntity
-import com.recycling.toolsapp.model.LogInfoEntity
+import com.recycling.toolsapp.model.LogEntity
+import com.recycling.toolsapp.model.ResEntity
 import com.recycling.toolsapp.model.StateEntity
 import com.recycling.toolsapp.model.TransEntity
+import com.recycling.toolsapp.model.WeightEntity
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +85,7 @@ object DatabaseManager {
             irState = 0
             weigh = 0f
             doorStatus = 0
+            lockStatus = 0
             cabinId = "12345679"
             time = AppUtils.getDateYMDHMS()
         }
@@ -163,18 +168,29 @@ object DatabaseManager {
      * @param context 上下文
      * @return 返回日志dao
      */
-    private fun getCabinFlowDao(context: Context): CabinFlowDao {
-        return getDatabase(context).cabinFlow()
+    private fun getLatticeFlowDao(context: Context): LatticeFlowDao {
+        return getDatabase(context).latticeFlow()
     }
 
     /***
      * 提供外部 API 方法
      * @param context 上下文
-     * @param cabinEntity
+     * @param latticeEntity
      */
-    fun insertCabin(context: Context, cabinEntity: CabinEntity): Long {
-        return getCabinFlowDao(context).insert(cabinEntity)
+    fun insertLattice(context: Context, latticeEntity: LatticeEntity): Long {
+        return getLatticeFlowDao(context).insert(latticeEntity)
     }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param latticeEntity
+     * @return
+     */
+    fun upLatticeEntity(context: Context, latticeEntity: LatticeEntity): Int {
+        return getLatticeFlowDao(context).upLatticeEntity(latticeEntity)
+    }
+
 
     /***
      * 提供外部 API 方法
@@ -182,8 +198,8 @@ object DatabaseManager {
      * @param cabinId
      * @return
      */
-    fun queryCabinEntity(context: Context, cabinId: String): CabinEntity {
-        return getCabinFlowDao(context).queryCabinEntity(cabinId)
+    fun queryCabinEntity(context: Context, cabinId: String): LatticeEntity {
+        return getLatticeFlowDao(context).queryCabinEntity(cabinId)
     }
     /***************************************获取 箱体 实例2 *************************************************/
     /***
@@ -232,7 +248,7 @@ object DatabaseManager {
      * @param context 上下文
      * @return 返回日志dao
      */
-    private fun getInitConfigFlowDao(context: Context): InitConfigFlowDao {
+    private fun getInitConfigFlowDao(context: Context): ConfigFlowDao {
         return getDatabase(context).initConfigFlow()
     }
 
@@ -241,9 +257,19 @@ object DatabaseManager {
      * @param context 上下文
      * @param configEntity
      */
-    fun insertInitConfig(context: Context, configEntity: ConfigEntity): Long {
+    fun insertConfig(context: Context, configEntity: ConfigEntity): Long {
         return getInitConfigFlowDao(context).insert(configEntity)
     }
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param configEntity
+     * @return
+     */
+    fun upConfigEntity(context: Context, configEntity: ConfigEntity): Int {
+        return getInitConfigFlowDao(context).upConfigEntity(configEntity)
+    }
+
 
     /***
      * 提供外部 API 方法
@@ -276,7 +302,93 @@ object DatabaseManager {
         return getTransFlowDao(context).insert(trensEntity)
     }
 
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param closeStatus
+     * @param transId
+     */
+    fun upTransCloseStatus(context: Context, closeStatus: Int, transId: String) {
+         getTransFlowDao(context).upTransCloseStatus(closeStatus, transId)
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param openStatus
+     * @param transId
+     */
+    fun upTransOpenStatus(context: Context, openStatus: Int, transId: String) {
+         getTransFlowDao(context).upTransOpenStatus(openStatus, transId)
+    }
+
     /***************************************获取 打开仓 实例*************************************************/
+
+
+
+    /***************************************获取 记录当前重量 实例*************************************************/
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @return
+     */
+    private fun getWeightFlowDao(context: Context): WeightFlowDao {
+        return getDatabase(context).weightFlowDao()
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param weightEntity 插入一条记录
+     */
+    fun insertWeight(context: Context, weightEntity: WeightEntity): Long {
+        return getWeightFlowDao(context).insert(weightEntity)
+    }
+
+
+    /***************************************获取 记录当前重量*************************************************/
+
+
+    /***************************************获取 资源 实例*************************************************/
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @return
+     */
+    private fun getResFlowDao(context: Context): ResFlowDao {
+        return getDatabase(context).resFlowDao()
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param resourceEntity 插入一条记录
+     */
+    fun insertRes(context: Context, resourceEntity: ResEntity): Long {
+        return getResFlowDao(context).insert(resourceEntity)
+    }
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param filename
+     * @return
+     */
+    fun queryRes(context: Context, filename: String): ResEntity {
+        return getResFlowDao(context).queryRes(filename)
+    }
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param resourceEntity
+     * @return
+     */
+    fun upResEntity(context: Context, resourceEntity: ResEntity): Int {
+        return getResFlowDao(context).upResEntity(resourceEntity)
+    }
+
+    /***************************************获取 资源*************************************************/
+
+
 
     /***************************************获取 日志记录 实例*************************************************/
     /***
@@ -284,57 +396,28 @@ object DatabaseManager {
      * @param context 上下文
      * @return
      */
-    private fun getLogInfoFlowDao(context: Context): LogInfoFlowDao {
-        return getDatabase(context).logInfoFlow()
+    private fun getLogInfoFlowDao(context: Context): LogFlowDao {
+        return getDatabase(context).logFlow()
     }
 
     /***
-     * 提供外部 API 方法 插入日志记录信息
+     * 提供外部 API 方法
      * @param context 上下文
-     * @param logInfoEntity 插入日志信息
+     * @param
      */
-    fun insertLogInfo(context: Context, logInfoEntity: LogInfoEntity): Long {
-        return getLogInfoFlowDao(context).insert(logInfoEntity)
+    fun insertLog(context: Context, logEntity: LogEntity): Long {
+        return getLogInfoFlowDao(context).insert(logEntity)
     }
 
     /***
-     * 提供外部 API 方法 获取所有日志记录
+     * 提供外部 API 方法
      * @param context 上下文
-     * @return 返回日志信息集合 flow
+     * @return
      */
-    fun queryLoginInfos(context: Context): Flow<List<LogInfoEntity>> {
+    fun queryLogs(context: Context): Flow<List<LogEntity>> {
         return getLogInfoFlowDao(context).queryLoginInfos()
     }
 
-    /***
-     * 提供外部 API 方法 根据user id 获取所有日志记录
-     * @param context 上下文
-     * @param userId  用户id
-     * @return 返回日志信息集合 flow
-     */
-    fun queryLogInfoUserId(context: Context, userId: String): Flow<List<LogInfoEntity>> {
-        return getLogInfoFlowDao(context).queryLogInfoUserId(userId)
-    }
-
-    /***
-     * 提供外部 API 方法 获取所有日志记录
-     * @param context 上下文
-     * @param boxCode 仓号
-     * @return 返回仓号的所有日志记录 flow
-     */
-    fun queryLogInfoboxCode(context: Context, boxCode: Int): Flow<List<LogInfoEntity>> {
-        return getLogInfoFlowDao(context).queryLogInfoBoxCode(boxCode)
-    }
-
-    /***
-     * 提供外部 API 方法 获取所有日志记录
-     * @param context 上下文
-     * @param boxStatus 仓状态
-     * @return 返回某种仓状态所有仓日志记录 flow
-     */
-    fun queryLogInfoboxStatus(context: Context, boxStatus: String): Flow<List<LogInfoEntity>> {
-        return getLogInfoFlowDao(context).queryLogInfoBoxStatus(boxStatus)
-    }
 
     /***************************************获取 日志记录 实例*************************************************/
 

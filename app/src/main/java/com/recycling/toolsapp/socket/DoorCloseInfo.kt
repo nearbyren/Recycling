@@ -2,7 +2,7 @@ package com.recycling.toolsapp.socket
 
 
 /***
- * 关闭舱门
+ * 服务器响应的
  */
 data class DoorCloseInfo(
     var imei: String? = null,

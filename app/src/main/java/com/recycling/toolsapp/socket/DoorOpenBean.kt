@@ -2,15 +2,15 @@ package com.recycling.toolsapp.socket
 
 
 /***
- * 打开舱门
+ * 格口打开
  */
-data class DoorOpenDto(
+data class DoorOpenBean(
 
     //指令
     var cmd: String? = null,
     //事务id
     var transId: String? = null,
-    //舱门编码
+    //格口ID
     var cabinId: String? = null,
 
     //服务下发

@@ -14,14 +14,11 @@ import android.widget.RadioGroup
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatEditText
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.constraintlayout.widget.ConstraintLayout
-import com.recycling.toolsapp.fitsystembar.base.BaseActivity
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
 import com.recycling.toolsapp.utils.IccidOper
 import com.recycling.toolsapp.utils.SocketManager
 import com.recycling.toolsapp.utils.TelephonyUtils
-import com.recycling.toolsapp.utils.TelephonyUtils.getIccid2
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import kotlinx.coroutines.delay
@@ -63,7 +60,7 @@ class InitFactoryActivity : AppCompatActivity() {
         SPreUtil.put(AppUtils.getContext(), "initSocket", false)
         val snText = acetSn?.text.toString()
         SPreUtil.put(AppUtils.getContext(), "sn", snText)
-        startActivity(Intent(this@InitFactoryActivity, OneActivity::class.java))
+        startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
         finish()
     }
 
@@ -136,7 +133,7 @@ class InitFactoryActivity : AppCompatActivity() {
                 }
 
                 ConnectionState.CONNECTED -> {
-                    startActivity(Intent(this@InitFactoryActivity, OneActivity::class.java))
+                    startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
                     finish()
                 }
             }

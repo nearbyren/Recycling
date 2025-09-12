@@ -28,17 +28,23 @@ object HexConverter {
     }
 
     fun intToByteArray(num: Int): ByteArray {
-        return ByteBuffer.allocate(4)
-            .order(ByteOrder.BIG_ENDIAN)
-            .putInt(num)
-            .array()
+        return ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(num).array()
     }
+
     fun byteArrayToInt(bytes: ByteArray): Int {
         require(bytes.size == 4) { "Byte array must be 4 bytes long" }
-        return ByteBuffer.wrap(bytes)
-            .order(ByteOrder.BIG_ENDIAN)
-            .int
+        return ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).int
     }
+
+    /**
+     * 获取重量
+     * @param weight 下位机上报的重量
+     */
+    fun getWeight(weight: Int): String {
+        if (weight < 0) return "0.1"
+        return "%.2f".format(weight / 100.0)
+    }
+
     /**
      * 将字节数组转换为十六进制字符串
      * @param bytes 字节数组
@@ -85,7 +91,7 @@ object HexConverter {
         return result
     }
 
-     fun restartApp2(context: Context, delay: Long, exit: Boolean = true) {
+    fun restartApp2(context: Context, delay: Long, exit: Boolean = true) {
         Log.e("Restarting", "restartApp: 即将重启应用")
         val pendingIntent: PendingIntent
         val intent = Intent(context, StartUiActivity::class.java)
@@ -99,6 +105,7 @@ object HexConverter {
             exitProcess(0)
         }
     }
+
     /**
      * 固件升级完成 重启app
      */

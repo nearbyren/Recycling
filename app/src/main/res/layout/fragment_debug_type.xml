@@ -6,7 +6,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#00045B"
+        android:background="@color/gray_btn_bg_color"
         tools:ignore="MissingConstraints">
 
         <androidx.constraintlayout.widget.ConstraintLayout
@@ -27,9 +27,12 @@
 
             <androidx.appcompat.widget.AppCompatTextView
                 android:id="@+id/actv_left"
+                android:textStyle="bold"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="@dimen/dp_45"
                 android:layout_marginLeft="@dimen/dp_10"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
                 android:background="@drawable/btn_tab_bg"
                 android:gravity="center"
                 android:text="投口一"
@@ -40,10 +43,13 @@
 
             <androidx.appcompat.widget.AppCompatTextView
                 android:id="@+id/actv_right"
+                android:textStyle="bold"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="@dimen/dp_45"
                 android:layout_marginLeft="@dimen/dp_10"
                 android:layout_marginRight="@dimen/dp_10"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
                 android:gravity="center"
                 android:text="投口二"
                 android:textColor="@color/black"
@@ -73,6 +79,7 @@
                 android:layout_marginBottom="@dimen/dp_10"
                 android:background="@drawable/btn_tab_bg"
                 android:gravity="center"
+                android:textStyle="bold"
                 android:text="推杆开"
                 android:textColor="@color/white"
                 android:textSize="@dimen/sp_12"
@@ -87,6 +94,7 @@
                 android:layout_marginBottom="@dimen/dp_10"
                 android:background="@drawable/btn_tab_bg"
                 android:gravity="center"
+                android:textStyle="bold"
                 android:text="推杆关"
                 android:textColor="@color/white"
                 android:textSize="@dimen/sp_12"
@@ -102,6 +110,7 @@
                 android:background="@drawable/btn_tab_bg"
                 android:gravity="center"
                 android:text="内灯开"
+                android:textStyle="bold"
                 android:textColor="@color/white"
                 android:textSize="@dimen/sp_12"
                 app:layout_constraintBottom_toTopOf="@+id/actv_5"
@@ -118,6 +127,7 @@
                 android:text="外灯开"
                 android:textColor="@color/white"
                 android:textSize="@dimen/sp_12"
+                android:textStyle="bold"
                 app:layout_constraintBottom_toTopOf="@+id/actv_5"
                 app:layout_constraintLeft_toRightOf="@+id/gline" />
 
@@ -130,6 +140,7 @@
                 android:background="@drawable/btn_tab_bg"
                 android:gravity="center"
                 android:text="电磁锁开"
+                android:textStyle="bold"
                 android:textColor="@color/white"
                 android:textSize="@dimen/sp_12"
                 app:layout_constraintBottom_toTopOf="@+id/actv_7"
@@ -145,6 +156,7 @@
                 android:gravity="center"
                 android:text="红外状态"
                 android:textColor="@color/white"
+                android:textStyle="bold"
                 android:textSize="@dimen/sp_12"
                 app:layout_constraintBottom_toTopOf="@+id/actv_7"
                 app:layout_constraintLeft_toRightOf="@+id/gline" />
@@ -159,6 +171,7 @@
                 android:gravity="center"
                 android:text="内摄像头预览"
                 android:textColor="@color/white"
+                android:textStyle="bold"
                 android:textSize="@dimen/sp_12"
                 app:layout_constraintBottom_toTopOf="@+id/actv_9"
                 app:layout_constraintRight_toLeftOf="@+id/gline" />
@@ -172,6 +185,7 @@
                 android:background="@drawable/btn_tab_bg"
                 android:gravity="center"
                 android:text="外摄像头预览"
+                android:textStyle="bold"
                 android:textColor="@color/white"
                 android:textSize="@dimen/sp_12"
                 app:layout_constraintBottom_toTopOf="@+id/actv_9"
@@ -204,6 +218,7 @@
                 android:gravity="center"
                 android:text="2kg校准"
                 android:textColor="@color/white"
+                android:textStyle="bold"
                 android:textSize="@dimen/sp_12"
                 app:layout_constraintBottom_toTopOf="@+id/actv_13"
                 app:layout_constraintLeft_toLeftOf="parent"
@@ -220,6 +235,7 @@
                 android:text="25kg校准"
                 android:textColor="@color/white"
                 android:textSize="@dimen/sp_12"
+                android:textStyle="bold"
                 app:layout_constraintBottom_toTopOf="@+id/actv_13"
                 app:layout_constraintLeft_toRightOf="@+id/actv_10"
                 app:layout_constraintRight_toLeftOf="@+id/actv_12" />
@@ -228,11 +244,10 @@
                 android:id="@+id/actv_12"
                 android:layout_width="0dp"
                 android:layout_height="@dimen/dp_48"
-
                 android:layout_marginEnd="@dimen/dp_5"
                 android:layout_marginBottom="@dimen/dp_10"
                 android:background="@drawable/btn_tab_bg"
-
+                android:textStyle="bold"
                 android:gravity="center"
                 android:text="60kg校准"
                 android:textColor="@color/white"
@@ -249,6 +264,7 @@
                 android:layout_marginStart="@dimen/dp_5"
                 android:layout_marginEnd="@dimen/dp_5"
                 android:layout_marginBottom="@dimen/dp_10"
+                android:textStyle="bold"
                 android:background="@drawable/btn_tab_bg"
                 android:gravity="center"
                 android:text="称重"
@@ -268,6 +284,7 @@
                 android:layout_marginBottom="@dimen/dp_10"
                 android:background="@drawable/btn_tab_bg"
                 android:gravity="center"
+                android:textStyle="bold"
                 android:text="返回"
                 android:textColor="@color/white"
                 android:textSize="@dimen/sp_12"

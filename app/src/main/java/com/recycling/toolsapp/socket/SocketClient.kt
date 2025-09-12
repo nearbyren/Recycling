@@ -5,9 +5,12 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.recycling.toolsapp.db.DatabaseManager
+import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.DynamicJsonBuilder
 import com.recycling.toolsapp.utils.DynamicJsonBuilder.JsonArrayBuilder
+import com.recycling.toolsapp.utils.JsonBuilder
 import com.serial.port.utils.AppUtils
+import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.ByteUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -208,7 +211,10 @@ class SocketClient(
         while (running && clientScope.isActive) {
             try {
                 val read = input.read(buffer)
-                if (read == -1) throw IOException("Stream closed")
+                if (read == -1) {
+                    BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, "Stream closed")
+                    throw IOException("Stream closed")
+                }
                 lastReceivedAtMillis = System.currentTimeMillis()
                 val frame = buffer.copyOf(read)
                 println("调试socket readLoop ${ByteUtils.toHexString(frame)}")
@@ -226,6 +232,7 @@ class SocketClient(
             try {
                 val data = sendQueueByte.receive()
                 println("调试socket writeLoopByte byte：${ByteUtils.toHexString(data)}")
+                BoxToolLogUtils.recordSocket(CmdValue.SEND, JsonBuilder.toByteArrayToString(data))
                 output.write(data)
                 if (config.writeFlushIntervalMillis == 0L) {
                     output.flush()
@@ -263,42 +270,28 @@ class SocketClient(
                     println("调试socket heartbeatAndIdleMonitor trySend")
                     val stateList = DatabaseManager.queryStateList(AppUtils.getContext())
                     println("调试socket stateList：${stateList.size}")
-                    val root = JsonObject()
-
-                    val gson = GsonBuilder().setPrettyPrinting().create()
-                    val array = JsonArray()
-                    for (stetes in stateList) {
-                        val obj = JsonObject()
-                        obj.addProperty("smoke", stetes.smoke)
-                        obj.addProperty("capacity", stetes.capacity)
-                        obj.addProperty("irState", stetes.irState)
-                        obj.addProperty("weigh", stetes.weigh)
-                        obj.addProperty("doorStatus", stetes.doorStatus)
-                        obj.addProperty("cabinId", stetes.cabinId)
-                        array.add(obj)
+                    // 构建JSON对象
+                    val jsonObject = JsonBuilder.build {
+                        addProperty("cmd", "heartBeat")
+                        addProperty("signal", 13)
+                        // 添加数组
+                        addArray("stateList") {
+                            for (state in stateList) {
+                                addObject {
+                                    addProperty("smoke", state.smoke)
+                                    addProperty("capacity", state.capacity)
+                                    addProperty("irState", state.irState)
+                                    addProperty("weigh", state.weigh)
+                                    addProperty("doorStatus", state.doorStatus)
+                                    addProperty("lockStatus", state.lockStatus)
+                                    addProperty("cabinId", state.cabinId ?: "")
+                                }
+                            }
+                        }
                     }
-                    root.addProperty("cmd", "heartBeat")
-                    root.addProperty("signal", 13)
-                    root.add("stateList", array)
-                    println("调试socket $root")
-                    val newJson = gson.toJson(root).toByteArray(Charsets.UTF_8)
-                    sendQueueByte.trySend(newJson)
-                    val json =
-                            DynamicJsonBuilder().addPrimitive("cmd", "heartBeat").addPrimitive("signal", 13)
-//                        .addObject("gps") {  }
-                                .addArray("stateList") {
-                                    addObject {
-                                        addPrimitive("smoke", 0)
-                                        addPrimitive("capacity", 0)
-                                        addPrimitive("irState", 0)
-                                        addPrimitive("weigh", 0.0)
-                                        addPrimitive("doorStatus", 0)
-//                                        addPrimitive("cabinId", "20250118161240405726")
-                                    }
-                                }.addPrimitive("timestamp", System.currentTimeMillis()).build().toByteArray(Charsets.UTF_8)
-//                    sendQueueByte.trySend(json)
-//                    sendQueueByte.trySend(config.heartbeatPayload)
-
+                    println("调试socket 发送心跳数据：$jsonObject")
+                    val byteArray = JsonBuilder.toByteArray(jsonObject)
+                    sendQueueByte.trySend(byteArray)
                 } catch (e: Exception) {
                     println("调试socket heartbeatAndIdleMonitor catch ${e.message}")
                 }

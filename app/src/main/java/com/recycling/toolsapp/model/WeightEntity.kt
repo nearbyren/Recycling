@@ -1,0 +1,89 @@
+package com.recycling.toolsapp.model
+
+import androidx.room.ColumnInfo
+import androidx.room.ColumnInfo.Companion.INTEGER
+import androidx.room.ColumnInfo.Companion.TEXT
+import androidx.room.Entity
+import androidx.room.Ignore
+import androidx.room.PrimaryKey
+
+/***
+ * 上传关门dao
+ */
+@Entity(tableName = "WeightEntity") class WeightEntity(
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "id", typeAffinity = INTEGER) val id: Long = 0,
+    /***
+     * 指令
+     */
+    @ColumnInfo(name = "cmd", typeAffinity = TEXT, defaultValue = "") var cmd: String? = null,
+    /***
+     * 事务ID
+     */
+    @ColumnInfo(name = "transId", typeAffinity = TEXT, defaultValue = "") var transId: String? = null,
+    /***
+     * 当前重量
+     */
+    @ColumnInfo(name = "curWeight", typeAffinity = TEXT, defaultValue = "") var curWeight: String? = null,
+    /***
+     * 改变重量
+     */
+    @ColumnInfo(name = "changeWeight", typeAffinity = TEXT, defaultValue = "") var changeWeight: String? = null,
+    /***
+     * 刷新重量
+     */
+    @ColumnInfo(name = "refWeight", typeAffinity = TEXT, defaultValue = "") var refWeight: String? = null,
+    /***
+     * 更新前重量
+     */
+    @ColumnInfo(name = "beforeUpWeight", typeAffinity = TEXT, defaultValue = "") var beforeUpWeight: String? = null,
+    /***
+     * 更新后重量
+     */
+    @ColumnInfo(name = "afterUpWeight", typeAffinity = TEXT, defaultValue = "") var afterUpWeight: String? = null,
+    /***
+     * 减重前重量
+     */
+    @ColumnInfo(name = "beforeDownWeight", typeAffinity = TEXT, defaultValue = "") var beforeDownWeight: String? = null,
+    /***
+     * 减重后重量
+     */
+    @ColumnInfo(name = "afterDownWeight", typeAffinity = TEXT, defaultValue = "") var afterDownWeight: String? = null,
+
+    /***
+     * 标记是否完成状态
+     * 1.完成
+     */
+    @ColumnInfo(name = "status", typeAffinity = INTEGER) var status: Int = -1,
+    /***
+     * 创建时间
+     */
+    @ColumnInfo(name = "time", typeAffinity = TEXT) var time: String? = null, ) {
+    @Ignore constructor() : this(
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        -1,
+    )
+
+    override fun toString(): String {
+        return "id=$id," +
+                "transId=${transId}," +
+                "curWeight=${curWeight}," +
+                "changeWeight=${changeWeight}" +
+                "refWeight=${refWeight}" +
+                "beforeUpWeight=${beforeUpWeight}" +
+                "afterUpWeight=${afterUpWeight}" +
+                "beforeDownWeight=${beforeDownWeight}" +
+                "afterDownWeight=${afterDownWeight}" +
+                "status=${status}" +
+                "time=${time}"
+    }
+}
+

@@ -29,9 +29,13 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "cabinId", typeAffinity = TEXT, defaultValue = "") var cabinId: String? = null,
     /***
-     * 1.开仓成功 0.开仓失败
+     * 关闭 0.关闭成功
      */
-    @ColumnInfo(name = "upStatus", typeAffinity = INTEGER) var upStatus: Int = 0,
+    @ColumnInfo(name = "closeStatus", typeAffinity = INTEGER) var closeStatus: Int = -1,
+    /***
+     * 打开 1.打开成功
+     */
+    @ColumnInfo(name = "openStatus", typeAffinity = INTEGER) var openStatus: Int = -1,
     /***
      * 创建时间
      */
@@ -42,12 +46,13 @@ import androidx.room.PrimaryKey
         null,
         0,
         null,
-        0,
+        -1,
+        -1,
         null,
     )
 
     override fun toString(): String {
-        return "id=$id," + "transId=${transId}," + "openType=${openType}," + "cabinId=${cabinId}" + "upStatus=${upStatus}" + "time=${time}"
+        return "id=$id," + "transId=${transId}," + "openType=${openType}," + "cabinId=${cabinId}" + "closeStatus=${closeStatus}" + "openStatus=${openStatus}" + "time=${time}"
     }
 }
 

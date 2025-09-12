@@ -28,6 +28,10 @@ object FileMdUtil {
         return File("${AppUtils.getContext().filesDir}/${path}")
     }
 
+    fun matchNewFileName(path: String,fileName:String): String {
+        return File("${AppUtils.getContext().filesDir}/${path}/${fileName}").absolutePath
+    }
+
     /**
      * 检测固件文件是否存在
      */

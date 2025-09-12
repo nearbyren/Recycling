@@ -2,9 +2,9 @@ package com.recycling.toolsapp.socket
 
 
 /***
- * 关闭舱门
+ * 格口关闭
  */
-data class DoorCloseDto(
+data class DoorCloseBean(
 
     //指令
     var cmd: String? = null,
@@ -35,7 +35,7 @@ data class DoorCloseDto(
     var curWeight: Float? = null,
     //手机号
     var phoneNumber: Float? = null,
-    //舱门编号
+    //格口ID
     var cabinId: String? = null,
 ) {
     constructor() : this(null, null, 0, null, null, null,

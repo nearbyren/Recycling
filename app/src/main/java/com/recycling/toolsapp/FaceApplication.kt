@@ -7,15 +7,15 @@ import android.os.Bundle
 import android.text.TextUtils
 import androidx.annotation.Nullable
 import androidx.lifecycle.MutableLiveData
+import com.recycling.toolsapp.http.TaskDelDateScheduler
+import com.recycling.toolsapp.http.TaskDelScheduler
 import com.hzmct.enjoysdkv2.api.EnjoySDKV2
 import com.hzmct.enjoysdkv2.transform.McStateCode
-import com.mc.android.mcinstall.AppRule
 import com.orhanobut.logger.AndroidLogAdapter
 import com.orhanobut.logger.Logger
 import com.orhanobut.logger.PrettyFormatStrategy
 import com.recycling.toolsapp.utils.CrashHandlerManager
 import com.recycling.toolsapp.utils.CurrentActivity.Config.Companion.CURRENT_ROOM_TYPE
-import com.recycling.toolsapp.utils.Define
 import com.recycling.toolsapp.utils.NetworkStateMonitor
 import com.serial.port.CabinetSdk
 import com.serial.port.utils.AppUtils
@@ -23,11 +23,11 @@ import com.serial.port.utils.Loge
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.CorHttp
-import nearby.lib.netwrok.response.SPreUtil
-import com.recycling.toolsapp.http.HttpUrl
 import java.io.BufferedReader
+import java.io.File
 import java.io.FileReader
 import java.io.IOException
 
@@ -40,17 +40,21 @@ import java.io.IOException
 @HiltAndroidApp class FaceApplication : Application() {
 
     private val ioScope = CoroutineScope(Dispatchers.IO)
+
     /***
      * false 在后台
      * true 不在后台
      */
     val isAppForeground = MutableLiveData<Boolean>()
+
     companion object {
         var BASE_URL = "https://dl.fmnet.vip:33/api"
         lateinit var enjoySDK: EnjoySDKV2
         lateinit var networkMonitor: NetworkStateMonitor
         private lateinit var instance: FaceApplication
-
+        lateinit var RESOURCE_DIR: String  //资源下载路径
+        lateinit var AUDIO_DIR: String  //音频资源下载路径
+        lateinit var DEFAULT_DIR: String  //默认下载路径
         fun getInstance() = instance
     }
 
@@ -60,11 +64,13 @@ import java.io.IOException
         initLog()
         AppUtils.init(this)
         initEnjoySDK()
+        createDir()
         initSerialPort()
         initNetWork()
         // activity栈管理
         registerActivityLifecycleCallbacks(mActivityLifecycleCallbacks)
         initCrash()
+        initTimingTask()
         initHttp()
     }
 
@@ -74,8 +80,6 @@ import java.io.IOException
     private fun initCrash() {
         CrashHandlerManager(this).init()
     }
-
-
 
     /****
      * 日志输出
@@ -91,6 +95,19 @@ import java.io.IOException
         })
     }
 
+    /****
+     * 定时刷新用户信息
+     */
+    private fun initTimingTask() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ioScope.launch {
+                delay(500)
+                TaskDelScheduler.scheduleDaily(this@FaceApplication, "21:30", "del")
+                TaskDelDateScheduler.scheduleDaily(this@FaceApplication, "21:35", "delDate")
+            }
+        }
+    }
+
     /***
      * 网络请求
      */
@@ -98,28 +115,16 @@ import java.io.IOException
         CorHttp.getInstance().init(this, true, baseIp = BASE_URL, codes = arrayListOf(401))
 
     }
+
     fun isGJGFormat(input: String): Boolean {
         val pattern = "^GJG".toRegex()
         return pattern.containsMatchIn(input)
     }
+
     /***
      * 迈冲sdk 状态栏 导航栏
      */
     private fun initEnjoySDK() {
-        //读取设备工具柜编号用于网络请求接口
-        val toolgID = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Build.getSerial()
-        } else {
-            Define.DEFAULT_CABINET_NO
-        }
-        Loge.d("安装 读取到设备工具柜编号了：${toolgID}")
-        if(isGJGFormat(toolgID)){
-            Loge.d("安装 存读取数据")
-            SPreUtil.put(AppUtils.getContext(), HttpUrl.TOOLG_ID, toolgID)
-        }else{
-            Loge.d("安装 设置默认数据")
-            SPreUtil.put(AppUtils.getContext(), HttpUrl.TOOLG_ID, Define.DEFAULT_CABINET_NO)
-        }
         //初始化迈冲sdk 控制状态栏导航栏显示
         enjoySDK = EnjoySDKV2(this)
         enjoySDK.setSecurePasswd("Abc12345", "Abc12345")
@@ -166,7 +171,6 @@ import java.io.IOException
         //注册网络监听
         networkMonitor = NetworkStateMonitor(this)
     }
-
 
     /***
      * 获取进程号对应的进程名
@@ -221,11 +225,26 @@ import java.io.IOException
         }
     }
 
+    /***
+     * 创建资源文件下载路径
+     */
+    private fun createDir() {
+        //存储资源文件信息
+        RESOURCE_DIR = filesDir.path + "/res"
+        val res = File(RESOURCE_DIR)
+        if (!res.exists()) res.mkdirs()
+        AUDIO_DIR = filesDir.path + "/audio"
+        val autdio = File(AUDIO_DIR)
+        if (!autdio.exists()) autdio.mkdirs()
+        DEFAULT_DIR = filesDir.path + "/def"
+        val def = File(DEFAULT_DIR)
+        if (!def.exists()) def.mkdirs()
+    }
 
     /**
      * 串口初始化
      */
-    private fun initSerialPort(){
+    private fun initSerialPort() {
         ioScope.launch {
             CabinetSdk.init()
         }

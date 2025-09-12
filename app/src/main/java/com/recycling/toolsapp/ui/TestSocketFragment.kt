@@ -13,10 +13,10 @@ import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentTestSocketBinding
 import com.recycling.toolsapp.fitsystembar.base.BaseActivity
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
-import com.recycling.toolsapp.socket.InitConfigDto
-import com.recycling.toolsapp.socket.LoginDto
+import com.recycling.toolsapp.socket.ConfigBean
 import com.recycling.toolsapp.socket.SocketClient
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
+import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.CurrentActivity.Config.Companion.CURRENT_ROOM_TYPE
 import com.recycling.toolsapp.utils.Define
@@ -88,52 +88,51 @@ import kotlin.random.Random
                     val cmd = CommandParser.parseCommand(json)
                     when (cmd) {
 
-                        "heartBeat" -> {
+                        CmdValue.CMD_HEART_BEAT -> {
                             println("调试socket recv: 接收心跳成功")
                         }
 
-                        "login" -> {
+                        CmdValue.CMD_LOGIN -> {
                             println("调试socket recv: 接收登录成功")
-                            val loginModel = Gson().fromJson(json, LoginDto::class.java)
+                            val loginModel = Gson().fromJson(json, ConfigBean::class.java)
                             val heartbeatIntervalMillis =
                                     loginModel.config.heartBeatInterval?.toLong() ?: 3
                             client?.config?.heartbeatIntervalMillis1 =
                                     TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
-                            client?.config?.heartbeatIntervalMillis1 =
-                                    TimeUnit.SECONDS.toMillis(3)
+                            client?.config?.heartbeatIntervalMillis1 = TimeUnit.SECONDS.toMillis(3)
                             client?.sendHeartbeat()
                         }
 
-                        "initConfig" -> {
-                            val initConfigModel = Gson().fromJson(json, InitConfigDto::class.java)
+                        CmdValue.CMD_INIT_CONFIG -> {
+                            val initConfigModel = Gson().fromJson(json, ConfigBean::class.java)
                             println("调试socket recv: 接收 initConfig 成功")
                         }
 
-                        "openDoor" -> {
+                        CmdValue.CMD_OPEN_DOOR -> {
                             println("调试socket recv: 接收 openDoor 成功")
                         }
 
-                        "closeDoor" -> {
+                        CmdValue.CMD_CLOSE_DOOR -> {
                             println("调试socket recv: 接收 closeDoor成功")
                         }
 
-                        "phoneNumberLogin" -> {
+                        CmdValue.CMD_PHONE_NUMBER_LOGIN -> {
                             println("调试socket recv: 接收 phoneNumberLogin 成功")
                         }
 
-                        "phoneUserOpenDoor" -> {
+                        CmdValue.CMD_PHONE_USER_OPEN_DOOR -> {
                             println("调试socket recv: 接收 phoneUserOpenDoor 成功")
                         }
 
-                        "restart" -> {
+                        CmdValue.CMD_RESTART -> {
                             println("调试socket recv: 接收 restart 成功")
                         }
 
-                        "uploadLog" -> {
+                        CmdValue.CMD_UPLOAD_LOG -> {
                             println("调试socket recv: 接收 uploadLog 成功")
                         }
 
-                        "ota" -> {
+                        CmdValue.CMD_OTA -> {
                             println("调试socket recv: 接收 OTA 成功")
                         }
                     }

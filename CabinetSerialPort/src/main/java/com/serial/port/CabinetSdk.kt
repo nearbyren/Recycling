@@ -55,6 +55,7 @@ class CabinetSdk private constructor() {
         fun firmwareUpgrade232(byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
             serialPortCore?.firmwareUpgrade232(byte, onUpgrade, sendCallback)
         }
+
         /***
          * 芯片版本查询
          * @param byte
@@ -65,15 +66,7 @@ class CabinetSdk private constructor() {
             serialPortCore?.firmwareUpgrade2322(commandType, byte, onUpgrade, sendCallback)
         }
 
-        /***
-         * 开仓指令
-         * @param boxCode 储物柜编号
-         * @param onOpenStatus 返回开仓是否成功
-         * @param sendCallback 发送是否成功
-         */
-        fun openCommand(boxCode: Int, onOpenStatus: (boxCode: Int, status: Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.openCommand(boxCode, onOpenStatus, sendCallback)
-        }
+
         /***
          *
          * @param onBoxStatus
@@ -84,13 +77,43 @@ class CabinetSdk private constructor() {
         }
 
         /***
-         *
-         * @param onBoxStatus
-         * @param sendCallback 发送是否成功
+         * 开仓指令
+         * @param code 储物柜编号
+         * @param onOpenStatus
+         * @param sendCallback
          */
-        fun queryDoorStatus(boxCode: Int, onDoorStatus: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.queryDoorStatus(boxCode, onDoorStatus, sendCallback)
+        fun openClear(code: Int, onOpenStatus: (boxCode: Int, status: Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.openClear(code, onOpenStatus, sendCallback)
         }
 
+
+        /***
+         * 启动格口开关
+         * @param code
+         * @param turnDoorCallback
+         * @param sendCallback 发送是否成功
+         */
+        fun turnDoor(code: Int, turnDoorCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.turnDoor(code, turnDoorCallback, sendCallback)
+        }
+
+        /***
+         * 启动格口状态查询
+         * @param code
+         * @param onDoorStatus
+         * @param sendCallback 发送是否成功
+         */
+        fun turnDoorStatus(code: Int, onDoorStatus: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.turnDoorStatus(code, onDoorStatus, sendCallback)
+        }
+
+        /***
+         *
+         * @param onDoorStatus
+         * @param sendCallback 发送是否成功
+         */
+        fun queryWeight(boxCode: Int, weightCallback: (Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.queryWeight(boxCode, weightCallback, sendCallback)
+        }
     }
 }
