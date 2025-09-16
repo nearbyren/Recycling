@@ -202,7 +202,7 @@
                 android:id="@+id/iv_xinhao"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:src="@drawable/ic_xinhao"
+                android:src="@drawable/ic_xinhao1"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent" />
 

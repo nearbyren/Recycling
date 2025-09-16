@@ -6,36 +6,64 @@ package com.recycling.toolsapp.socket
  */
 data class DoorCloseBean(
 
-    //指令
+    /***
+     * 指令
+     */
     var cmd: String? = null,
-    //事务id
+    /***
+     * 事务id
+     */
     var transId: String? = null,
 
     //服务下发
-    //状态 0.成功 1.失败
+    /***
+     * 状态 0.成功 1.失败
+     */
     var retCode: Int,
-    //舱门信息
+    /***
+     * 舱门信息
+     */
     var info: DoorCloseInfo? = null,
-
-    //终端上发
+    /***
+     * 终端上发
+     */
     var timestamp: String? = null,
-    //重量减重后
-    var afterDownWeight: Float? = null,
-    //重量减重前
-    var beforeDownWeight: Float? = null,
-    //重量修改后
-    var afterUpWeight: Float? = null,
-    //重量修改前
-    var beforeUpWeight: Float? = null,
-    //刷新重量
-    var refWeight: Float? = null,
-    //改变重量
-    var changeWeight: Float? = null,
-    //当前重量
-    var curWeight: Float? = null,
-    //手机号
-    var phoneNumber: Float? = null,
-    //格口ID
+    /***
+     * 增加的重量
+     */
+    var refWeight: String? = null,
+    /***
+     *  上称物品的重量【关键字段】
+     */
+    var changeWeight: String? = null,
+    /***
+     *   物品上称后的体重【关键字段】
+     */
+
+    var curWeight: String? = null,
+    /***
+     * 增加前的重量
+     */
+    var beforeUpWeight: String? = null,
+    /***
+     * 增加后的重量
+     */
+    var afterUpWeight: String? = null,
+    /***
+     * 上称前的重量
+     */
+    var beforeDownWeight: String? = null,
+    /***
+     * 上称后的重量
+     */
+    var afterDownWeight: String? = null,
+    /***
+     * 手机号
+     */
+    var phoneNumber: String? = null,
+    /***
+     * 格口ID
+     */
     var cabinId: String? = null,
 ) {
     constructor() : this(null, null, 0, null, null, null,

@@ -126,7 +126,7 @@ class SocketClient(
     private suspend fun enqueueSend(data: ByteArray) {
         println("调试socket enqueueSend  ${ByteUtils.toHexString(data)}")
         // Simple soft limit enforcement by suspending when over budget
-        var queuedBytes = data.size
+        val queuedBytes = data.size
         if (queuedBytes > config.maxSendQueueBytes) {
             throw IOException("Send queue bytes over limit")
         }

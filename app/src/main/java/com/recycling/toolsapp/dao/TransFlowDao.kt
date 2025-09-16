@@ -21,6 +21,10 @@ import com.recycling.toolsapp.model.TransEntity
     @Query("UPDATE TransEntity SET openStatus = :openStatus WHERE transId = :transId")
     fun upTransOpenStatus(openStatus: Int, transId: String)
 
+    @Query("select * from TransEntity ORDER BY ROWID DESC LIMIT 1")
+    fun queryTransMax(): TransEntity
+
+
     //删除所有数据
     @Query("delete from TransEntity") fun deleteAll()
 }

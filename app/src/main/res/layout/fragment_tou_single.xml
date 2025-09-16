@@ -177,7 +177,7 @@
                 android:id="@+id/aciv_code"
                 android:layout_width="@dimen/dp_130"
                 android:layout_height="@dimen/dp_130"
-                android:src="@drawable/ic_erweima"
+                tools:src="@drawable/ic_erweima"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent" />
@@ -247,7 +247,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/ic_gzda"
-            android:visibility="gone"
+            android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"

@@ -14,7 +14,10 @@ import android.widget.RadioGroup
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatEditText
+import androidx.appcompat.widget.AppCompatImageView
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.isVisible
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
 import com.recycling.toolsapp.utils.IccidOper
 import com.recycling.toolsapp.utils.SocketManager
@@ -32,24 +35,43 @@ import java.util.regex.Pattern
 class InitFactoryActivity : AppCompatActivity() {
     private val cabinetVM: CabinetVM by viewModels()
     private var acetSn: AppCompatEditText? = null
-    private var group: RadioGroup? = null
+    private var acivInit: AppCompatImageView? = null
+    private var rgLattice: RadioGroup? = null
+
+    private fun newInit() {
+        acivInit = findViewById(R.id.aciv_init)
+        val init = SPreUtil[AppUtils.getContext(), "init", false] as Boolean
+        if (init) {
+            println("调试socket startUI 进入主界面")
+            initSocket()
+        } else {
+            println("调试socket startUI 进入初始化")
+            acivInit?.isVisible = false
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_init_fractory)
+//        newInit()
+        initFactory()
+    }
+
+    private fun initFactory() {
         acetSn = findViewById(R.id.acet_sn)
         acetSn?.setAlphanumericLimit()
-        group = findViewById(R.id.rgBuckleType)
-        val selectedId = group?.checkedRadioButtonId
+        rgLattice = findViewById(R.id.rg_lattice)
+        val selectedId = rgLattice?.checkedRadioButtonId
         selectedId?.let { sid ->
             selectedText(sid)
         }
-        val clInit = findViewById<ConstraintLayout>(R.id.cl_init)
-        clInit.setOnClickListener {
+        val actvInit = findViewById<AppCompatTextView>(R.id.actv_init)
+        actvInit.setOnClickListener {
             println("调试socket 点击初始化 ")
-            test()   //调试1
-//            initSocket()//调试2
+//            test()   //调试1
+            initSocket()//调试2
         }
-        group?.setOnCheckedChangeListener { _, checkedId ->
+        rgLattice?.setOnCheckedChangeListener { _, checkedId ->
             selectedText(checkedId)
         }
         println("屏幕尺寸大小 ：${getScreenParams()}")
@@ -66,21 +88,21 @@ class InitFactoryActivity : AppCompatActivity() {
 
     fun selectedText(checkedId: Int) {
         val selected = when (checkedId) {
-            R.id.rbSingle -> "单口"
-            R.id.rbDouble -> "双口"
-            R.id.rbParentChild -> "子母口"
+            R.id.mrb_lattice1 -> "单格口"
+            R.id.mrb_lattice2 -> "双格口"
+            R.id.mrb_lattice3 -> "子母格口"
             else -> null
         }
         when (selected) {
-            "单口" -> {
+            "单格口" -> {
                 SPreUtil.put(AppUtils.getContext(), "type_grid", 1)
             }
 
-            "双口" -> {
+            "双格口" -> {
                 SPreUtil.put(AppUtils.getContext(), "type_grid", 2)
             }
 
-            "子母口" -> {
+            "子母格口" -> {
                 SPreUtil.put(AppUtils.getContext(), "type_grid", 3)
             }
         }
@@ -133,6 +155,7 @@ class InitFactoryActivity : AppCompatActivity() {
                 }
 
                 ConnectionState.CONNECTED -> {
+                    SPreUtil.put(AppUtils.getContext(), "init", true)
                     startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
                     finish()
                 }
@@ -145,10 +168,10 @@ class InitFactoryActivity : AppCompatActivity() {
         val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY)
 
         val imei = TelephonyUtils.getImei(AppUtils.getContext())
-        val imsi = TelephonyUtils.getImsi(AppUtils.getContext())
-        val iccid = TelephonyUtils.getIccid(AppUtils.getContext())
-        val pri = TelephonyUtils.getPrivilegedIds(AppUtils.getContext())
-        val iccid2 = IccidOper.getInstance().GetIccid()
+//        val imsi = TelephonyUtils.getImsi(AppUtils.getContext())
+//        val iccid = TelephonyUtils.getIccid(AppUtils.getContext())
+//        val pri = TelephonyUtils.getPrivilegedIds(AppUtils.getContext())
+//        val iccid2 = IccidOper.getInstance().GetIccid()
 
         val rotation = display.rotation
         val surfaceRotationDegrees = when (rotation) {
@@ -206,14 +229,14 @@ class InitFactoryActivity : AppCompatActivity() {
 
              dp: ${resources.getDimension(R.dimen.dp_25)}
              """.trimIndent()
-//        str += """
-//
-//             imei: $imei:${pri.first}
+        str += """
+
+//             imei: $imei
 //             """.trimIndent()
 //        str += """
-//
-//             imsi: $imsi:${pri.second}
-//             """.trimIndent()
+////
+////             imsi: $imsi:${pri.second}
+////             """.trimIndent()
 //        str += """
 //
 //             iccid: $iccid:${pri.third}:${getIccid2(AppUtils.getContext())}:iccid2:${iccid2}

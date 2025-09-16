@@ -82,7 +82,7 @@ class CrashHandlerManager(private val mContext: Context) : Thread.UncaughtExcept
                 (mContext as FaceApplication).finishAllActivity()
             }
             val crash = SPreUtil[AppUtils.getContext(), "crash", 1] as Int
-            if (crash < 5) {
+            if (crash < 3) {
                 restartApp(mContext, 5 * 1000L)
             }
         }

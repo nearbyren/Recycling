@@ -1,6 +1,8 @@
 package com.recycling.toolsapp
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -10,10 +12,12 @@ import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.FileProvider
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.github.sumimakito.awesomeqr.AwesomeQRCode
 import com.recycling.toolsapp.FaceApplication.Companion.networkMonitor
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
@@ -29,6 +33,7 @@ import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.FragmentCoordinator
 import com.recycling.toolsapp.utils.HexConverter
+import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.utils.SnackbarUtils
 import com.recycling.toolsapp.utils.SocketManager
 import com.recycling.toolsapp.vm.CabinetVM
@@ -36,6 +41,7 @@ import com.recycling.toolsapp.vm.CountdownTimer
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.CmdCode
+import com.serial.port.utils.FileMdUtil
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -43,6 +49,8 @@ import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.LiveBus
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 @AndroidEntryPoint class HomeActivity : BaseBindActivity<ActivityHomeBinding>() {
@@ -53,15 +61,9 @@ import java.util.concurrent.TimeUnit
     }
 
     @RequiresApi(Build.VERSION_CODES.M) override fun initialize(savedInstanceState: Bundle?) {
-        intent.data?.toString()?.let { deepLink ->
-            if (!fragmentCoordinator.handleDeepLink(deepLink)) {
-                navigateToHome()
-            }
-        } ?: navigateToHome()
         initNetworkState()
         initDoorStatus()
         initPort()
-
 //        countdownUI()
 //        lifeUpgradeApk()
 //        netUpdateApk()
@@ -76,6 +78,14 @@ import java.util.concurrent.TimeUnit
         cabinetVM.ioScope.launch {
             // 预热相机Provider 快速启动相机能从6秒到2秒
             cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
+        }
+        lifecycleScope.launch {
+            cabinetVM.getLoginCmd.collect {
+                if (it) {
+                    binding.acivInit.isVisible = false
+                    toGoUi()
+                }
+            }
         }
     }
 
@@ -99,22 +109,22 @@ import java.util.concurrent.TimeUnit
                 Loge.d("调试串口 接收到称重页结束类型 $endType")
                 when (endType) {
                     //点击
-                    1 -> {
+                    ResultType.RESULT1 -> {
                         cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
                     }
                     //倒计时结束
-                    2 -> {
+                    ResultType.RESULT2 -> {
                         cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
                     }
                     //门已经开了
-                    310 -> {
-                        cabinetVM.testToGoDownDoorOpen()
+                    ResultType.RESULT310 -> {
+//                        cabinetVM.testToGoDownDoorOpen()
                         //门已经开了 通知服务器
                         cabinetVM.sendUpRec(CmdValue.CMD_OPEN_DOOR)
                     }
 
                     //门已经关闭
-                    301 -> {
+                    ResultType.RESULT301 -> {
                         //门已经关闭了 通知服务器
                         cabinetVM.sendUpRec(CmdValue.CMD_CLOSE_DOOR)
 
@@ -177,7 +187,7 @@ import java.util.concurrent.TimeUnit
             cabinetVM.vmClient?.incoming?.collect { bytes ->
                 println("调试socket recv: ${String(bytes)}")
                 val json = String(bytes)
-                BoxToolLogUtils.recordSocket(CmdValue.RECEIVE,json)
+                BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, json)
                 val cmd = CommandParser.parseCommand(json)
                 when (cmd) {
 
@@ -189,24 +199,7 @@ import java.util.concurrent.TimeUnit
                     CmdValue.CMD_LOGIN -> {
                         println("调试socket recv: 接收登录成功")
                         val loginModel = Gson().fromJson(json, ConfigBean::class.java)
-                        val heartbeatIntervalMillis =
-                                loginModel.config.heartBeatInterval?.toLong() ?: 10
-                        cabinetVM.vmClient?.config?.heartbeatIntervalMillis1 =
-                                TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
-                        println("调试socket recv: 心跳秒：$heartbeatIntervalMillis")
-                        cabinetVM.vmClient?.config?.heartbeatIntervalMillis1 =
-                                TimeUnit.SECONDS.toMillis(10)
-                        //保存基础配置信息
-                        loginModel.sn?.let { sn ->
-                            cabinetVM.toGetSaveConfigEntity(sn, loginModel.config)
-                        }
-                        //保存箱体信息
-                        cabinetVM.toGetSaveCabins(loginModel.config.list)
-                        //保存资源配置
-                        cabinetVM.toGetResource(loginModel.config.resourceList)
-                        delay(500)
-                        //发送心跳
-                        cabinetVM.vmClient?.sendHeartbeat()
+                        cabinetVM.saveInitNet(loginModel)
                     }
 
                     CmdValue.CMD_INIT_CONFIG -> {
@@ -271,6 +264,66 @@ import java.util.concurrent.TimeUnit
         }
     }
 
+    private fun createCode(content: String) {
+        println("调试socket 创建二维码 ${Thread.currentThread().name}")
+        cabinetVM.ioScope.launch {
+            val logoBitmap = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher_by)
+            val bg = BitmapFactory.decodeResource(resources, R.color.black)
+            AwesomeQRCode.Renderer().contents(content).background(bg).size(800) // 增加尺寸以提高可扫描性
+                .roundedDots(true).dotScale(1.6f) // 增加点的大小
+                .colorDark(Color.BLACK) // 深色部分为黑色
+                .colorLight(Color.WHITE) // 浅色部分为白色 - 这是关键修复
+                .whiteMargin(true).margin(20) // 增加边距
+                .logo(logoBitmap).logoMargin(10).logoRadius(10).logoScale(0.15f) // 减小logo尺寸，避免遮挡关键信息
+                .renderAsync(object : AwesomeQRCode.Callback {
+                    override fun onError(renderer: AwesomeQRCode.Renderer, e: Exception) {
+                        e.printStackTrace()
+                    }
+
+                    override fun onRendered(renderer: AwesomeQRCode.Renderer, bitmap: Bitmap) {
+                        cabinetVM.mQrCode = bitmap
+                        println("调试socket 创建二维码保存开始")
+                        saveBitmapToInternalStorage(bitmap, "qrCode.png")
+
+                    }
+                })
+        }
+    }
+
+    fun saveBitmapToInternalStorage(bitmap: Bitmap, fileName: String): String? {
+        // 指定存储目录：/data/data/包名/files/userAvatar/
+//        val dir = File(AppUtils.getContext().filesDir, "faceVerify")
+        val dir = FileMdUtil.matchNewFile("res")
+        if (!dir.exists()) {
+            dir.mkdirs() // 创建目录
+        }
+
+        // 创建保存文件
+        val file = File(dir, fileName)
+        var fos: FileOutputStream? = null
+
+        try {
+            fos = FileOutputStream(file)
+            // 将 Bitmap 压缩为 PNG 格式保存
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            fos.flush()
+            return file.absolutePath // 返回保存路径
+        } catch (e: IOException) {
+            e.printStackTrace()
+
+        } finally {
+            fos?.close() // 关闭输出流
+        }
+        return null
+    }
+
+    fun toGoUi() {
+        intent.data?.toString()?.let { deepLink ->
+            if (!fragmentCoordinator.handleDeepLink(deepLink)) {
+                navigateToHome()
+            }
+        } ?: navigateToHome()
+    }
 
     private fun getMasterVersion(isUpgrade: Boolean = false) {
         cabinetVM.executeVersion232(isUpgrade, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
@@ -488,6 +541,7 @@ import java.util.concurrent.TimeUnit
 
     private fun updateNetworkStatus(isConnected: Boolean) {
         if (isConnected) {
+            binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao1)
             if (!isNetworkStatusFirst) {
                 isNetworkStatusFirst = false
                 // 网络已连接
@@ -497,13 +551,14 @@ import java.util.concurrent.TimeUnit
                 binding.tvNetwork.text = "网络已经连接"
             }
         } else {
+            binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
             // 网络断开
             if (!isNetworkStatusFirst) {
                 isNetworkStatusFirst = false
                 SnackbarUtils.show(activity = this@HomeActivity, message = "网络状态已断开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
                 binding.tvNetwork.text = "网络已经断开"
             } else {
-                binding.tvNetwork.text = "网络未链接"
+                binding.tvNetwork.text = "网络已经断开"
             }
         }
     }
@@ -514,40 +569,30 @@ import java.util.concurrent.TimeUnit
         val sn = SPreUtil[AppUtils.getContext(), "sn", ""]
         val typeText = when (typeGrid) {
             1 -> {
-                "单口"
+                "单格口"
             }
 
             2 -> {
-                "双口"
+                "双格口"
             }
 
             3 -> {
-                "子母口"
+                "子母格口"
             }
 
             else -> {
                 "-"
             }
         }
-        binding.tvSn.text = "$typeText sn：$sn"
+        binding.tvSn.text = "sn：$sn"
         binding.tvVersion.text = "版本号：v${AppUtils.getVersionName()}"
         when (typeGrid) {
             1, 3 -> {
-                navigateTo(fragmentClass = TouSingleFragment::class.java, addToBackStack = true, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
-                    override fun onFragmentResumed(fragment: Fragment) {
-                        super.onFragmentResumed(fragment)
-                        hide()
-                    }
-                })
+                navigateTo(fragmentClass = TouSingleFragment::class.java, addToBackStack = true)
             }
 
             2 -> {
-                navigateTo(fragmentClass = TouDoubleFragment::class.java, addToBackStack = true, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
-                    override fun onFragmentResumed(fragment: Fragment) {
-                        super.onFragmentResumed(fragment)
-                        hide()
-                    }
-                })
+                navigateTo(fragmentClass = TouDoubleFragment::class.java, addToBackStack = true)
             }
         }
     }

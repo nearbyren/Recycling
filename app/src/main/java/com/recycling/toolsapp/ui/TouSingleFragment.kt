@@ -52,7 +52,10 @@ import kotlinx.coroutines.launch
             mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
 
         }
-
+        binding.clMobile.setOnClickListener {
+//            mActivity?.navigateTo(fragmentClass = DeliveryFragment::class.java)
+            mActivity?.navigateTo(fragmentClass = MobileFragment::class.java)
+        }
         binding.acivLogo.setOnClickListener {
             cabinetVM.testClearCmd()
 //            val data = HexConverter.intToByteArray(6450)
@@ -78,7 +81,13 @@ import kotlinx.coroutines.launch
         }
         val value = binding.tvKetouValue.text.toString()
         setTextColorFromPosition(binding.tvKetouValue, value, 9, Color.YELLOW)
-        createCode()
+        println("")
+//        createCode()
+        println("调试socket 进入单格口 ${ cabinetVM.mQrCode}")
+        cabinetVM.mQrCode?.let { bitmap->
+            binding.acivCode.setImageBitmap(bitmap)
+        }
+
     }
 
     fun setTextColorFromPosition(textView: AppCompatTextView, text: String, startIndex: Int, color: Int) {

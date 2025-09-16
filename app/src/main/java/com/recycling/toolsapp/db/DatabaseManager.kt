@@ -198,8 +198,8 @@ object DatabaseManager {
      * @param cabinId
      * @return
      */
-    fun queryCabinEntity(context: Context, cabinId: String): LatticeEntity {
-        return getLatticeFlowDao(context).queryCabinEntity(cabinId)
+    fun queryLatticeEntity(context: Context, cabinId: String): LatticeEntity {
+        return getLatticeFlowDao(context).queryLatticeEntity(cabinId)
     }
     /***************************************获取 箱体 实例2 *************************************************/
     /***
@@ -320,6 +320,14 @@ object DatabaseManager {
      */
     fun upTransOpenStatus(context: Context, openStatus: Int, transId: String) {
          getTransFlowDao(context).upTransOpenStatus(openStatus, transId)
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     */
+    fun queryTransMax(context: Context) :TransEntity{
+       return  getTransFlowDao(context).queryTransMax()
     }
 
     /***************************************获取 打开仓 实例*************************************************/

@@ -4,7 +4,9 @@ package com.recycling.toolsapp.socket
  * 配置格口信息
  */
 data class ConfigLattice(
-    //格口ID
+    /***
+     * 格口ID
+     */
     var cabinId: String? = null,
     /***
      *
@@ -15,29 +17,45 @@ data class ConfigLattice(
      * 3是红外遮挡并且重量达到（initConfig：irOverflow）
      */
     var capacity: String? = null,
-    //构建时间
+    /***
+     * 构建时间
+     */
     var createTime: String? = null,
     var delFlag: String? = null,
     //格口状态
     var doorStatus: String? = null,
     var filledTime: String? = null,
     var id: Int,
-    //红外
+    /***
+     * 红外
+     */
     var ir: Int,
     //
     var overweight: String? = null,
-    //当前价格
+    /***
+     * 当前价格
+     */
     var price: String? = null,
-    //推杆值
+    /***
+     * 推杆值
+     */
     var rodHinderValue: Int,
-    //烟雾警报
+    /***
+     * 烟雾警报
+     */
     var smoke: Int,
-    //sn码
+    /***
+     * sn码
+     */
     var sn: String? = null,
     var sort: Int,
     var sync: String? = null,
-    //音量大小
+    /***
+     * 音量大小
+     */
     var volume: Int,
-    //当前重量
+    /***
+     * 当前重量
+     */
     var weight: String? = null,
 )

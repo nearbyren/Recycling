@@ -8,7 +8,6 @@ import android.view.Display
 import android.view.Surface
 import androidx.fragment.app.viewModels
 import com.google.gson.Gson
-import com.recycling.toolsapp.FaceApplication.Companion.enjoySDK
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentTestSocketBinding
 import com.recycling.toolsapp.fitsystembar.base.BaseActivity
@@ -272,16 +271,6 @@ import kotlin.random.Random
         LocationHelper.removeUpdates(AppUtils.getContext(), listener)
     }
 
-    override fun onResume() {
-        super.onResume()
-        enjoySDK.setHomePackage("com.recycling.toolsapp")
-    }
-
-    override fun onFragmentResume() {
-        super.onFragmentResume()
-        CURRENT_ROOM_TYPE = Define.ACTIVITY_TYPE_MAIN
-        enjoySDK.setHomePackage("com.recycling.toolsapp")
-    }
 
     /*******************************************超时归还提醒***************************************************/
 

@@ -24,12 +24,12 @@ class StartUiActivity : AppCompatActivity() {
             val init = SPreUtil[AppUtils.getContext(), "init", false] as Boolean
             if (init) {
                 println("调试socket startUI 进入主界面")
-                startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
+                initSocket()
+//                startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
             } else {
                 println("调试socket startUI 进入初始化")
                 startActivity(Intent(this@StartUiActivity, InitFactoryActivity::class.java))
             }
-//            initSocket()
         }
     }
 

@@ -31,20 +31,35 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="@dimen/dp_7"
-                    android:text="sn:125555555555"
                     android:textColor="@color/white"
-                    android:textSize="@dimen/sp_12"
+                    android:textSize="@dimen/sp_10"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintRight_toRightOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:text="sn:125555555555" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
             <FrameLayout
-                android:id="@+id/fragment_container"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1" />
+                android:layout_weight="1">
+
+                <FrameLayout
+                    android:id="@+id/fragment_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/aciv_init"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="matrix"
+                    android:src="@drawable/ic_start2"
+                    android:visibility="visible" />
+
+            </FrameLayout>
+
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/cl_bottom"
@@ -53,15 +68,15 @@
                 android:background="@drawable/ic_bg_top"
                 app:layout_constraintBottom_toBottomOf="parent">
 
-
                 <androidx.appcompat.widget.AppCompatImageView
-                    android:id="@+id/iv_xinhao"
+                    android:id="@+id/aciv_signal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="@dimen/dp_10"
-                    android:src="@drawable/ic_xinhao"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintLeft_toLeftOf="parent" />
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:src="@drawable/ic_xinhao0" />
 
                 <androidx.appcompat.widget.AppCompatTextView
                     android:id="@+id/tv_network"
@@ -69,9 +84,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="@dimen/dp_5"
                     android:textColor="@color/white"
-                    android:textSize="@dimen/sp_12"
+                    android:textSize="@dimen/sp_10"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintLeft_toRightOf="@+id/iv_xinhao"
+                    app:layout_constraintLeft_toRightOf="@+id/aciv_signal"
                     app:layout_constraintTop_toTopOf="parent"
                     tools:text="网络状态" />
 
@@ -81,7 +96,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginRight="@dimen/dp_10"
                     android:textColor="@color/white"
-                    android:textSize="@dimen/sp_12"
+                    android:textSize="@dimen/sp_10"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintRight_toRightOf="parent"
                     app:layout_constraintTop_toTopOf="parent"

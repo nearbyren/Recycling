@@ -41,28 +41,30 @@ import kotlinx.coroutines.launch
 
     override fun initialize(savedInstanceState: Bundle?) {
         binding.tvTitle.setOnClickListener {
-            HexConverter.restartApp2(AppUtils.getContext(), 2 * 500L)
+//            HexConverter.restartApp2(AppUtils.getContext(), 2 * 500L)
+            mActivity?.navigateTo(fragmentClass = DeliveryFragment::class.java)
         }
         binding.clMobile.setOnClickListener {
-            mActivity?.navigateTo(fragmentClass = DeliveryFragment::class.java)
+//            mActivity?.navigateTo(fragmentClass = DeliveryFragment::class.java)
+            mActivity?.navigateTo(fragmentClass = MobileFragment::class.java)
         }
 
         binding.clLeft.setOnClickListener {
             //假设这里接收到服务指令 先启动检测门状态再发起开门指令
-//            cabinetVM.doorGeX = CmdCode.GE1
-//            cabinetVM.testSendCmd(CmdCode.GE_OPEN)
-            //这里查询重量
             cabinetVM.doorGeX = CmdCode.GE1
-            cabinetVM.testWeightCmd()
+            cabinetVM.testSendCmd(CmdCode.GE_OPEN)
+            //这里查询重量
+//            cabinetVM.doorGeX = CmdCode.GE1
+//            cabinetVM.testWeightCmd()
         }
 
         binding.clRight.setOnClickListener {
             //假设这里接收到服务指令 先启动检测门状态再发起开门指令
-//            cabinetVM.doorGeX = CmdCode.GE2
-//            cabinetVM.testSendCmd(CmdCode.GE_OPEN)
-            //这里查询重量
             cabinetVM.doorGeX = CmdCode.GE2
-            cabinetVM.testWeightCmd()
+            cabinetVM.testSendCmd(CmdCode.GE_OPEN)
+            //这里查询重量
+//            cabinetVM.doorGeX = CmdCode.GE2
+//            cabinetVM.testWeightCmd()
         }
 
         binding.acivLogo.setOnClickListener {
@@ -73,7 +75,12 @@ import kotlinx.coroutines.launch
         setTextColorFromPosition(binding.tvLeftKetouValue, valueLeft, 9, Color.YELLOW)
         val valueRight = binding.tvRightKetouValue.text.toString()
         setTextColorFromPosition(binding.tvRightKetouValue, valueRight, 9, Color.YELLOW)
-        createCode()
+        println("调试socket 进入双格口 ${ cabinetVM.mQrCode}")
+        cabinetVM.mQrCode?.let { bitmap->
+            binding.acivCode.setImageBitmap(bitmap)
+        }
+
+//        createCode()
     }
 
     fun setTextColorFromPosition(textView: AppCompatTextView, text: String, startIndex: Int, color: Int) {

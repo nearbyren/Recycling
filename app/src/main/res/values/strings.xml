@@ -7,7 +7,7 @@
     <string name="edit_profile_title">Edit Profile</string>
     <string name="btn_save">Save</string>
     <string name="btn_cancel">Cancel</string>
-
+    <string name="mobile_exit"><u>退出</u></string>
     <string name="permission_tip">Tip</string>
     <string name="permission_msg">request permission failed! \n
             you can grant permission in setting interface -> Permissions</string>

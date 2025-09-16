@@ -1,4 +1,4 @@
-package com.cabinet.toolsapp.http
+package com.recycling.toolsapp.http
 
 /**
  * @author: lr

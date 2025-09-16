@@ -1,0 +1,499 @@
+package com.recycling.toolsapp.ui
+
+import android.Manifest.permission.CAMERA
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+import android.annotation.SuppressLint
+import android.content.ContentValues
+import android.media.MediaScannerConnection
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.text.TextUtils
+import android.util.Log
+import android.util.Size
+import android.widget.Toast
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalLensFacing
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.MediaStoreOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import com.recycling.toolsapp.R
+import com.recycling.toolsapp.databinding.FragmentCamerax1Binding
+import com.recycling.toolsapp.databinding.FragmentCameraxBinding
+import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
+import com.recycling.toolsapp.utils.PermissionRequest
+import com.recycling.toolsapp.utils.PermissionUtils
+import com.recycling.toolsapp.utils.PermissionsRequester
+import com.recycling.toolsapp.vm.CabinetVM
+import com.serial.port.utils.AppUtils
+import com.serial.port.utils.Loge
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import top.zibin.luban.Luban
+import top.zibin.luban.OnCompressListener
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.Executors
+
+
+/***
+ * 称重页
+ *
+ */
+@AndroidEntryPoint class CameraX1Fragment : BaseBindFragment<FragmentCamerax1Binding>() {
+    // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
+    private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
+
+    private lateinit var permissionsManager: PermissionsRequester
+
+    //0.前置 1.后置 2.外接
+    private var LENS_FACING_TYPE0 = 1
+
+    // 创建任务队列
+    override fun layoutRes(): Int {
+        return R.layout.fragment_camerax1
+    }
+
+    override fun isShowActionBar(): Boolean {
+        return false
+    }
+
+    override fun isShowActionBarBack(): Boolean {
+        return false
+    }
+
+
+    override fun initialize(savedInstanceState: Bundle?) {
+        setCountdown(900)
+        initPermissions()
+        initCameraX()
+        lifecycleScope.launch {
+            cabinetVM.getDelays.collect { delay ->
+                when (delay) {
+                    3000L, 6000L, 9000L, 12000L -> {
+                        Log.e("TestFace", "网络导入用户信息 执行拍照 $delay")
+                        takePicture1()
+                    }
+                }
+            }
+        }
+        binding.atvPicture1.setOnClickListener {
+            takePicture1()
+        }
+        binding.atvRecording1.setOnClickListener {
+            startRecording1()
+        }
+        binding.atvStopRecording1.setOnClickListener {
+            stopRecording1()
+        }
+
+    }
+
+    private fun initCameraX() {
+        startFaceUi()
+    }
+
+    // 在类顶部添加这些变量
+
+    private var isRecording1 = false
+    private fun startLowLatencyPreview1() {
+        Log.e("TestFace", "网络导入用户信息 startLowLatencyPreview")
+        // 步骤1：立即启动低分辨率预览
+        val resolutionSelector =
+                ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy(Size(640, 480), // 目标分辨率
+                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)).build()
+
+        val preview =
+                Preview.Builder().setResolutionSelector(resolutionSelector) // 替代 setTargetResolution
+                    .build().also {
+                        it.surfaceProvider = binding.previewView1.surfaceProvider
+                    }
+        // 初始化 ImageCapture (拍照)
+        cabinetVM.imageCapture1 =
+                ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).setTargetResolution(Size(640, 480)).build()
+
+        // 初始化 VideoCapture (录像)
+        val recorder =
+                Recorder.Builder().setQualitySelector(QualitySelector.from(Quality.HD)).build()
+        cabinetVM.videoCapture1 = VideoCapture.withOutput(recorder)
+
+        cabinetVM.imageAnalysis1 =
+                ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888).build().also {
+                    it.setAnalyzer(Executors.newSingleThreadExecutor()) { proxy ->
+                        Log.e("TestFace", "网络导入用户信息 setAnalyzer")
+                        cabinetVM.takePictures()
+                    }
+                }
+        // 步骤2：快速绑定摄像头
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        cameraProviderFuture.addListener({
+            try {
+                Log.e("TestFace", "网络导入用户信息 FaceApplication.cameraProviderFuture addListener")
+                cabinetVM.cameraProvider1 = cameraProviderFuture.get()
+                cabinetVM.cameraSelector1 = findExternalCamera1(LENS_FACING_TYPE0)
+                cabinetVM.cameraProvider1?.unbindAll()
+                cabinetVM.cameraSelector1?.let {
+                    cabinetVM.cameraProvider1?.bindToLifecycle(viewLifecycleOwner, it, preview, cabinetVM.imageCapture1, cabinetVM.videoCapture1, cabinetVM.imageAnalysis1)
+                }
+
+            } catch (e: Exception) {
+                Log.e("TestFace", "网络导入用户信息 Fast start failed: ${e.stackTraceToString()}")
+            }
+        }, ContextCompat.getMainExecutor(mActivity?.baseContext!!))
+    }
+
+
+    private fun takePicture1() {
+        // 创建时间戳名称和存储路径
+        val name =
+                SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.getDefault()).format(System.currentTimeMillis())
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
+            }
+        }
+
+        // 创建输出选项
+        val outputOptions =
+                ImageCapture.OutputFileOptions.Builder(requireContext().contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues).build()
+
+        // 执行拍照
+        cabinetVM.imageCapture1?.takePicture(outputOptions, ContextCompat.getMainExecutor(requireContext()), object : ImageCapture.OnImageSavedCallback {
+            override fun onError(exc: ImageCaptureException) {
+                Log.e("TestFace", "拍照失败: ${exc.message}", exc)
+                // 显示错误提示
+                Toast.makeText(requireContext(), "拍照失败: ${exc.message}", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                val msg = "照片已保存: ${output.savedUri}"
+                Log.d("TestFace", msg)
+                // 显示成功提示
+                Toast.makeText(requireContext(), "照片已保存", Toast.LENGTH_SHORT).show()
+
+                // 可以在这里处理保存的照片
+                output.savedUri?.let { uri ->
+                    // 例如: 显示预览或上传到服务器
+                    handleCapturedImage1(uri)
+                }
+            }
+        })
+    }
+
+    // 处理捕获的图像（可选）
+    private fun handleCapturedImage1(uri: Uri) {
+        // 这里可以添加图像处理逻辑
+        // 例如: 显示预览、上传到服务器等
+        Log.d("TestFace", "捕获的图像URI: $uri")
+        try {
+            // 获取目标目录
+            val downloadsDir =
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            val aitionDir = File(downloadsDir, "aition")
+
+            // 确保目录存在
+            if (!aitionDir.exists()) {
+                aitionDir.mkdirs()
+            }
+
+            // 创建时间戳文件名
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val fileName = "1IMG_${timestamp}.jpg"
+            val destFile = File(aitionDir, fileName)
+
+            // 从原始URI读取内容并写入目标文件
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            val outputStream = FileOutputStream(destFile)
+
+            inputStream?.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+
+            Log.d("TestFace", "照片已保存到: ${destFile.absolutePath}")
+            Toast.makeText(requireContext(), "照片已保存到Aition目录", Toast.LENGTH_SHORT).show()
+
+            // 可以在这里添加额外的处理逻辑，如上传到服务器等
+            Luban.with(requireContext()).load(destFile.absolutePath).ignoreBy(100).setTargetDir(aitionDir.absolutePath).filter { path -> !(TextUtils.isEmpty(path) || path.lowercase(Locale.getDefault()).endsWith(".gif")) }.setCompressListener(object : OnCompressListener {
+                override fun onStart() {
+                    println("测试我来了 onStart")
+
+                }
+
+                override fun onSuccess(file: File) {
+                    println("测试我来了 onSuccess ${file.absolutePath}")
+                    Log.e("TestFace", "网络导入用户信息 保存成功")
+                    cabinetVM.taskPicAdd(file.absolutePath)
+
+                }
+
+                override fun onError(e: Throwable) {
+                    println("测试我来了 onError")
+
+                }
+            }).launch()
+
+        } catch (e: Exception) {
+            Log.e("TestFace", "保存照片失败: ${e.message}", e)
+            Toast.makeText(requireContext(), "保存照片失败", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
+    private fun startRecording1() {
+        if (isRecording1) {
+            Log.d("TestFace", "已经在录制中")
+            return
+        }
+
+        // 创建时间戳名称和存储路径
+        val name =
+                SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.getDefault()).format(System.currentTimeMillis())
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/CameraX-Video")
+            }
+        }
+
+        // 创建媒体存储输出选项
+        val mediaStoreOutput =
+                MediaStoreOutputOptions.Builder(requireContext().contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI).setContentValues(contentValues).build()
+
+        // 开始录制
+        cabinetVM.recording1 =
+                cabinetVM.videoCapture1?.output?.prepareRecording(requireContext(), mediaStoreOutput)?.withAudioEnabled()  // 启用音频录制（需要麦克风权限）
+                    ?.start(ContextCompat.getMainExecutor(requireContext())) { recordEvent ->
+                        when (recordEvent) {
+                            is VideoRecordEvent.Start -> {
+                                isRecording1 = true
+                                Log.d("TestFace", "开始录制")
+                                Toast.makeText(requireContext(), "开始录制", Toast.LENGTH_SHORT).show()
+                                // 更新UI，例如显示录制中状态
+                            }
+
+                            is VideoRecordEvent.Finalize -> {
+                                isRecording1 = false
+                                if (!recordEvent.hasError()) {
+                                    val msg = "视频已保存: ${recordEvent.outputResults.outputUri}"
+                                    Log.d("TestFace", msg)
+                                    Toast.makeText(requireContext(), "视频已保存", Toast.LENGTH_SHORT).show()
+
+                                    // 处理保存的视频
+                                    recordEvent.outputResults.outputUri?.let { uri ->
+                                        handleRecordedVideo1(uri)
+                                    }
+                                } else {
+                                    Log.e("TestFace", "录制错误: ${recordEvent.error}")
+                                    cabinetVM.recording1?.close()
+                                    cabinetVM.recording1 = null
+                                    Toast.makeText(requireContext(), "录制失败", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+    }
+
+    private fun stopRecording1() {
+        if (!isRecording1) {
+            Log.d("TestFace", "当前没有在录制")
+            return
+        }
+
+        cabinetVM.recording1?.stop()
+        cabinetVM.recording1 = null
+        isRecording1 = false
+        Log.d("TestFace", "停止录制")
+    }
+
+    // 处理录制的视频（可选）
+    private fun handleRecordedVideo1(uri: Uri) {
+        // 这里可以添加视频处理逻辑
+        // 例如: 显示预览、上传到服务器等
+        Log.d("TestFace", "录制的视频URI: $uri")
+        try {
+            // 获取目标目录
+            val downloadsDir =
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            val aitionDir = File(downloadsDir, "aition")
+
+            // 确保目录存在
+            if (!aitionDir.exists()) {
+                aitionDir.mkdirs()
+            }
+
+            // 创建时间戳文件名
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val fileName = "VID_${timestamp}.mp4"
+            val destFile = File(aitionDir, fileName)
+
+            // 从原始URI读取内容并写入目标文件
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            val outputStream = FileOutputStream(destFile)
+
+            inputStream?.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            // 更新媒体库（可选，使文件在相册中可见）
+            MediaScannerConnection.scanFile(requireContext(), arrayOf(destFile.absolutePath), arrayOf("video/mp4"), null)
+
+            Log.d("TestFace", "视频已保存到: ${destFile.absolutePath}")
+            Toast.makeText(requireContext(), "视频已保存到Aition目录", Toast.LENGTH_SHORT).show()
+
+            // 可以在这里添加额外的处理逻辑，如上传到服务器等
+
+        } catch (e: Exception) {
+            Log.e("TestFace", "保存视频失败: ${e.message}", e)
+            Toast.makeText(requireContext(), "保存视频失败", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /***
+     *  查找外接摄像头
+     * @param selector
+     *  0 前置摄像头头
+     *  1 后置摄像头头
+     *  2 外接摄像头头
+     *  -1 未知摄像头
+     */
+    @androidx.annotation.OptIn(ExperimentalLensFacing::class) @OptIn(ExperimentalLensFacing::class)
+    @SuppressLint("RestrictedApi")
+    private fun findExternalCamera1(selector: Int = CameraSelector.LENS_FACING_EXTERNAL): CameraSelector? {
+        Log.e("TestFace", "网络导入用户信息 findExternalCamera $selector")
+        return cabinetVM.cameraProvider1?.availableCameraInfos?.firstOrNull { info ->
+            val cameraSelector = when (selector) {
+                CameraSelector.LENS_FACING_FRONT -> {
+                    info.cameraSelector.lensFacing == CameraSelector.LENS_FACING_FRONT
+                }
+
+                CameraSelector.LENS_FACING_BACK -> {
+                    info.cameraSelector.lensFacing == CameraSelector.LENS_FACING_BACK
+                }
+
+                CameraSelector.LENS_FACING_EXTERNAL -> {   // 通过特性判断外接摄像头
+                    info.cameraSelector.lensFacing == CameraSelector.LENS_FACING_EXTERNAL
+                }
+
+                else -> {
+                    info.cameraSelector.lensFacing == CameraSelector.LENS_FACING_UNKNOWN
+                }
+            }
+            cameraSelector
+        }?.cameraSelector
+    }
+
+    /***
+     * 启动打开
+     */
+    private fun startFaceUi() {
+        Log.e("TestFace", "网络导入用户信息 startFaceUi if")
+        if (PermissionUtils.hasSelfPermissions(mActivity?.baseContext!!, CAMERA)) {
+            Log.e("TestFace", "网络导入用户信息 startFaceUi if if")
+            cabinetVM.mainScope.launch {
+                startLowLatencyPreview1()
+//                delay(3000)
+//                startLowLatencyPreview2()
+            }
+
+
+        } else {
+            Log.e("TestFace", "网络导入用户信息 startFaceUi if else")
+            goPermissions()
+        }
+    }
+
+    /****************************************权限管理回调***************************************************/
+
+    private fun initPermissions() {
+        Log.e("TestFace", "权限申请 initPermissions")
+        permissionsManager =
+                PermissionsRequester(CAMERA, WRITE_EXTERNAL_STORAGE, activity = mActivity!!, onShowRationale = ::dealShowRationale, onPermissionDenied = ::dealPermissionDenied, onNeverAskAgain = ::dealNeverAskAgain, requiresPermission = ::dealRequiresPermission)
+        permissionsManager.launch()
+    }
+
+    private fun goPermissions() {
+        Log.e("TestFace", "权限申请 initPermissions")
+        permissionsManager =
+                PermissionsRequester(CAMERA, activity = mActivity!!, onShowRationale = ::dealShowRationale, onPermissionDenied = ::dealPermissionDenied, onNeverAskAgain = ::dealNeverAskAgain, requiresPermission = ::dealRequiresPermission2)
+        permissionsManager.launch()
+    }
+
+    fun dealPermissionDenied() {
+        Log.e("TestFace", "权限申请 dealPermissionDenied")
+//        Toast.makeText(mActivity?.baseContext!!, "某些权限被拒绝", Toast.LENGTH_LONG).show()
+    }
+
+    fun dealRequiresPermission() {
+        Log.e("TestFace", "权限申请 dealRequiresPermission")
+//        Toast.makeText(mActivity?.baseContext!!, "授予的所有权限", Toast.LENGTH_LONG).show()
+    }
+
+    fun dealRequiresPermission2() {
+        Log.e("TestFace", "权限申请 dealRequiresPermission2")
+    }
+
+    fun dealShowRationale(request: PermissionRequest) {
+//        try {
+//            Log.e("TestFace", "权限申请 dealShowRationale")
+//            val builder = AlertDialog.Builder(mActivity?.baseContext!!)
+//            val dialog = builder.create()
+//            val dialogView =
+//                    View.inflate(mActivity?.baseContext!!, R.layout.dialog_permission, null)
+//            dialog.setView(dialogView)
+//            dialog.setCanceledOnTouchOutside(false)
+//            val btnCancel = dialogView.findViewById<AppCompatTextView>(R.id.cancel)
+//            val btnOK = dialogView.findViewById<AppCompatTextView>(R.id.ok)
+//            btnCancel.setOnClickListener { v: View? ->
+//                dialog.dismiss()
+//                request.cancel()
+//            }
+//            btnOK.setOnClickListener { v: View? ->
+//                dialog.dismiss()
+//                request.proceed()
+//            }
+//            dialog.setCanceledOnTouchOutside(false)
+//            dialog.show()
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//        }
+
+    }
+
+    fun dealNeverAskAgain() {
+        Log.e("TestFace", "权限申请 dealNeverAskAgain")
+//        Toast.makeText(mActivity?.baseContext!!, "有些许可被拒绝了，再也没有问过。", Toast.LENGTH_LONG)
+//            .show()
+//        val intent: Intent =
+//                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+//        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+//        startActivity(intent)
+    }
+
+    /****************************************权限管理回调***************************************************/
+}

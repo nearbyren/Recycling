@@ -17,7 +17,7 @@ import com.recycling.toolsapp.model.LatticeEntity
     @Insert(onConflict = OnConflictStrategy.IGNORE) fun insert(latticeEntity: LatticeEntity): Long
 
     @Query("select * from LatticeEntity WHERE cabinId = :cabinId")
-    fun queryCabinEntity(cabinId: String): LatticeEntity
+    fun queryLatticeEntity(cabinId: String): LatticeEntity
 
     @Update fun upLatticeEntity(latticeEntity: LatticeEntity): Int
 

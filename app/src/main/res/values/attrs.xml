@@ -461,4 +461,6 @@
         </attr>
         <attr name="sm_progress" format="float" />
     </declare-styleable>
+
+
 </resources>

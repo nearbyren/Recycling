@@ -5,7 +5,9 @@ package com.recycling.toolsapp.socket
  * 状态
  */
 data class HeartStateInfo(
-    //烟雾警报
+    /***
+     * 烟雾警报
+     */
     var smoke: Int? = null,
     /***
      *
@@ -16,16 +18,28 @@ data class HeartStateInfo(
      * 3是红外遮挡并且重量达到（initConfig：irOverflow）
      */
     var capacity: Int? = null,
-    //红外状态
+    /***
+     * 红外状态
+     */
     var irState: Int? = null,
-    //当前重量
+    /***
+     * 当前重量
+     */
     var weigh: Int? = null,
-    //投递门
+    /***
+     * 投递门
+     */
     var doorStatus: Int? = null,
-    //清运门
+    /***
+     * 清运门
+     */
     var lockStatus: Int? = null,
-    //格口ID
+    /***
+     * 格口ID
+     */
     var cabinId: String? = null,
-    //gps
+    /***
+     * gps
+     */
     var gps: GpsInfo? = null,
 )

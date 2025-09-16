@@ -55,21 +55,11 @@
     <uses-permission
         android:name="android.permission.READ_PHONE_NUMBERS"
         tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <uses-feature android:name="android.hardware.camera.any" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <!--  android11 使用tts文字转语音的能力声明  -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
-    </queries>
     <application
         android:name="com.recycling.toolsapp.FaceApplication"
-        android:allowBackup="true"
-        android:debuggable="true"
-        android:icon="@drawable/ic_launcher_gdw"
+        android:icon="@mipmap/ic_launcher_by"
         android:label="回收柜"
         android:networkSecurityConfig="@xml/network_security_config"
         android:largeHeap="true"
@@ -113,6 +103,11 @@
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             tools:ignore="Instantiatable">
+          <!--  <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>-->
+
         </activity>
         <activity
             android:name="com.recycling.toolsapp.StartUiActivity"
@@ -124,25 +119,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
-            <!-- Deep Link Support
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="myapp" />
-            </intent-filter>-->
-            <!-- USB设备过滤器 这里会导致 插入 拔掉 重启activity
-            <intent-filter>
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
-            </intent-filter>
-            <meta-data
-                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/device_filter" />-->
         </activity>
-
     </application>
 
 </manifest>

@@ -20,7 +20,7 @@ object CmdType {
     const val CMD3 = 3
 
     /**
-     * 查询重量
+     * 查询格口重量
      */
     const val CMD4 = 4
 }

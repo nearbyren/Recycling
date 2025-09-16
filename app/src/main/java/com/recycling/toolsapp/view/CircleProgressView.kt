@@ -26,8 +26,8 @@ class CircleProgressView @JvmOverloads constructor(
     private var circleRadius: Float = 0f
     private var strokeWidth: Float = 20f
     private var backgroundColor: Int = Color.LTGRAY
-    private var progressColor: Int = Color.BLUE
-    private var textColor: Int = Color.BLACK
+    private var progressColor: Int = Color.WHITE
+    private var textColor: Int = Color.WHITE
     private var textSize: Float = 50f
 
     // 绘制区域

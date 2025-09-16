@@ -63,7 +63,7 @@ import java.io.IOException
         instance = this
         initLog()
         AppUtils.init(this)
-        initEnjoySDK()
+//        initEnjoySDK()
         createDir()
         initSerialPort()
         initNetWork()
@@ -137,7 +137,7 @@ import java.io.IOException
         enjoySDK.silentInstallRulesSwitch(true)
 //        val appRule = AppRule("com.recycling.toolsapp", true)
 //        val startPackName = enjoySDK.homePackage
-//        enjoySDK.setHomePackage("com.android.launcher3")
+        enjoySDK.setHomePackage("com.android.launcher3")
 //        enjoySDK.setHomePackage("com.recycling.toolsapp")
         //添加APP至 静默安装列表中
 //        enjoySDK.addSilentInstallRules(appRule)
