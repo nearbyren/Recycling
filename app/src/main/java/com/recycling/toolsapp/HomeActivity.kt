@@ -13,7 +13,6 @@ import androidx.annotation.RequiresApi
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -29,9 +28,9 @@ import com.recycling.toolsapp.socket.SocketClient.ConnectionState
 import com.recycling.toolsapp.ui.DeliveryFragment
 import com.recycling.toolsapp.ui.TouSingleFragment
 import com.recycling.toolsapp.ui.TouDoubleFragment
+import com.recycling.toolsapp.utils.CmdType
 import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.CommandParser
-import com.recycling.toolsapp.utils.FragmentCoordinator
 import com.recycling.toolsapp.utils.HexConverter
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.utils.SnackbarUtils
@@ -47,11 +46,11 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
+import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 @AndroidEntryPoint class HomeActivity : BaseBindActivity<ActivityHomeBinding>() {
     private val cabinetVM: CabinetVM by viewModels()
@@ -60,92 +59,16 @@ import java.util.concurrent.TimeUnit
         return R.layout.activity_home
     }
 
-    @RequiresApi(Build.VERSION_CODES.M) override fun initialize(savedInstanceState: Bundle?) {
-        initNetworkState()
-        initDoorStatus()
-        initPort()
-//        countdownUI()
-//        lifeUpgradeApk()
-//        netUpdateApk()
-
-//        lifeUpgradeChip()
-//        netUpdateChip()
-
-        val initSocket = SPreUtil.get(AppUtils.getContext(), "initSocket", false) as Boolean
-        if (initSocket) {
-            initSocket()
-        }
-        cabinetVM.ioScope.launch {
-            // 预热相机Provider 快速启动相机能从6秒到2秒
-            cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
-        }
-        lifecycleScope.launch {
-            cabinetVM.getLoginCmd.collect {
-                if (it) {
-                    binding.acivInit.isVisible = false
-                    toGoUi()
-                }
-            }
-        }
-    }
-
-    private fun initPort() {
-        cabinetVM.timingStatus()
-    }
-
-    private fun initDoorStatus() {
-        lifecycleScope.launch {
-            cabinetVM.isOpenDoor.collect {
-                Loge.d("调试socket 收到开仓指令 $it")
-                if (it) {
-                    navigateTo(fragmentClass = DeliveryFragment::class.java)
-                }
-            }
-        }
-        //门开 门关 状态上报
-        lifecycleScope.launch {
-            cabinetVM.isDeliveryTypeEnd.collect { endType ->
-                //开启定时查询门状态是否关闭完成，后续上传业务
-                Loge.d("调试串口 接收到称重页结束类型 $endType")
-                when (endType) {
-                    //点击
-                    ResultType.RESULT1 -> {
-                        cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
-                    }
-                    //倒计时结束
-                    ResultType.RESULT2 -> {
-                        cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
-                    }
-                    //门已经开了
-                    ResultType.RESULT310 -> {
-//                        cabinetVM.testToGoDownDoorOpen()
-                        //门已经开了 通知服务器
-                        cabinetVM.sendUpRec(CmdValue.CMD_OPEN_DOOR)
-                    }
-
-                    //门已经关闭
-                    ResultType.RESULT301 -> {
-                        //门已经关闭了 通知服务器
-                        cabinetVM.sendUpRec(CmdValue.CMD_CLOSE_DOOR)
-
-                    }
-
-                }
-
-            }
-        }
-    }
-
     @RequiresApi(Build.VERSION_CODES.M) private fun initNetworkState() {
         //全局处理提示信息
         lifecycleScope.launch {
-            cabinetVM._isNetworkMessage.collect {
+            cabinetVM._isNetworkMsg.collect {
                 Loge.d("全局提示信息  $it ${Thread.currentThread().name}")
                 SnackbarUtils.show(activity = this@HomeActivity, message = it, duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
             }
 
         }
-        LiveBus.get("netMessage").observeForever {
+        LiveBus.get(BusType.BUS_NET_MSG).observeForever {
             Loge.d("网络导入用户信息 用户信息异常")
             SnackbarUtils.show(activity = this@HomeActivity, message = it.toString(), duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
         }
@@ -158,7 +81,162 @@ import java.util.concurrent.TimeUnit
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.M) override fun initialize(savedInstanceState: Bundle?) {
+        initNetworkState()
+        initDoorStatus()
+        initPort()
+        val initSocket = SPreUtil.get(AppUtils.getContext(), "initSocket", false) as Boolean
+        if (initSocket) {
+            initSocket()
+        }
+//        cabinetVM.ioScope.launch {
+//            // 预热相机Provider 快速启动相机能从6秒到2秒
+//            cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
+//        }
+
+//        countdownUI()
+//        lifeUpgradeApk()
+//        netUpdateApk()
+
+//        lifeUpgradeChip()
+//        netUpdateChip()
+    }
+
+    private fun initPort() {
+//        cabinetVM.timingStatus()
+        cabinetVM.pollingDoor()
+        cabinetVM.addDoorQueue(CmdType.CMD5)
+//        cabinetVM.addQueueCommand(0)
+
+    }
+
+    /***
+     * 格口 打开 满溢 故障 正常
+     */
+    private fun initDoorStatus() {
+        //门口打开计重页
+        lifecycleScope.launch {
+            cabinetVM.isOpenDoor.collect {
+                Loge.d("调试socket 收到开仓指令 $it")
+                if (it) {
+                    navigateTo(fragmentClass = DeliveryFragment::class.java)
+                }
+            }
+        }
+
+        //格口一状态提示
+        lifecycleScope.launch {
+            cabinetVM.isDoor1Value.collect { value ->
+                Loge.d("调试socket 格口1状态 $value")
+                when (value) {
+                    BusType.BUS_OVERFLOW -> {
+                        LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).post(BusType.BUS_OVERFLOW)
+                    }
+
+                    BusType.BUS_FAULT -> {
+                        LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).post(BusType.BUS_FAULT)
+                    }
+
+                    BusType.BUS_NORMAL -> {
+                        LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).post(BusType.BUS_NORMAL)
+                    }
+                }
+            }
+        }
+        //格口二状态提示
+        lifecycleScope.launch {
+            cabinetVM.isDoor2Value.collect { value ->
+                Loge.d("调试socket 格口2状态 $value")
+                when (value) {
+                    BusType.BUS_OVERFLOW -> {
+                        LiveBus.get(BusType.BUS_TOU2_DOOR_STATUS).post(BusType.BUS_OVERFLOW)
+                    }
+
+                    BusType.BUS_FAULT -> {
+                        LiveBus.get(BusType.BUS_TOU2_DOOR_STATUS).post(BusType.BUS_FAULT)
+                    }
+
+                    BusType.BUS_NORMAL -> {
+                        LiveBus.get(BusType.BUS_TOU2_DOOR_STATUS).post(BusType.BUS_NORMAL)
+                    }
+                }
+            }
+        }
+//        //查询重量回来
+//        lifecycleScope.launch {
+//            cabinetVM.getCurWeight.collect { value ->
+//                Loge.d("调试socket 重量查询回来 $value")
+//                if (value) {
+//                    cabinetVM.toGoUpDoorClose()
+//                }
+//            }
+//        }
+        //查询重量回来
+        lifecycleScope.launch {
+            cabinetVM.getCurWeightType.collect { value ->
+                Loge.d("调试socket 调试串口 重量查询回来 $value")
+                when (value) {
+                    //前
+                    0 -> {
+                        cabinetVM.queryBeforeWeight()
+                    }
+                    //后
+                    1 -> {
+                        cabinetVM.toGoUpDoorClose()
+                    }
+                }
+
+            }
+        }
+
+        //门开 门关 状态上报
+        lifecycleScope.launch {
+            cabinetVM.isDeliveryTypeEnd.collect { endType ->
+                //开启定时查询门状态是否关闭完成，后续上传业务
+                Loge.d("调试socket 调试串口 接收到称重页结束类型 $endType")
+                when (endType) {
+                    //点击
+                    ResultType.RESULT1 -> {
+//                        cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
+                        cabinetVM.testSendCmd2(CmdCode.GE_CLOSE)
+                    }
+                    //倒计时结束
+                    ResultType.RESULT2 -> {
+//                        cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
+                        cabinetVM.testSendCmd2(CmdCode.GE_CLOSE)
+                    }
+                    //门已经开了
+                    ResultType.RESULT310 -> {
+//                        cabinetVM.testToGoDownDoorOpen()
+                        //门已经开了 通知服务器
+                        cabinetVM.sendUpRec(CmdValue.CMD_OPEN_DOOR)
+                    }
+
+                    //门已经关闭
+                    ResultType.RESULT301 -> {
+                        //门已经关闭了 通知服务器
+                        cabinetVM.sendUpRec(CmdValue.CMD_CLOSE_DOOR)
+                    }
+                }
+            }
+        }
+    }
+
+    /***
+     * socket 连接 和 接收服务器下发
+     */
     private fun initSocket() {
+        //socket 登录成功加载页面
+        lifecycleScope.launch {
+            cabinetVM.getLoginCmd.collect {
+                if (it) {
+                    println("调试socket saveInitNet 加载fragment")
+                    binding.acivInit.isVisible = false
+                    toGoUi()
+                }
+            }
+        }
+        //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
             cabinetVM.vmClient = SocketManager.socketClient
             val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
@@ -189,8 +267,8 @@ import java.util.concurrent.TimeUnit
                 val json = String(bytes)
                 BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, json)
                 val cmd = CommandParser.parseCommand(json)
-                when (cmd) {
 
+                when (cmd) {
                     CmdValue.CMD_HEART_BEAT -> {
                         println("调试socket recv: 接收心跳成功")
 
@@ -205,6 +283,7 @@ import java.util.concurrent.TimeUnit
                     CmdValue.CMD_INIT_CONFIG -> {
                         val initConfigModel = Gson().fromJson(json, ConfigBean::class.java)
                         println("调试socket recv: 接收 initConfig 成功")
+                        cabinetVM.saveInitNet(initConfigModel)
                     }
 
                     CmdValue.CMD_OPEN_DOOR -> {
@@ -215,10 +294,13 @@ import java.util.concurrent.TimeUnit
 
                     CmdValue.CMD_CLOSE_DOOR -> {
                         println("调试socket recv: 接收 closeDoor成功")
+                        cabinetVM.refreshWeight()
                     }
 
                     CmdValue.CMD_PHONE_NUMBER_LOGIN -> {
                         println("调试socket recv: 接收 phoneNumberLogin 成功")
+                        val doorOpenModel = Gson().fromJson(json, DoorOpenBean::class.java)
+                        cabinetVM.toGoMobileOpen(doorOpenModel.cabinId ?: "", doorOpenModel.userId ?: "")
                     }
 
                     CmdValue.CMD_PHONE_USER_OPEN_DOOR -> {
@@ -264,59 +346,6 @@ import java.util.concurrent.TimeUnit
         }
     }
 
-    private fun createCode(content: String) {
-        println("调试socket 创建二维码 ${Thread.currentThread().name}")
-        cabinetVM.ioScope.launch {
-            val logoBitmap = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher_by)
-            val bg = BitmapFactory.decodeResource(resources, R.color.black)
-            AwesomeQRCode.Renderer().contents(content).background(bg).size(800) // 增加尺寸以提高可扫描性
-                .roundedDots(true).dotScale(1.6f) // 增加点的大小
-                .colorDark(Color.BLACK) // 深色部分为黑色
-                .colorLight(Color.WHITE) // 浅色部分为白色 - 这是关键修复
-                .whiteMargin(true).margin(20) // 增加边距
-                .logo(logoBitmap).logoMargin(10).logoRadius(10).logoScale(0.15f) // 减小logo尺寸，避免遮挡关键信息
-                .renderAsync(object : AwesomeQRCode.Callback {
-                    override fun onError(renderer: AwesomeQRCode.Renderer, e: Exception) {
-                        e.printStackTrace()
-                    }
-
-                    override fun onRendered(renderer: AwesomeQRCode.Renderer, bitmap: Bitmap) {
-                        cabinetVM.mQrCode = bitmap
-                        println("调试socket 创建二维码保存开始")
-                        saveBitmapToInternalStorage(bitmap, "qrCode.png")
-
-                    }
-                })
-        }
-    }
-
-    fun saveBitmapToInternalStorage(bitmap: Bitmap, fileName: String): String? {
-        // 指定存储目录：/data/data/包名/files/userAvatar/
-//        val dir = File(AppUtils.getContext().filesDir, "faceVerify")
-        val dir = FileMdUtil.matchNewFile("res")
-        if (!dir.exists()) {
-            dir.mkdirs() // 创建目录
-        }
-
-        // 创建保存文件
-        val file = File(dir, fileName)
-        var fos: FileOutputStream? = null
-
-        try {
-            fos = FileOutputStream(file)
-            // 将 Bitmap 压缩为 PNG 格式保存
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-            fos.flush()
-            return file.absolutePath // 返回保存路径
-        } catch (e: IOException) {
-            e.printStackTrace()
-
-        } finally {
-            fos?.close() // 关闭输出流
-        }
-        return null
-    }
-
     fun toGoUi() {
         intent.data?.toString()?.let { deepLink ->
             if (!fragmentCoordinator.handleDeepLink(deepLink)) {
@@ -336,7 +365,6 @@ import java.util.concurrent.TimeUnit
         })
 
     }
-
 
     private fun netUpdateApk() {
         cabinetVM.downloadApk("", System.currentTimeMillis().toString())
@@ -502,7 +530,6 @@ import java.util.concurrent.TimeUnit
         }
     }
 
-
     private fun countdownUI() {
         // 在 Activity/Fragment 中收集状态
         lifecycleScope.launch {
@@ -537,7 +564,6 @@ import java.util.concurrent.TimeUnit
             }
         }
     }
-
 
     private fun updateNetworkStatus(isConnected: Boolean) {
         if (isConnected) {
@@ -601,5 +627,4 @@ import java.util.concurrent.TimeUnit
         hideActionBar()
         hideActionBarBack()
     }
-
 }

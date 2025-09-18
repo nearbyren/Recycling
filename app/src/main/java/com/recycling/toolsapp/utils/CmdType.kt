@@ -23,4 +23,14 @@ object CmdType {
      * 查询格口重量
      */
     const val CMD4 = 4
+
+    /**
+     * 查询当前设备状态
+     */
+    const val CMD5 = 5
+
+    /**
+     * 灯光控制查询
+     */
+    const val CMD6 = 6
 }

@@ -18,7 +18,6 @@ object ResultType {
      */
     const val RESULT310 = 310
 
-
     /***
      * 读取下位机 门关
      */

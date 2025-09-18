@@ -50,41 +50,6 @@ object BoxToolLogUtils {
         }
     }
 
-    /****
-     * 工具箱集合信息
-     * @param lowerMachines
-     */
-    fun recordLowerBox(lowerMachines: List<PortDeviceInfo>) {
-        val builder = StringBuilder()
-        val time = AppUtils.getDateYMDHMS()
-        for (box in lowerMachines) {
-            val boxCode = String.format(Locale.CHINA, "%02d", box.boxCode)
-            builder.append(time).append(" | ").append(boxCode).append(" | ").append(box.boxDoorStatus).append(" | ").append(box.boxSn).append(" | ").append(box.boxElectric).append('\n')
-
-        }
-        builder.append("---------------------------------------------------").append('\n')
-        try {
-            val fileName = "box--${AppUtils.getDateYMD()}.txt"
-            val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/box_info/"
-            val dirs = File(path)
-            if (!dirs.exists()) {
-                dirs.mkdirs()
-            }
-            val file = File(path, fileName)
-            if (!file.exists()) {
-                file.createNewFile()
-            }
-            // 追加写入模式
-            val fos = FileOutputStream(file, true)
-            val bos = BufferedOutputStream(fos)
-            bos.write(builder.toString().toByteArray())
-            bos.flush()
-            bos.close()
-        } catch (e: SecurityException) {
-            Loge.d("BoxToolLogUtils recordLowerBox an error occured while writing file...$e")
-        }
-    }
 
     /****
      * 工具箱工具信息

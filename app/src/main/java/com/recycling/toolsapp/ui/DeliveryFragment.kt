@@ -3,9 +3,11 @@ package com.recycling.toolsapp.ui
 import android.Manifest.permission.CAMERA
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.util.Size
+import android.view.View
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageView
@@ -19,6 +21,7 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -26,6 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.bumptech.glide.Glide
 import com.google.android.material.internal.ViewUtils.dpToPx
+import com.google.android.material.snackbar.Snackbar
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentDeliveryBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
@@ -35,6 +39,7 @@ import com.recycling.toolsapp.utils.PermissionsRequester
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.CountdownTimer
+import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import com.youth.banner.adapter.BannerImageAdapter
 import com.youth.banner.holder.BannerImageHolder
@@ -43,6 +48,8 @@ import com.youth.banner.indicator.RoundLinesIndicator
 import com.youth.banner.util.BannerUtils.setBannerRound
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import nearby.lib.signal.livebus.BusType
+import nearby.lib.signal.livebus.LiveBus
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.random.Random
@@ -70,29 +77,48 @@ import kotlin.random.Random
 
 
     override fun initialize(savedInstanceState: Bundle?) {
-        setCountdown(60)
-        //倒计时
-        binding.cpvView.setMaxProgress(60)
-        //标题
-        binding.tvTitle
-        //当前称重
-        binding.tvWeightValue.text
-        //当前金额
-        binding.tvMoneyValue.text
+        refresh()
+        LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
+            when (msg) {
+                BusType.BUS_REFRESH_DATA->{
+                    refresh()
+                }
+            }
+        }
+        LiveBus.get(BusType.BUS_DELIVERY_STATUS).observeForever { msg ->
+            Loge.d("网络导入用户信息 用户信息异常")
+            binding.tvOperation.isEnabled = true
+            binding.tvOperation.text = "仓门已经打开"
+            when (msg) {
+                BusType.BUS_DELIVERY_CLOSE -> {
+                    mActivity?.fragmentCoordinator?.navigateBack()
+                }
+
+                BusType.BUS_DELIVERY_ABNORMAL -> {
+                    binding.tvOperation.text = "格口关闭异常，再点击关闭"
+                }
+            }
+        }
+        initClick()
+        initCountdown()
+//        initBanner()
+//        initBanner2()
+        upgradeAi()
+//        initCameraX()
+
+    }
+
+    private fun initClick(){
         //图片
 //        binding.aivShowPhoto
         //按钮
         binding.tvOperation.text
         binding.tvOperation.setOnClickListener {
-            mActivity?.fragmentCoordinator?.navigateBack()
+            println("调试socket 调试串口 点击关闭")
             cabinetVM.testTypeEnd(ResultType.RESULT1)
-
+            binding.tvOperation.isEnabled = false
+            binding.tvOperation.text = "正在关闭仓门"
         }
-
-//        initBanner()
-//        initBanner2()
-        upgradeAi()
-        cabinetVM.startTimer(60)
         binding.tvMoney.setOnClickListener {
             val r = Random.nextInt(0, imageUrls.size)
 //            imageUrls2.add(imageUrls[r])
@@ -109,14 +135,12 @@ import kotlin.random.Random
             binding.llPhoto.addView(iv)
             scrollToPosition(binding.llPhoto.size)
         }
-        initCameraX()
-//        lifecycleScope.launch {
-//            cabinetVM.getTakePic.collect { url ->
-//                Log.e("TestFace", "网络导入用户信息 刷新照片")
-//                imageUrls2.add(url)
-//                binding.banner.setDatas(imageUrls2)
-//            }
-//        }
+    }
+    private fun initCountdown(){
+        setCountdown(300)
+        //倒计时
+        binding.cpvView.setMaxProgress(300)
+        cabinetVM.startTimer(300)
     }
 
     fun scrollToPosition(position: Int) {
@@ -135,7 +159,40 @@ import kotlin.random.Random
         scrollView.smoothScrollTo(targetScroll, 0)
     }
 
+    private fun refresh() {
+        //标题
+        binding.tvTitle
+        val curWeightValue = when (cabinetVM.doorGeX) {
+            CmdCode.GE1 -> {
+                cabinetVM.subtractFloats(cabinetVM.weight1After ?: "0.00", cabinetVM.weight1Before ?: "0.00")
+            }
+
+            CmdCode.GE2 -> {
+                cabinetVM.  subtractFloats(cabinetVM.weight2After ?: "0.00", cabinetVM.weight2Before ?: "0.00")
+            }
+
+            else -> {
+                "0.00"
+            }
+        }
+        //当前称重
+        binding.tvWeightValue.text = "$curWeightValue 公斤"
+
+        val price = cabinetVM.curGePrice ?: "0.6"
+        println("调试socket 调试串口 重量：${curWeightValue} | $price")
+        val floatValue = cabinetVM.multiplyFloats(price, curWeightValue )
+        //当前金额
+        binding.tvMoneyValue.text ="$floatValue 元"
+    }
+
     fun initCameraX() {
+//        lifecycleScope.launch {
+//            cabinetVM.getTakePic.collect { url ->
+//                Log.e("TestFace", "网络导入用户信息 刷新照片")
+//                imageUrls2.add(url)
+//                binding.banner.setDatas(imageUrls2)
+//            }
+//        }
         val manager = mActivity?.supportFragmentManager
         manager?.let {
             val beginTransaction = it.beginTransaction()
@@ -181,7 +238,7 @@ import kotlin.random.Random
                 cabinetVM.countdownState.collect { state ->
                     when (state) {
                         is CountdownTimer.CountdownState.Starting -> {
-                            binding.cpvView.setMaxProgress(10)
+                            binding.cpvView.setMaxProgress(300)
 
                         }
 

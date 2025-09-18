@@ -8,7 +8,9 @@ import com.serial.port.EnumTextBoxInfo
 import com.serial.port.EnumToolsStatus
 import com.serial.port.EnumTxStatus
 import com.serial.port.PortDeviceInfo
+import com.serial.port.call.CommandCalibrationResultListener
 import com.serial.port.call.CommandDoorResultListener
+import com.serial.port.call.CommandLightsResultListener
 import com.serial.port.call.CommandOpenResultListener
 import com.serial.port.call.CommandQueryBeanResultListener
 import com.serial.port.call.CommandQueryInternalListResultListener
@@ -299,6 +301,30 @@ class SerialVM : ViewModel() {
         this.commandWeightResultListener = CommandWeightResultListener { weight ->
             // 调用传递的回调
             callback(weight)
+        }
+    }
+
+    /***
+     *
+     * 灯光
+     */
+    private var commandLightsResultListener: CommandLightsResultListener? = null
+    fun addCommandLightsResultListener(callback: (Int, Int) -> Unit) {
+        this.commandLightsResultListener = CommandLightsResultListener { number, status ->
+            // 调用传递的回调
+            callback(number, status)
+        }
+    }
+
+    /***
+     *
+     * 校准
+     */
+    private var commandCalibrationResultListener: CommandCalibrationResultListener? = null
+    fun addCommandCalibrationResultListener(callback: (Int, Int) -> Unit) {
+        this.commandCalibrationResultListener = CommandCalibrationResultListener { number, status ->
+            // 调用传递的回调
+            callback(number, status)
         }
     }
 
@@ -817,7 +843,7 @@ class SerialVM : ViewModel() {
         val command = packet[seek]
         var dataLength = -1
         when (command) {
-            0.toByte(), 1.toByte(), 2.toByte(), 3.toByte(), 4.toByte(), 7.toByte(), 8.toByte(), 9.toByte(), 10.toByte(), 11.toByte() -> {
+            0.toByte(), 1.toByte(), 2.toByte(), 3.toByte(), 4.toByte(), 5.toByte(), 7.toByte(), 8.toByte(), 9.toByte(), 10.toByte(), 11.toByte() -> {
                 // 提取数据长度，并将其转换为无符号整数
                 dataLength = packet[length].toUByte().toInt()  // 将有符号字节转换为无符号整数
             }
@@ -833,23 +859,22 @@ class SerialVM : ViewModel() {
         val before = packet.size - 1
         Loge.i("串口232", "接232 0.toByte 排除帧尾长度：$before 数据域长度：$dataLength")
         when (command) {
-
             //启动格口开关
             1.toByte() -> {
                 //取出完整数据
                 val toIndex = 4 + dataLength
                 if (before != toIndex) {
-                    Loge.i("串口232", "接232 5.toByte 数据长度与数据域不匹配")
+                    Loge.i("串口232", "接232 1.toByte 数据长度与数据域不匹配")
                     commandTurnResultListener?.openResult(-1, DoorStatus.FAIL)
                     return
                 }
                 val data = packet.copyOfRange(4, 4 + dataLength)
-                Loge.i("串口232", "接232 5.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
+                Loge.i("串口232", "接232 1.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
                 for (i in data.indices step 2) {
                     val end = (i + 2).coerceAtMost(data.size)
                     val group = data.copyOfRange(i, end)
                     val size = group.size
-                    Loge.i("串口232", "接232 5.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
+                    Loge.i("串口232", "接232 1.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
                     val locker = group[0].toInt()
                     val status = group[1].toInt()
                     if (status == 1) {
@@ -859,17 +884,42 @@ class SerialVM : ViewModel() {
                     }
                 }
             }
-            //清运门
-            2.toByte() ->{
+            //启动格口状态查询
+            2.toByte() -> {
                 //取出完整数据
                 val toIndex = 4 + dataLength
                 if (before != toIndex) {
                     Loge.i("串口232", "接232 2.toByte 数据长度与数据域不匹配")
-                    commandOpenResultListener?.openResult(-1, CommandStatus.FAIL)
+                    commandDoorResultListener?.openResult(DoorStatus.FAIL)
                     return
                 }
                 val data = packet.copyOfRange(4, 4 + dataLength)
                 Loge.i("串口232", "接232 2.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
+                for (i in data.indices step 2) {
+                    val end = (i + 2).coerceAtMost(data.size)
+                    val group = data.copyOfRange(i, end)
+                    val size = group.size
+                    Loge.i("串口232", "接232 2.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
+                    val locker = group[0].toInt()
+                    val status = group[1].toInt()
+                    if (status == 1) {
+                        commandDoorResultListener?.openResult(DoorStatus.SUCCEED)
+                    } else {
+                        commandDoorResultListener?.openResult(DoorStatus.FAIL)
+                    }
+                }
+            }
+            //清运门
+            3.toByte() -> {
+                //取出完整数据
+                val toIndex = 4 + dataLength
+                if (before != toIndex) {
+                    Loge.i("串口232", "接232 3.toByte 数据长度与数据域不匹配")
+                    commandOpenResultListener?.openResult(-1, CommandStatus.FAIL)
+                    return
+                }
+                val data = packet.copyOfRange(4, 4 + dataLength)
+                Loge.i("串口232", "接232 3.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
                 isOpenRecData.set(true)
                 for (i in data.indices step 2) {
                     val end = (i + 2).coerceAtMost(data.size)
@@ -885,34 +935,9 @@ class SerialVM : ViewModel() {
                         isOpenStatus.set(false)
 //                        commandOpenResultListener?.openResult(locker, CommandStatus.FAIL)
                     }
-                    Loge.i("串口232", "接232 2.toByte -----------------------------------------------------------")
+                    Loge.i("串口232", "接232 3.toByte -----------------------------------------------------------")
                 }
 
-            }
-            //启动格口状态查询
-            3.toByte() -> {
-                //取出完整数据
-                val toIndex = 4 + dataLength
-                if (before != toIndex) {
-                    Loge.i("串口232", "接232 3.toByte 数据长度与数据域不匹配")
-                    commandDoorResultListener?.openResult(DoorStatus.FAIL)
-                    return
-                }
-                val data = packet.copyOfRange(4, 4 + dataLength)
-                Loge.i("串口232", "接232 3.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
-                for (i in data.indices step 2) {
-                    val end = (i + 2).coerceAtMost(data.size)
-                    val group = data.copyOfRange(i, end)
-                    val size = group.size
-                    Loge.i("串口232", "接232 3.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
-                    val locker = group[0].toInt()
-                    val status = group[1].toInt()
-                    if (status == 1) {
-                        commandDoorResultListener?.openResult(DoorStatus.SUCCEED)
-                    } else {
-                        commandDoorResultListener?.openResult(DoorStatus.FAIL)
-                    }
-                }
             }
             //查询重量
             4.toByte() -> {
@@ -938,8 +963,129 @@ class SerialVM : ViewModel() {
                     commandWeightResultListener?.weightResult(CommandStatus.FAIL)
                 }
             }
+            //查询当前设备状态
+            5.toByte() -> {
+                //取出完整数据
+                val toIndex = 4 + dataLength
+                if (before != toIndex) {
+                    Loge.i("串口232", "接232 5.toByte 数据长度与数据域不匹配")
+                    commandQueryListResultListener?.queryResult(arrayListOf())
+                    return
+                }
+                val data = packet.copyOfRange(4, 4 + dataLength)
+                Loge.i("串口232", "接232 5.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
+                val list = mutableListOf<PortDeviceInfo>()
+
+                val tg1 = data.copyOfRange(0, 11)
+                Loge.i("串口232", "接232 测试 1 ${ByteUtils.toHexString(tg1)}")
+                val weight1 = tg1.copyOfRange(1,5)
+                Loge.i("串口232", "接232 5.toByte 取1重量：${HexConverter.byteArrayToInt(weight1)}")
+                val status1 = tg1.copyOfRange(5, 11)
+                //烟雾传感器
+                var smokeValue1 = 1
+                //红外传感器
+                var irStateValue1 = -1
+                //关门传感器
+                var touCGStatusValue1 = 0
+                //投口门状态
+                var doorStatusValue1: Int = -1
+                //清运门状态
+                var lockStatusValue1: Int = -1
+                //校准状态
+                var xzStatusValue1: Int = -1
+                for (i in status1.indices step 6) {
+                    val end = (i + 6).coerceAtMost(status1.size)
+                    val group = status1.copyOfRange(i, end)
+                    val size = group.size
+                    Loge.i("串口232", "接232 5.toByte 取1数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
+                    smokeValue1 = group[0].toUByte().toInt()
+                    irStateValue1= group[1].toUByte().toInt()
+                    touCGStatusValue1 = group[2].toUByte().toInt()
+                    doorStatusValue1 = group[3].toUByte().toInt()
+                    lockStatusValue1 = group[4].toUByte().toInt()
+                    xzStatusValue1 = group[5].toUByte().toInt()
+                }
+                val weighValue1 = HexConverter.byteArrayToInt(weight1)
+                list.add(PortDeviceInfo().apply {
+                    weigh = HexConverter.getWeight(weighValue1)
+                    smoke = smokeValue1
+                    irState = irStateValue1
+                    touCGStatus = touCGStatusValue1
+                    doorStatus = doorStatusValue1
+                    lockStatus = lockStatusValue1
+                    xzStatus = xzStatusValue1
+                })
 
 
+//
+                val tg2 = data.copyOfRange(11, 22)
+                Loge.i("串口232", "接232 测试 2 ${ByteUtils.toHexString(tg2)}")
+                val weight2 = tg2.copyOfRange(1, 5)
+                Loge.i("串口232", "接232 5.toByte 取2重量：${HexConverter.byteArrayToInt(weight2)}")
+                val status2 = tg2.copyOfRange(5, 11)
+                Loge.i("串口232", "接232 测试 2 ${ByteUtils.toHexString(status2)}")
+                //烟雾传感器
+                var smokeValue2 = 1
+                //红外传感器
+                var irStateValue2 = -1
+                //关门传感器
+                var touCGStatusValue2 = 0
+                //投口门状态
+                var doorStatusValue2: Int = -1
+                //清运门状态
+                var lockStatusValue2: Int = -1
+                //校准状态
+                var xzStatusValue2: Int = -1
+                for (i in status2.indices step 6) {
+                    val end = (i + 6).coerceAtMost(status2.size)
+                    val group = status2.copyOfRange(i, end)
+                    val size = group.size
+                    Loge.i("串口232", "接232 5.toByte 取2数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
+                    smokeValue2 = group[0].toUByte().toInt()
+                    irStateValue2= group[1].toUByte().toInt()
+                    touCGStatusValue2 = group[2].toUByte().toInt()
+                    doorStatusValue2 = group[3].toUByte().toInt()
+                    lockStatusValue2 = group[4].toUByte().toInt()
+                    xzStatusValue2 = group[5].toUByte().toInt()
+                }
+                val weighValue2 = HexConverter.byteArrayToInt(weight2)
+                list.add(PortDeviceInfo().apply {
+                    weigh = HexConverter.getWeight(weighValue2)
+                    smoke = smokeValue2
+                    irState = irStateValue2
+                    touCGStatus = touCGStatusValue2
+                    doorStatus = doorStatusValue2
+                    lockStatus = lockStatusValue2
+                    xzStatus = xzStatusValue2
+                })
+                commandQueryListResultListener?.queryResult(list)
+
+            }
+            //灯光控制
+            6.toByte() -> {
+                //取出完整数据
+                val toIndex = 4 + dataLength
+                if (before != toIndex) {
+                    Loge.i("串口232", "接232 6.toByte 数据长度与数据域不匹配")
+                    commandLightsResultListener?.lightsResult(-1, DoorStatus.FAIL)
+                    return
+                }
+                val data = packet.copyOfRange(4, 4 + dataLength)
+                Loge.i("串口232", "接232 6.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
+                for (i in data.indices step 2) {
+                    val end = (i + 2).coerceAtMost(data.size)
+                    val group = data.copyOfRange(i, end)
+                    val size = group.size
+                    Loge.i("串口232", "接232 6.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
+                    val locker = group[0].toInt()
+                    val status = group[1].toInt()
+                    if (status == 1) {
+                        commandLightsResultListener?.lightsResult(locker, DoorStatus.SUCCEED)
+                    } else {
+                        commandLightsResultListener?.lightsResult(locker, DoorStatus.FAIL)
+                    }
+                }
+            }
 
             //进入升级状态 查询状态 升级完成重启
             7.toByte(), 8.toByte(), 10.toByte() -> {
@@ -1077,6 +1223,17 @@ class SerialVM : ViewModel() {
                     commandUpgrade232ResultListener?.upgradeResult(CommandStatus.FAIL)
                 }
             }
+
+            //去零清皮
+            16.toByte() -> {}
+            //校准零点
+            17.toByte() -> {}
+            //校准2KG
+            18.toByte() -> {}
+            //校准25KG
+            19.toByte() -> {}
+            //校准60KG
+            20.toByte() -> {}
         }
     }
 

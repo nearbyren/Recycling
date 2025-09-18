@@ -77,22 +77,6 @@ object DatabaseManager {
 
     }
 
-    private fun initState() {
-        println("调试socket  initState")
-        val state = StateEntity().apply {
-            smoke = 0
-            capacity = 0
-            irState = 0
-            weigh = 0f
-            doorStatus = 0
-            lockStatus = 0
-            cabinId = "12345679"
-            time = AppUtils.getDateYMDHMS()
-        }
-        val row = insertState(AppUtils.getContext(), state)
-        println("调试socket  initState row $row")
-    }
-
     fun copyDatabase(context: Context, databaseName: String = DATABASE_NAME) {
         val dbFile = File(DATABASE_PATH + DATABASE_NAME)
         //导出的文件路径+文件名称
@@ -171,7 +155,13 @@ object DatabaseManager {
     private fun getLatticeFlowDao(context: Context): LatticeFlowDao {
         return getDatabase(context).latticeFlow()
     }
-
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     */
+    fun queryLattices(context: Context): List<LatticeEntity> {
+        return getLatticeFlowDao(context).queryLattices()
+    }
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -190,7 +180,6 @@ object DatabaseManager {
     fun upLatticeEntity(context: Context, latticeEntity: LatticeEntity): Int {
         return getLatticeFlowDao(context).upLatticeEntity(latticeEntity)
     }
-
 
     /***
      * 提供外部 API 方法
@@ -229,7 +218,15 @@ object DatabaseManager {
     fun queryStateEntity(context: Context, cabinId: String): StateEntity {
         return getStateFlowDao(context).queryStateEntity(cabinId)
     }
-
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param stateEntity
+     * @return
+     */
+    fun upStateEntity(context: Context, stateEntity: StateEntity): Int {
+        return getStateFlowDao(context).upStateEntity(stateEntity)
+    }
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -260,6 +257,7 @@ object DatabaseManager {
     fun insertConfig(context: Context, configEntity: ConfigEntity): Long {
         return getInitConfigFlowDao(context).insert(configEntity)
     }
+
     /**
      * 提供外部 API 方法
      * @param context 上下文
@@ -269,7 +267,6 @@ object DatabaseManager {
     fun upConfigEntity(context: Context, configEntity: ConfigEntity): Int {
         return getInitConfigFlowDao(context).upConfigEntity(configEntity)
     }
-
 
     /***
      * 提供外部 API 方法
@@ -309,7 +306,7 @@ object DatabaseManager {
      * @param transId
      */
     fun upTransCloseStatus(context: Context, closeStatus: Int, transId: String) {
-         getTransFlowDao(context).upTransCloseStatus(closeStatus, transId)
+        getTransFlowDao(context).upTransCloseStatus(closeStatus, transId)
     }
 
     /***
@@ -319,20 +316,18 @@ object DatabaseManager {
      * @param transId
      */
     fun upTransOpenStatus(context: Context, openStatus: Int, transId: String) {
-         getTransFlowDao(context).upTransOpenStatus(openStatus, transId)
+        getTransFlowDao(context).upTransOpenStatus(openStatus, transId)
     }
 
     /***
      * 提供外部 API 方法
      * @param context 上下文
      */
-    fun queryTransMax(context: Context) :TransEntity{
-       return  getTransFlowDao(context).queryTransMax()
+    fun queryTransMax(context: Context): TransEntity {
+        return getTransFlowDao(context).queryTransMax()
     }
 
     /***************************************获取 打开仓 实例*************************************************/
-
-
 
     /***************************************获取 记录当前重量 实例*************************************************/
     /***
@@ -353,9 +348,34 @@ object DatabaseManager {
         return getWeightFlowDao(context).insert(weightEntity)
     }
 
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     */
+    fun queryWeightMax(context: Context): WeightEntity {
+        return getWeightFlowDao(context).queryWeightMax()
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param status
+     * @param transId
+     */
+    fun upWeightStatus(context: Context, status: Int, transId: String) {
+        getWeightFlowDao(context).upWeightStatus(status, transId)
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param transId
+     */
+    fun queryWeightEntity(context: Context, transId: String): WeightEntity {
+        return getWeightFlowDao(context).queryWeightEntity(transId)
+    }
 
     /***************************************获取 记录当前重量*************************************************/
-
 
     /***************************************获取 资源 实例*************************************************/
     /***
@@ -375,6 +395,7 @@ object DatabaseManager {
     fun insertRes(context: Context, resourceEntity: ResEntity): Long {
         return getResFlowDao(context).insert(resourceEntity)
     }
+
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -384,6 +405,7 @@ object DatabaseManager {
     fun queryRes(context: Context, filename: String): ResEntity {
         return getResFlowDao(context).queryRes(filename)
     }
+
     /**
      * 提供外部 API 方法
      * @param context 上下文
@@ -395,8 +417,6 @@ object DatabaseManager {
     }
 
     /***************************************获取 资源*************************************************/
-
-
 
     /***************************************获取 日志记录 实例*************************************************/
     /***
@@ -425,7 +445,6 @@ object DatabaseManager {
     fun queryLogs(context: Context): Flow<List<LogEntity>> {
         return getLogInfoFlowDao(context).queryLoginInfos()
     }
-
 
     /***************************************获取 日志记录 实例*************************************************/
 

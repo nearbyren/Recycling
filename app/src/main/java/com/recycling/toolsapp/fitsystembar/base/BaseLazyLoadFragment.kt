@@ -14,6 +14,7 @@ import com.recycling.toolsapp.ui.TouDoubleFragment
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
 import nearby.lib.netwrok.response.SPreUtil
+import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
 
 
@@ -51,7 +52,7 @@ abstract class BaseLazyLoadFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        LiveBus.get("resetCountdown").observeForever {
+        LiveBus.get(BusType.BUS_RESET_COUNTDOWN).observeForever {
             resetCountdown()
         }
     }

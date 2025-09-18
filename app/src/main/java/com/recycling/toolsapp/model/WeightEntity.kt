@@ -21,31 +21,31 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "transId", typeAffinity = TEXT, defaultValue = "") var transId: String? = null,
     /***
-     * 当前重量
+     * 物品上称后的体重【关键字段】
      */
     @ColumnInfo(name = "curWeight", typeAffinity = TEXT, defaultValue = "") var curWeight: String? = null,
     /***
-     * 改变重量
-     */
-    @ColumnInfo(name = "changeWeight", typeAffinity = TEXT, defaultValue = "") var changeWeight: String? = null,
-    /***
-     * 刷新重量
+     * 上称物品的重量
      */
     @ColumnInfo(name = "refWeight", typeAffinity = TEXT, defaultValue = "") var refWeight: String? = null,
     /***
-     * 更新前重量
+     * 上称物品的重量【关键字段】
+     */
+    @ColumnInfo(name = "changeWeight", typeAffinity = TEXT, defaultValue = "") var changeWeight: String? = null,
+    /***
+     * 未上称物品前重量
      */
     @ColumnInfo(name = "beforeUpWeight", typeAffinity = TEXT, defaultValue = "") var beforeUpWeight: String? = null,
     /***
-     * 更新后重量
+     * 未上称物品后重量
      */
     @ColumnInfo(name = "afterUpWeight", typeAffinity = TEXT, defaultValue = "") var afterUpWeight: String? = null,
     /***
-     * 减重前重量
+     * 上称物品前重量
      */
     @ColumnInfo(name = "beforeDownWeight", typeAffinity = TEXT, defaultValue = "") var beforeDownWeight: String? = null,
     /***
-     * 减重后重量
+     * 上称物品后重量
      */
     @ColumnInfo(name = "afterDownWeight", typeAffinity = TEXT, defaultValue = "") var afterDownWeight: String? = null,
 

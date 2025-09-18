@@ -85,7 +85,14 @@ import androidx.room.PrimaryKey
      *重量
      */
     @ColumnInfo(name = "weight", typeAffinity = TEXT, defaultValue = "") var weight: String? = null,
-
+    /***
+     *时刻检测的总重量
+     */
+    @ColumnInfo(name = "weightMonitor", typeAffinity = TEXT, defaultValue = "") var weightMonitor: String? = null,
+    /***
+     *默认的总重量
+     */
+    @ColumnInfo(name = "weightDefault", typeAffinity = TEXT, defaultValue = "100.00") var weightDefault: String? = null,
     ) {
     @Ignore constructor() : this(
         0,
@@ -106,11 +113,12 @@ import androidx.room.PrimaryKey
         null,
         0,
         null,
-
+        null,
+        null,
         )
 
     override fun toString(): String {
-        return "id=$id," + "cabinId=${cabinId}," + "capacity=${capacity}," + "createTime=${createTime}," + "delFlag=${delFlag}," + "doorStatus=${doorStatus}," + "filledTime=${filledTime}," + "netId=${netId}," + "ir=${ir}," + "overweight=${overweight}," + "overweight=${overweight}," + "price=${price}," + "rodHinderValue=${rodHinderValue}," + "sn=${sn}," + "smoke=${smoke}," + "sort=${sort}," + "sync=${sync}," + "volume=${volume}," + "weight=${weight}"
+        return "id=$id," + "cabinId=${cabinId}," + "capacity=${capacity}," + "createTime=${createTime}," + "delFlag=${delFlag}," + "doorStatus=${doorStatus}," + "filledTime=${filledTime}," + "netId=${netId}," + "ir=${ir}," + "overweight=${overweight}," + "overweight=${overweight}," + "price=${price}," + "rodHinderValue=${rodHinderValue}," + "sn=${sn}," + "smoke=${smoke}," + "sort=${sort}," + "sync=${sync}," + "volume=${volume}," + "weight=${weight}," + "weightMonitor=${weightMonitor}," + "weightDefault=${weightDefault}"
     }
 }
 

@@ -52,12 +52,12 @@
                     android:textColor="@color/white"
                     android:textSize="@dimen/sp_20"
                     android:textStyle="bold"
-                    app:layout_constraintBaseline_toBaselineOf="@id/tv_value2"
+                    app:layout_constraintBaseline_toBaselineOf="@id/tv_single_price"
                     app:layout_constraintLeft_toLeftOf="parent"
-                    app:layout_constraintRight_toLeftOf="@+id/tv_value2" />
+                    app:layout_constraintRight_toLeftOf="@+id/tv_single_price" />
 
                 <androidx.appcompat.widget.AppCompatTextView
-                    android:id="@+id/tv_value2"
+                    android:id="@+id/tv_single_price"
                     android:layout_width="wrap_content"
                     android:layout_height="0dp"
                     android:layout_marginLeft="@dimen/dp_5"
@@ -78,8 +78,8 @@
                     android:text="元"
                     android:textColor="@color/yellow"
                     android:textSize="@dimen/sp_25"
-                    app:layout_constraintBaseline_toBaselineOf="@id/tv_value2"
-                    app:layout_constraintLeft_toRightOf="@+id/tv_value2"
+                    app:layout_constraintBaseline_toBaselineOf="@id/tv_single_price"
+                    app:layout_constraintLeft_toRightOf="@+id/tv_single_price"
                     app:layout_constraintRight_toLeftOf="@+id/tv_value4" />
 
                 <androidx.appcompat.widget.AppCompatTextView
@@ -92,8 +92,8 @@
                     android:textColor="@color/white"
                     android:textSize="@dimen/sp_20"
                     android:textStyle="bold"
-                    app:layout_constraintBaseline_toBaselineOf="@id/tv_value2"
-                    app:layout_constraintBottom_toBottomOf="@+id/tv_value2"
+                    app:layout_constraintBaseline_toBaselineOf="@id/tv_single_price"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_single_price"
                     app:layout_constraintLeft_toRightOf="@+id/tv_value3" />
 
 
@@ -109,7 +109,7 @@
                 app:layout_constraintTop_toBottomOf="@+id/cl_number">
 
                 <androidx.appcompat.widget.AppCompatTextView
-                    android:id="@+id/tv_zl_value"
+                    android:id="@+id/tv_cur_weight"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="当前重量(kg)：15.00"
@@ -121,7 +121,7 @@
                     app:layout_constraintTop_toTopOf="parent" />
 
                 <androidx.appcompat.widget.AppCompatTextView
-                    android:id="@+id/tv_ketou_value"
+                    android:id="@+id/tv_votable_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/dp_2"
@@ -132,7 +132,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintLeft_toLeftOf="parent"
                     app:layout_constraintRight_toRightOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/tv_zl_value" />
+                    app:layout_constraintTop_toBottomOf="@+id/tv_cur_weight" />
 
 
             </androidx.constraintlayout.widget.ConstraintLayout>
@@ -247,7 +247,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/ic_gzda"
-            android:visibility="visible"
+            android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"

@@ -37,6 +37,69 @@ class CabinetSdk private constructor() {
         }
 
         /***
+         * 启动投口
+         * @param code
+         * @param turnDoorCallback
+         * @param sendCallback 发送是否成功
+         */
+        @Synchronized
+        fun turnDoor(code: Int, turnDoorCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.turnDoor(code, turnDoorCallback, sendCallback)
+        }
+
+        /***
+         * 启动投口状态查询
+         * @param code
+         * @param onDoorStatus
+         * @param sendCallback 发送是否成功
+         */
+        @Synchronized
+        fun turnDoorStatus(code: Int, onDoorStatus: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.turnDoorStatus(code, onDoorStatus, sendCallback)
+        }
+
+        /***
+         * 清运门开启
+         * @param code 类型
+         * @param onOpenStatus
+         * @param sendCallback
+         */
+        @Synchronized
+        fun openClear(code: Int, onOpenStatus: (boxCode: Int, status: Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.openClear(code, onOpenStatus, sendCallback)
+        }
+
+        /***
+         * 启动查询投口重量
+         * @param weightCallback
+         * @param sendCallback 发送是否成功
+         */
+        @Synchronized
+        fun queryWeight(boxCode: Int, weightCallback: (Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.queryWeight(boxCode, weightCallback, sendCallback)
+        }
+
+        /***
+         * 启动查询当前设备状态
+         * @param onBoxStatus
+         * @param sendCallback 发送是否成功
+         */
+        @Synchronized
+        fun queryStatus(onBoxStatus: (lowerMachines: MutableList<PortDeviceInfo>) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.queryStatus(onBoxStatus, sendCallback)
+        }
+
+        /***
+         *  启动灯光控制
+         * @param lightsCallback
+         * @param sendCallback 发送是否成功
+         */
+        @Synchronized
+        fun startLights(boxCode: Int, lightsCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.startLights(boxCode, lightsCallback, sendCallback)
+        }
+
+        /***
          * 固件升级前动作
          * @param byte
          * @param onUpgrade 返回开仓是否成功
@@ -66,54 +129,5 @@ class CabinetSdk private constructor() {
             serialPortCore?.firmwareUpgrade2322(commandType, byte, onUpgrade, sendCallback)
         }
 
-
-        /***
-         *
-         * @param onBoxStatus
-         * @param sendCallback 发送是否成功
-         */
-        fun queryStatus(onBoxStatus: (lowerMachines: MutableList<PortDeviceInfo>) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.queryStatus(onBoxStatus, sendCallback)
-        }
-
-        /***
-         * 开仓指令
-         * @param code 储物柜编号
-         * @param onOpenStatus
-         * @param sendCallback
-         */
-        fun openClear(code: Int, onOpenStatus: (boxCode: Int, status: Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.openClear(code, onOpenStatus, sendCallback)
-        }
-
-
-        /***
-         * 启动格口开关
-         * @param code
-         * @param turnDoorCallback
-         * @param sendCallback 发送是否成功
-         */
-        fun turnDoor(code: Int, turnDoorCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.turnDoor(code, turnDoorCallback, sendCallback)
-        }
-
-        /***
-         * 启动格口状态查询
-         * @param code
-         * @param onDoorStatus
-         * @param sendCallback 发送是否成功
-         */
-        fun turnDoorStatus(code: Int, onDoorStatus: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.turnDoorStatus(code, onDoorStatus, sendCallback)
-        }
-
-        /***
-         *
-         * @param onDoorStatus
-         * @param sendCallback 发送是否成功
-         */
-        fun queryWeight(boxCode: Int, weightCallback: (Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.queryWeight(boxCode, weightCallback, sendCallback)
-        }
     }
 }

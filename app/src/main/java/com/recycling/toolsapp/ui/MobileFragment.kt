@@ -68,7 +68,7 @@ import dagger.hilt.android.AndroidEntryPoint
 
         }
         val selectableViews =
-                listOf(binding.acet1, binding.acet2, binding.acet3, binding.acet4, binding.acet5, binding.acet6, binding.acet7, binding.acet8, binding.acet9, binding.acet0, binding.acetDel)
+                listOf(binding.acet1, binding.acet2, binding.acet3, binding.acet4, binding.acet5, binding.acet6, binding.acet7, binding.acet8, binding.acet9, binding.acet0, binding.acetDel, binding.acetMobile)
         selectableViews.forEach { view ->
             view.setOnClickListener {
                 val acetMbile = binding.acetMobile
@@ -164,6 +164,16 @@ import dagger.hilt.android.AndroidEntryPoint
                         if (result.isEmpty()) return@setOnClickListener
                         val result2 = removeLastDigit(result)
                         acetMbile.setText(result2)
+                    }
+
+                    R.id.actv_login -> {
+                        Loge.d("handle actv_login")
+                        if (value.length != 12) {
+                            cabinetVM.tipMessage("请输入手机号")
+                            return@setOnClickListener
+                        }
+                        val mobile = binding.acetMobile.toString()
+                        cabinetVM.toGoMobile(mobile)
                     }
                 }
             }

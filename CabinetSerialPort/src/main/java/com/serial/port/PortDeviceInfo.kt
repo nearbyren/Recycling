@@ -2,25 +2,46 @@ package com.serial.port
 
 data class PortDeviceInfo(
     /***
-     * 箱子类型：xx小箱子 zx中箱子 dx大箱子 bx剥线器 zwx杂物箱
+     * 烟雾警报
      */
-    var boxType: String? = null,
+    var smoke: Int? = null,
     /***
-     * 根据仓号去知道 小中大箱子
+     *
+     * capacity 是当前箱体的超重状态值
+     * 0正常
+     * 1是红外遮挡
+     * 2是重量达到（initConfig-箱体配置：overflow）满溢
+     * 3是红外遮挡并且重量达到（initConfig：irOverflow）
      */
-    var boxCode: Int = 0,
+    var capacity: Int? = null,
     /***
-     * whElectric 电量
+     * 红外状态
      */
-    var boxElectric: Int = 0,
+    var irState: Int? = null,
     /***
-     *     0 -> boxStatus = "门关闭"
-     *     1 -> boxStatus = "门开启"
-     *     2 -> boxStatus = "门故障"
+     * 当前重量
      */
-    var boxDoorStatus: String? = null,
+    var weigh: String? = null,
     /***
-     * 设备序列号
-     * sn 非0  20个字节 在柜 否则空闲
+     * 投传感器状态
      */
-    var boxSn: String? = null)
+    var touCGStatus: Int? = null,
+    /***
+     * 投递门
+     */
+    var doorStatus: Int? = null,
+    /***
+     * 清运门
+     */
+    var lockStatus: Int? = null,
+
+    /***
+     * 校准
+     */
+    var xzStatus: Int? = null,
+    /***
+     * 格口ID
+     */
+    var cabinId: String? = null,
+
+    )

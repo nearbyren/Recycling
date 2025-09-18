@@ -217,7 +217,7 @@ class SocketClient(
                 }
                 lastReceivedAtMillis = System.currentTimeMillis()
                 val frame = buffer.copyOf(read)
-                println("调试socket readLoop ${ByteUtils.toHexString(frame)}")
+//                println("调试socket readLoop ${ByteUtils.toHexString(frame)}")
                 _incoming.emit(frame)
             } catch (e: IOException) {
                 println("调试socket readLoop catch ${e.message}")
@@ -231,7 +231,7 @@ class SocketClient(
         while (running && clientScope.isActive) {
             try {
                 val data = sendQueueByte.receive()
-                println("调试socket writeLoopByte byte：${ByteUtils.toHexString(data)}")
+//                println("调试socket writeLoopByte byte：${ByteUtils.toHexString(data)}")
                 BoxToolLogUtils.recordSocket(CmdValue.SEND, JsonBuilder.toByteArrayToString(data))
                 output.write(data)
                 if (config.writeFlushIntervalMillis == 0L) {
@@ -252,19 +252,19 @@ class SocketClient(
     }
 
     private suspend fun heartbeatAndIdleMonitor() {
-        println("调试socket heartbeatAndIdleMonitor $running | ${clientScope.isActive}")
+//        println("调试socket heartbeatAndIdleMonitor $running | ${clientScope.isActive}")
         val hasHeartbeat =
                 config.heartbeatIntervalMillis1 > 0 /*&& config.heartbeatPayload.isNotEmpty()*/
         while (running && clientScope.isActive) {
             val now = System.currentTimeMillis()
-            println("调试socket heartbeatAndIdleMonitor 分钟：${config.idleTimeoutMillis} | 当前毫秒：$lastReceivedAtMillis | 当前-最后：${now - lastReceivedAtMillis}")
+//            println("调试socket heartbeatAndIdleMonitor 分钟：${config.idleTimeoutMillis} | 当前毫秒：$lastReceivedAtMillis | 当前-最后：${now - lastReceivedAtMillis}")
             if (config.idleTimeoutMillis > 0 && now - lastReceivedAtMillis > config.idleTimeoutMillis) {
                 // Force reconnect by closing the socket
                 println("调试socket heartbeatAndIdleMonitor closeSocketQuietly")
                 closeSocketQuietly()
                 return
             }
-            println("调试socket heartbeatAndIdleMonitor $hasHeartbeat")
+//            println("调试socket heartbeatAndIdleMonitor $hasHeartbeat")
             if (hasHeartbeat) {
                 try {
                     println("调试socket heartbeatAndIdleMonitor trySend")

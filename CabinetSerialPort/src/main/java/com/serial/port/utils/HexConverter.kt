@@ -34,7 +34,14 @@ object HexConverter {
     fun bytesToHex(bytes: ByteArray): String {
         return bytes.joinToString("") { "%02X".format(it) }
     }
-
+    /**
+     * 获取重量
+     * @param weight 下位机上报的重量
+     */
+    fun getWeight(weight: Int): String {
+        if (weight < 0) return "0.1"
+        return "%.2f".format(weight / 100.0)
+    }
     /**
      * 一步转换：字符串 → 字节数组 → 十六进制字符串
      * @param input 原始字符串

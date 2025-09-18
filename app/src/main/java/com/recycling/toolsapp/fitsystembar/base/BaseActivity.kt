@@ -24,6 +24,7 @@ import com.recycling.toolsapp.R
 import com.recycling.toolsapp.dialog.LoadingDialog
 import com.recycling.toolsapp.utils.FragmentCoordinator
 import com.serial.port.utils.Loge
+import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
 import java.lang.ref.WeakReference
 
@@ -199,7 +200,7 @@ abstract class BaseActivity : AppCompatActivity() {
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (ev.action == MotionEvent.ACTION_DOWN) {
-            LiveBus.get("resetCountdown").post("resetCountdown")
+            LiveBus.get(BusType.BUS_RESET_COUNTDOWN).post(BusType.BUS_RESET_COUNTDOWN)
         }
         return super.dispatchTouchEvent(ev)
     }

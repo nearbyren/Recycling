@@ -13,6 +13,7 @@ import com.recycling.toolsapp.model.LatticeEntity
  */
 @Dao interface LatticeFlowDao {
 
+    @Query("select * from LatticeEntity") fun queryLattices(): List<LatticeEntity>
     //key键重复的替换
     @Insert(onConflict = OnConflictStrategy.IGNORE) fun insert(latticeEntity: LatticeEntity): Long
 

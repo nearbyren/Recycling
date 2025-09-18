@@ -21,7 +21,8 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "transId", typeAffinity = TEXT, defaultValue = "") var transId: String? = null,
     /***
-     * 仓类型
+     * 1.格口
+     * 2.清运
      */
     @ColumnInfo(name = "openType", typeAffinity = INTEGER) var openType: Int = 0,
     /***

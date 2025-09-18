@@ -29,32 +29,31 @@ data class DoorCloseBean(
      */
     var timestamp: String? = null,
     /***
-     * 增加的重量
+     * 物品上称后的体重【关键字段】
+     */
+    var curWeight: String? = null,
+    /***
+     * 上称物品的重量
      */
     var refWeight: String? = null,
     /***
-     *  上称物品的重量【关键字段】
+     * 上称物品的重量【关键字段】
      */
     var changeWeight: String? = null,
     /***
-     *   物品上称后的体重【关键字段】
-     */
-
-    var curWeight: String? = null,
-    /***
-     * 增加前的重量
+     * 未上称物品前重量
      */
     var beforeUpWeight: String? = null,
     /***
-     * 增加后的重量
+     * 未上称物品后重量
      */
     var afterUpWeight: String? = null,
     /***
-     * 上称前的重量
+     * 上称物品前重量
      */
     var beforeDownWeight: String? = null,
     /***
-     * 上称后的重量
+     * 上称物品后重量
      */
     var afterDownWeight: String? = null,
     /***

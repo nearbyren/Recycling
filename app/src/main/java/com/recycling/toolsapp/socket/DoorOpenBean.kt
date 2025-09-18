@@ -22,6 +22,10 @@ data class DoorOpenBean(
     /***
      * 服务下发
      */
+    /***
+     * 1.格口
+     * 2.清运
+     */
     var openType: Int,
 
     /***
@@ -36,6 +40,10 @@ data class DoorOpenBean(
      */
     var phoneNumber: String? = null,
     /***
+     * 用户ID
+     */
+    var userId: String? = null,
+    /***
      * 当前重量
      */
     var curWeight: String? = null,
@@ -44,5 +52,5 @@ data class DoorOpenBean(
      */
     var timestamp: String? = null,
 ) {
-    constructor() : this(null, null, null, 0, 0, null, null, null)
+    constructor() : this(null, null, null, 0, 0, null, null, null, null)
 }
