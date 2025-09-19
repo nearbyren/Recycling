@@ -155,6 +155,7 @@ object DatabaseManager {
     private fun getLatticeFlowDao(context: Context): LatticeFlowDao {
         return getDatabase(context).latticeFlow()
     }
+
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -162,6 +163,7 @@ object DatabaseManager {
     fun queryLattices(context: Context): List<LatticeEntity> {
         return getLatticeFlowDao(context).queryLattices()
     }
+
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -218,6 +220,7 @@ object DatabaseManager {
     fun queryStateEntity(context: Context, cabinId: String): StateEntity {
         return getStateFlowDao(context).queryStateEntity(cabinId)
     }
+
     /**
      * 提供外部 API 方法
      * @param context 上下文
@@ -227,6 +230,7 @@ object DatabaseManager {
     fun upStateEntity(context: Context, stateEntity: StateEntity): Int {
         return getStateFlowDao(context).upStateEntity(stateEntity)
     }
+
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -346,6 +350,25 @@ object DatabaseManager {
      */
     fun insertWeight(context: Context, weightEntity: WeightEntity): Long {
         return getWeightFlowDao(context).insert(weightEntity)
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param transId
+     */
+    fun queryWeightId(context: Context, transId: String): WeightEntity {
+        return getWeightFlowDao(context).queryWeightId(transId)
+    }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param weightEntity
+     * @return
+     */
+    fun upWeightEntity(context: Context, weightEntity: WeightEntity): Int {
+        return getWeightFlowDao(context).upWeightEntity(weightEntity)
     }
 
     /***

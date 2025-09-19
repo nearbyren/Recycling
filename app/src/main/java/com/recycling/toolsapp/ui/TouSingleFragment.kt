@@ -47,6 +47,7 @@ import nearby.lib.signal.livebus.LiveBus
         binding.tvTitle.setOnClickListener {
             HexConverter.restartApp2(AppUtils.getContext(), 2 * 500L)
         }
+        cabinetVM.doorGeXType = CmdCode.GE1
         refresh()
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
             when (msg) {

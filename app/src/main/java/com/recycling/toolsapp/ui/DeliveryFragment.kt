@@ -1,57 +1,27 @@
 package com.recycling.toolsapp.ui
 
-import android.Manifest.permission.CAMERA
-import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-import android.annotation.SuppressLint
-import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
-import android.util.Size
-import android.view.View
-import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.LinearLayoutCompat
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalLensFacing
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.core.resolutionselector.ResolutionStrategy
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
-import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.bumptech.glide.Glide
-import com.google.android.material.internal.ViewUtils.dpToPx
-import com.google.android.material.snackbar.Snackbar
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentDeliveryBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
-import com.recycling.toolsapp.utils.PermissionRequest
-import com.recycling.toolsapp.utils.PermissionUtils
-import com.recycling.toolsapp.utils.PermissionsRequester
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.CountdownTimer
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
-import com.youth.banner.adapter.BannerImageAdapter
-import com.youth.banner.holder.BannerImageHolder
-import com.youth.banner.indicator.CircleIndicator
-import com.youth.banner.indicator.RoundLinesIndicator
-import com.youth.banner.util.BannerUtils.setBannerRound
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import kotlin.random.Random
 
 
@@ -164,11 +134,11 @@ import kotlin.random.Random
         binding.tvTitle
         val curWeightValue = when (cabinetVM.doorGeX) {
             CmdCode.GE1 -> {
-                cabinetVM.subtractFloats(cabinetVM.weight1After ?: "0.00", cabinetVM.weight1Before ?: "0.00")
+                cabinetVM.weight1AfterIng ?: "0.00"
             }
 
             CmdCode.GE2 -> {
-                cabinetVM.  subtractFloats(cabinetVM.weight2After ?: "0.00", cabinetVM.weight2Before ?: "0.00")
+                cabinetVM.weight2AfterIng ?: "0.00"
             }
 
             else -> {

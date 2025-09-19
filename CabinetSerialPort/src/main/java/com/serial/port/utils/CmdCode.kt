@@ -1,14 +1,34 @@
 package com.serial.port.utils
 
 object CmdCode {
+    /***
+     *投口正常
+     */
+    const val GE_WEIGHT_FAULT_1 = -1
 
     /***
-     * 查询重量前
+     *查询到重量结果 1
+     */
+    const val GE_WEIGHT_RESULT = 1
+
+
+    /***
+     * 查询重量前 0
      */
     const val GE_WEIGHT_FRONT = 0
 
     /***
-     * 查询重量后
+     * 查询重量持续中 10
+     */
+    const val GE_WEIGHT_ING = 10
+
+    /***
+     * 开门中
+     */
+    const val GE_OPEN_ING = 10
+
+    /***
+     * 查询重量后 1
      */
     const val GE_WEIGHT_BACK = 1
 

@@ -42,6 +42,16 @@ object FileMdUtil {
             File(dir, fileName).takeIf { it.exists() && it.isFile } != null
         } ?: false
     }
+
+    /**
+     * 检测文件是否存在
+     */
+    fun checkNameFileExists(fileName: String): Boolean {
+        val dataFiles = FileMdUtil.matchNewFile("res")
+        return dataFiles?.let { dir ->
+            File(dir, fileName).takeIf { it.exists() && it.isFile } != null
+        } ?: false
+    }
     /**
      * 重命名指定路径下的文件
      * @param dirPath 目录路径（如：context.filesDir）

@@ -267,9 +267,9 @@ class SocketClient(
 //            println("调试socket heartbeatAndIdleMonitor $hasHeartbeat")
             if (hasHeartbeat) {
                 try {
-                    println("调试socket heartbeatAndIdleMonitor trySend")
+//                    println("调试socket heartbeatAndIdleMonitor trySend")
                     val stateList = DatabaseManager.queryStateList(AppUtils.getContext())
-                    println("调试socket stateList：${stateList.size}")
+//                    println("调试socket stateList：${stateList.size}")
                     // 构建JSON对象
                     val jsonObject = JsonBuilder.build {
                         addProperty("cmd", "heartBeat")
@@ -289,7 +289,7 @@ class SocketClient(
                             }
                         }
                     }
-                    println("调试socket 发送心跳数据：$jsonObject")
+//                    println("调试socket 发送心跳数据：$jsonObject")
                     val byteArray = JsonBuilder.toByteArray(jsonObject)
                     sendQueueByte.trySend(byteArray)
                 } catch (e: Exception) {

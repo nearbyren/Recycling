@@ -1,8 +1,6 @@
 package com.recycling.toolsapp
 
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -10,13 +8,11 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.github.sumimakito.awesomeqr.AwesomeQRCode
 import com.recycling.toolsapp.FaceApplication.Companion.networkMonitor
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
@@ -40,7 +36,6 @@ import com.recycling.toolsapp.vm.CountdownTimer
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.CmdCode
-import com.serial.port.utils.FileMdUtil
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -49,8 +44,6 @@ import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 
 @AndroidEntryPoint class HomeActivity : BaseBindActivity<ActivityHomeBinding>() {
     private val cabinetVM: CabinetVM by viewModels()
@@ -270,53 +263,43 @@ import java.io.IOException
 
                 when (cmd) {
                     CmdValue.CMD_HEART_BEAT -> {
-                        println("调试socket recv: 接收心跳成功")
 
                     }
 
                     CmdValue.CMD_LOGIN -> {
-                        println("调试socket recv: 接收登录成功")
                         val loginModel = Gson().fromJson(json, ConfigBean::class.java)
-                        cabinetVM.saveInitNet(loginModel)
+                        cabinetVM.saveInitNet(loginModel,false)
                     }
 
                     CmdValue.CMD_INIT_CONFIG -> {
                         val initConfigModel = Gson().fromJson(json, ConfigBean::class.java)
-                        println("调试socket recv: 接收 initConfig 成功")
-                        cabinetVM.saveInitNet(initConfigModel)
+                        cabinetVM.saveInitNet(initConfigModel,true)
                     }
 
                     CmdValue.CMD_OPEN_DOOR -> {
-                        println("调试socket recv: 接收 openDoor 成功")
                         val doorOpenModel = Gson().fromJson(json, DoorOpenBean::class.java)
                         cabinetVM.toGoDownDoorOpen(doorOpenModel)
                     }
 
                     CmdValue.CMD_CLOSE_DOOR -> {
-                        println("调试socket recv: 接收 closeDoor成功")
-                        cabinetVM.refreshWeight()
+                        cabinetVM.refreshWeightStatus()
                     }
 
                     CmdValue.CMD_PHONE_NUMBER_LOGIN -> {
-                        println("调试socket recv: 接收 phoneNumberLogin 成功")
                         val doorOpenModel = Gson().fromJson(json, DoorOpenBean::class.java)
                         cabinetVM.toGoMobileOpen(doorOpenModel.cabinId ?: "", doorOpenModel.userId ?: "")
                     }
 
                     CmdValue.CMD_PHONE_USER_OPEN_DOOR -> {
-                        println("调试socket recv: 接收 phoneUserOpenDoor 成功")
                     }
 
                     CmdValue.CMD_RESTART -> {
-                        println("调试socket recv: 接收 restart 成功")
                     }
 
                     CmdValue.CMD_UPLOAD_LOG -> {
-                        println("调试socket recv: 接收 uploadLog 成功")
                     }
 
                     CmdValue.CMD_OTA -> {
-                        println("调试socket recv: 接收 OTA 成功")
                     }
                 }
             }

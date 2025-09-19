@@ -41,6 +41,7 @@ import nearby.lib.signal.livebus.LiveBus
     }
 
     override fun initialize(savedInstanceState: Bundle?) {
+        cabinetVM.doorGeXType = CmdCode.GE2
         refresh()
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
             when (msg) {
