@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.LinearLayoutCompat
+import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -50,7 +51,7 @@ import kotlin.random.Random
         refresh()
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
             when (msg) {
-                BusType.BUS_REFRESH_DATA->{
+                BusType.BUS_REFRESH_DATA -> {
                     refresh()
                 }
             }
@@ -74,17 +75,17 @@ import kotlin.random.Random
 //        initBanner()
 //        initBanner2()
         upgradeAi()
-//        initCameraX()
+        initCameraX()
 
     }
 
-    private fun initClick(){
+    private fun initClick() {
         //图片
 //        binding.aivShowPhoto
         //按钮
         binding.tvOperation.text
         binding.tvOperation.setOnClickListener {
-            println("调试socket 调试串口 点击关闭")
+            println("调试socket 调试串口 ui 点击关闭")
             cabinetVM.testTypeEnd(ResultType.RESULT1)
             binding.tvOperation.isEnabled = false
             binding.tvOperation.text = "正在关闭仓门"
@@ -105,8 +106,24 @@ import kotlin.random.Random
             binding.llPhoto.addView(iv)
             scrollToPosition(binding.llPhoto.size)
         }
+        //接收图片
+        LiveBus.get(BusType.BUS_DELIVERY_PHOTO).observeForever { filepath ->
+            val iv = AppCompatImageView(requireActivity()).apply {
+                layoutParams =
+                        LinearLayoutCompat.LayoutParams(0, LinearLayoutCompat.LayoutParams.MATCH_PARENT).apply {
+                            weight = 1f
+                            setMargins(20, 20, 20, 20)
+                        }
+                scaleType = ImageView.ScaleType.MATRIX
+            }
+            Glide.with(requireActivity()).load(filepath).into(iv)
+            binding.llPhoto.addView(iv)
+            scrollToPosition(binding.llPhoto.size)
+
+        }
     }
-    private fun initCountdown(){
+
+    private fun initCountdown() {
         setCountdown(300)
         //倒计时
         binding.cpvView.setMaxProgress(300)
@@ -149,20 +166,13 @@ import kotlin.random.Random
         binding.tvWeightValue.text = "$curWeightValue 公斤"
 
         val price = cabinetVM.curGePrice ?: "0.6"
-        println("调试socket 调试串口 重量：${curWeightValue} | $price")
-        val floatValue = cabinetVM.multiplyFloats(price, curWeightValue )
+        println("调试socket 调试串口 ui 重量：${curWeightValue} | $price")
+        val floatValue = cabinetVM.multiplyFloats(price, curWeightValue)
         //当前金额
-        binding.tvMoneyValue.text ="$floatValue 元"
+        binding.tvMoneyValue.text = "$floatValue 元"
     }
 
     fun initCameraX() {
-//        lifecycleScope.launch {
-//            cabinetVM.getTakePic.collect { url ->
-//                Log.e("TestFace", "网络导入用户信息 刷新照片")
-//                imageUrls2.add(url)
-//                binding.banner.setDatas(imageUrls2)
-//            }
-//        }
         val manager = mActivity?.supportFragmentManager
         manager?.let {
             val beginTransaction = it.beginTransaction()

@@ -53,7 +53,7 @@ class SocketClient(
         val readTimeoutMillis: Int = TimeUnit.SECONDS.toMillis(30).toInt(),
         val writeFlushIntervalMillis: Long = 0L,
         var heartbeatIntervalMillis: Long = TimeUnit.SECONDS.toMillis(20),
-        var heartbeatIntervalMillis1: Long = TimeUnit.SECONDS.toMillis(3),
+        var heartbeatIntervalMillis1: Long = TimeUnit.SECONDS.toMillis(10),
         val heartbeatPayload: ByteArray = byteArrayOf(),
         val idleTimeoutMillis: Long = TimeUnit.MINUTES.toMillis(2),
         val minReconnectDelayMillis: Long = 500,
@@ -91,7 +91,9 @@ class SocketClient(
     @Volatile
     private var running = false
 
-
+    /***
+     * 启动socket连接
+     */
     suspend fun start() {
         if (running) return
         running = true
@@ -100,6 +102,9 @@ class SocketClient(
         clientScope.launch { runMainLoop() }
     }
 
+    /***
+     * 关闭socket连接
+     */
     suspend fun stop() {
         println("调试socket stop ")
         running = false
@@ -111,20 +116,33 @@ class SocketClient(
         closeSocketQuietly()
     }
 
+    /***
+     * @param text
+     * 发送字节
+     */
     suspend fun send(data: ByteArray) {
-        println("调试socket send ByteArray  ${ByteUtils.toHexString(data)}")
+//        println("调试socket send ByteArray  ${ByteUtils.toHexString(data)}")
         require(data.size <= config.maxFrameSizeBytes) { "Frame too large: ${data.size}" }
         // Backpressure control by counting queued bytes
         enqueueSend(data)
     }
 
+    /***
+     * @param text
+     * 发送字符串
+     */
     suspend fun sendText(text: String) {
-        println("调试socket sendText  $text")
+//        println("调试socket sendText  $text")
         send(text.toByteArray())
     }
 
+    /***
+     * 调查send
+     * @param data
+     *
+     */
     private suspend fun enqueueSend(data: ByteArray) {
-        println("调试socket enqueueSend  ${ByteUtils.toHexString(data)}")
+//        println("调试socket enqueueSend  ${ByteUtils.toHexString(data)}")
         // Simple soft limit enforcement by suspending when over budget
         val queuedBytes = data.size
         if (queuedBytes > config.maxSendQueueBytes) {
@@ -133,6 +151,9 @@ class SocketClient(
         sendQueueByte.send(data)
     }
 
+    /***
+     * 运行主循环
+     */
     private suspend fun runMainLoop() {
         var attempt = 0
         println("调试socket runMainLoop")
@@ -162,6 +183,10 @@ class SocketClient(
         }
     }
 
+    /***
+     * 计算重新连接延迟
+     * @param attempt
+     */
     private fun computeReconnectDelay(attempt: Int): Long {
         println("调试socket computeReconnectDelay attempt $attempt")
         val base =
@@ -171,6 +196,9 @@ class SocketClient(
         return clamped + jitter
     }
 
+    /***
+     * 连接和服务
+     */
     private suspend fun connectAndServe() {
         println("调试socket connectAndServe")
         val s = Socket()
@@ -200,11 +228,19 @@ class SocketClient(
         }
     }
 
+    /***
+     * 启动心跳查询
+     */
     suspend fun sendHeartbeat() {
         val monitor = clientScope.launch { heartbeatAndIdleMonitor() }
 //        monitor.cancel()
     }
 
+    /***
+     * 读取socket数据
+     * @param input
+     * 缓冲输入流
+     */
     private suspend fun readLoop(input: BufferedInputStream) {
         println("调试socket readLoop ")
         val buffer = ByteArray(8 * 1024)
@@ -226,8 +262,13 @@ class SocketClient(
         }
     }
 
+    /***
+     * 读取socket数据
+     * @param output
+     * 缓冲输出流
+     */
     private suspend fun writeLoopByte(output: BufferedOutputStream) {
-        println("调试socket writeLoop ")
+        println("调试socket writeLoop running $running | isActive ${clientScope.isActive}")
         while (running && clientScope.isActive) {
             try {
                 val data = sendQueueByte.receive()
@@ -251,6 +292,10 @@ class SocketClient(
         }
     }
 
+    /***
+     *
+     * 心跳启动
+     */
     private suspend fun heartbeatAndIdleMonitor() {
 //        println("调试socket heartbeatAndIdleMonitor $running | ${clientScope.isActive}")
         val hasHeartbeat =
@@ -300,6 +345,9 @@ class SocketClient(
         }
     }
 
+    /***
+     * 关闭socket
+     */
     private fun closeSocketQuietly() {
         println("调试socket closeSocketQuietly $running | ${clientScope.isActive}")
         try {

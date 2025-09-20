@@ -10,12 +10,13 @@ object CmdType {
     const val CMD1 = 1
 
     /**
-     * 打开清运门
+     *
+     * 查询投口状态
      */
     const val CMD2 = 2
 
     /**
-     * 查询投口门状态
+     * 打开清运门
      */
     const val CMD3 = 3
 

@@ -41,9 +41,12 @@ import com.recycling.toolsapp.utils.PermissionUtils
 import com.recycling.toolsapp.utils.PermissionsRequester
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
+import com.serial.port.utils.FileMdUtil
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import nearby.lib.signal.livebus.BusType
+import nearby.lib.signal.livebus.LiveBus
 import top.zibin.luban.Luban
 import top.zibin.luban.OnCompressListener
 import java.io.File
@@ -88,7 +91,7 @@ import java.util.concurrent.Executors
         lifecycleScope.launch {
             cabinetVM.getDelays.collect { delay ->
                 when (delay) {
-                    3000L, 6000L, 9000L, 12000L -> {
+                    3000L, 5000L, 7000L -> {
                         Log.e("TestFace", "网络导入用户信息 执行拍照 $delay")
                         takePicture1()
                     }
@@ -217,8 +220,8 @@ import java.util.concurrent.Executors
             }
 
             // 创建时间戳文件名
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val fileName = "1IMG_${timestamp}.jpg"
+
+            val fileName = "${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS()}.jpg"
             val destFile = File(aitionDir, fileName)
 
             // 从原始URI读取内容并写入目标文件
@@ -236,7 +239,10 @@ import java.util.concurrent.Executors
             Toast.makeText(requireContext(), "照片已保存到Aition目录", Toast.LENGTH_SHORT).show()
 
             // 可以在这里添加额外的处理逻辑，如上传到服务器等
-            Luban.with(requireContext()).load(destFile.absolutePath).ignoreBy(100).setTargetDir(aitionDir.absolutePath).filter { path -> !(TextUtils.isEmpty(path) || path.lowercase(Locale.getDefault()).endsWith(".gif")) }.setCompressListener(object : OnCompressListener {
+            Luban.with(requireContext()).load(destFile.absolutePath)
+                .ignoreBy(100)
+                .setTargetDir(aitionDir.absolutePath).filter { path ->
+                    !(TextUtils.isEmpty(path) || path.lowercase(Locale.getDefault()).endsWith(".gif")) }.setCompressListener(object : OnCompressListener {
                 override fun onStart() {
                     println("测试我来了 onStart")
 
@@ -245,7 +251,13 @@ import java.util.concurrent.Executors
                 override fun onSuccess(file: File) {
                     println("测试我来了 onSuccess ${file.absolutePath}")
                     Log.e("TestFace", "网络导入用户信息 保存成功")
+                    val downloadsDir =
+                            AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                    val aitionDir = File(downloadsDir, "aition")
+                    val fileName = file.absolutePath.substringAfterLast('/')
+                    FileMdUtil.renameFileInDir(aitionDir, "$fileName", "${cabinetVM.curTransId}--${AppUtils.getDateYMDHMS()}.jpeg")
                     cabinetVM.taskPicAdd(file.absolutePath)
+                    LiveBus.get(BusType.BUS_DELIVERY_PHOTO).post(file.absolutePath)
 
                 }
 

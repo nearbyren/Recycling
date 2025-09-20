@@ -294,6 +294,7 @@
             android:layout_marginTop="@dimen/dp_7"
             android:background="@drawable/shape_lattice_select_bg"
             android:visibility="gone"
+            tools:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintVertical_weight="2"
             tools:ignore="MissingConstraints">

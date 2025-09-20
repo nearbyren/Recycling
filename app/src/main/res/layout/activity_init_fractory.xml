@@ -58,6 +58,7 @@
                     android:layout_marginRight="@dimen/dp_12"
                     android:background="@drawable/shape_input_delivery_bg"
                     android:gravity="center"
+                    android:inputType="number"
                     android:hint="请输入出厂配置SN码，(输入后请对准sn是否准确)"
                     android:textColor="@color/white"
                     android:textColorHint="@color/white"

@@ -23,7 +23,7 @@ object CmdCode {
     const val GE_WEIGHT_ING = 10
 
     /***
-     * 开门中
+     * 开门中 10
      */
     const val GE_OPEN_ING = 10
 
@@ -33,27 +33,27 @@ object CmdCode {
     const val GE_WEIGHT_BACK = 1
 
     /***
-     * 开
+     * 开 1
      */
     const val GE_OPEN = 1
 
     /***
-     * 关
+     * 关 0
      */
     const val GE_CLOSE = 0
 
     /***
-     * 开关中
+     * 开关中 2
      */
     const val GE_OPEN_CLOSE_ING = 2
 
     /***
-     * 开关门故障
+     * 开关门故障 3
      */
     const val GE_OPEN_CLOSE_FAULT = 3
 
     /***
-     * 设备状态
+     * 设备状态 1
      */
     const val GE_DEVICE_STATUS = 1
 

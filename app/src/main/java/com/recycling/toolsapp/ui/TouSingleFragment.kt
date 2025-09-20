@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
+import android.provider.ContactsContract.Data
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
@@ -13,6 +14,7 @@ import androidx.fragment.app.viewModels
 import com.github.sumimakito.awesomeqr.AwesomeQRCode
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentTouSingleBinding
+import com.recycling.toolsapp.db.DatabaseManager
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.utils.HexConverter
 import com.recycling.toolsapp.vm.CabinetVM
@@ -49,6 +51,9 @@ import nearby.lib.signal.livebus.LiveBus
         }
         cabinetVM.doorGeXType = CmdCode.GE1
         refresh()
+        binding.tvClsoe.setOnClickListener {
+         cabinetVM.testclose()
+        }
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
             when (msg) {
                 BusType.BUS_OVERFLOW -> {

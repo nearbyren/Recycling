@@ -96,11 +96,10 @@ import java.io.File
     }
 
     private fun initPort() {
-//        cabinetVM.timingStatus()
-        cabinetVM.pollingDoor()
+        cabinetVM.startPollingDoor()
         cabinetVM.addDoorQueue(CmdType.CMD5)
-//        cabinetVM.addQueueCommand(0)
-
+//        cabinetVM.requestStatusQuery()
+//        cabinetVM.startNewDoor()
     }
 
     /***
@@ -167,7 +166,7 @@ import java.io.File
         //查询重量回来
         lifecycleScope.launch {
             cabinetVM.getCurWeightType.collect { value ->
-                Loge.d("调试socket 调试串口 重量查询回来 $value")
+                Loge.d("调试socket 调试串口 UI 重量查询回来 $value")
                 when (value) {
                     //前
                     0 -> {
@@ -278,7 +277,7 @@ import java.io.File
 
                     CmdValue.CMD_OPEN_DOOR -> {
                         val doorOpenModel = Gson().fromJson(json, DoorOpenBean::class.java)
-                        cabinetVM.toGoDownDoorOpen(doorOpenModel)
+                        cabinetVM.toGoSweepCodeCode(doorOpenModel)
                     }
 
                     CmdValue.CMD_CLOSE_DOOR -> {
@@ -287,7 +286,7 @@ import java.io.File
 
                     CmdValue.CMD_PHONE_NUMBER_LOGIN -> {
                         val doorOpenModel = Gson().fromJson(json, DoorOpenBean::class.java)
-                        cabinetVM.toGoMobileOpen(doorOpenModel.cabinId ?: "", doorOpenModel.userId ?: "")
+                        cabinetVM.toGoMobileOpen(cabinetVM.cur1Cabinld, doorOpenModel.userId ?: "")
                     }
 
                     CmdValue.CMD_PHONE_USER_OPEN_DOOR -> {
@@ -609,5 +608,16 @@ import java.io.File
     fun hide() {
         hideActionBar()
         hideActionBarBack()
+    }
+
+    override fun onDetachedFromWindow() {
+        println("调试socket home onDestroy")
+        cabinetVM.closeSock()
+        super.onDetachedFromWindow()
+    }
+    override fun onDestroy() {
+        println("调试socket home onDestroy")
+        cabinetVM.closeSock()
+        super.onDestroy()
     }
 }

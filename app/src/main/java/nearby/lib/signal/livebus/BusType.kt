@@ -27,7 +27,14 @@ object BusType {
      * 计重页格口异常
      */
     const val BUS_DELIVERY_ABNORMAL = "deliveryAbnormal"
-
+    /***
+     * 关闭手机页面
+     */
+    const val BUS_MOBILE_CLOS = "mobileClose"
+    /***
+     * 图片
+     */
+    const val BUS_DELIVERY_PHOTO = "deliveryPhoto"
     /***
      * 投口1状态类型
      */

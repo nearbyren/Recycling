@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.os.Environment
+import android.text.TextUtils
 import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -33,9 +34,6 @@ import com.recycling.toolsapp.model.StateEntity
 import com.recycling.toolsapp.model.TransEntity
 import com.recycling.toolsapp.model.WeightEntity
 import com.recycling.toolsapp.socket.ConfigBean
-import com.recycling.toolsapp.socket.ConfigInfo
-import com.recycling.toolsapp.socket.ConfigLattice
-import com.recycling.toolsapp.socket.ConfigRes
 import com.recycling.toolsapp.socket.DoorCloseBean
 import com.recycling.toolsapp.socket.DoorOpenBean
 import com.recycling.toolsapp.socket.SocketClient
@@ -68,6 +66,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import nearby.lib.netwrok.download.SingleDownloader
 import nearby.lib.netwrok.response.CorHttp
 import nearby.lib.netwrok.response.SPreUtil
@@ -75,8 +75,6 @@ import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.concurrent.TimeUnit
@@ -112,6 +110,7 @@ import kotlin.random.Random
      * 创建一个Channel，类型为Int，表示命令类型
      */
     private val doorQueue = Channel<Int>()
+    private val doorQueue2 = Channel<Int>(capacity = 3)
 
     /***
      * 创建一个Channel，类型为Int，表示命令类型 485串口
@@ -163,7 +162,7 @@ import kotlin.random.Random
     var videoCapture2: VideoCapture<Recorder>? = null
     var recording2: Recording? = null
 
-    val delays = listOf(3, 6, 9, 12) // 延迟时间列表（秒）
+    val delays = listOf(3, 5, 6) // 延迟时间列表（秒）
 
     //计时指定秒跑着
     private val flowDelays = MutableSharedFlow<Long>(replay = 1)
@@ -209,6 +208,12 @@ import kotlin.random.Random
     //socket连接实例
     var vmClient: SocketClient? = null
 
+    fun closeSock() {
+        ioScope.launch {
+            vmClient?.stop()
+        }
+    }
+
     fun convertToJsonString(obj: Any): String {
         return Gson().toJson(obj)
     }
@@ -222,6 +227,11 @@ import kotlin.random.Random
         }
     }
 
+    /***
+     * 接收手机号登录后,发送手机号开门
+     * @param cabinId
+     * @param userId
+     */
     fun toGoMobileOpen(cabinId: String, userId: String) {
         ioScope.launch {
             val m =
@@ -282,7 +292,6 @@ import kotlin.random.Random
     //当前前格二重量
     var curG2Weight: String? = "0.00"
 
-
     //格口一 物品 未上称的重量
     var weight1Before: String? = "0.00"
 
@@ -319,9 +328,17 @@ import kotlin.random.Random
     //当前事务ID
     var curTransId = ""
 
+    //用户ID
+    var curUserId = ""
+
+    //格口一
     var cur1Cabinld = ""
 
+    //格口二
     var cur2Cabinld = ""
+
+    //文件上传路径
+    var uploadPhotoURL = ""
 
     /***
      * 打开/关闭投口
@@ -439,6 +456,7 @@ import kotlin.random.Random
      * 获取可投重量格口一
      */
     fun getVot1Weight(): String {
+        println("调试socket getVot1Weight ${stateMap.size} | $curG1TotalWeight")
         return stateMap[0]?.weigh?.let {
             subtractFloats(curG1TotalWeight, it.toString())
         } ?: "0.00"
@@ -472,7 +490,7 @@ import kotlin.random.Random
      * 实时格口门状态
      * 查询格口重量
      */
-    fun pollingDoor() {
+    fun startPollingDoor() {
         println("调试socket 调试串口 启动检测门状态轮询")
         if (doorJob != null) return
         println("调试socket 调试串口 启动检测门状态轮询发起")
@@ -516,16 +534,7 @@ import kotlin.random.Random
                     CmdType.CMD2 -> {
                         CabinetSdk.turnDoorStatus(doorGeX, onDoorStatus = { status ->
                             println("调试socket 调试串口 发送查询门状态 接收回调 $status |$geStartDoorType")
-                            if (geStartDoorType == CmdCode.GE_OPEN && status == CmdCode.GE_OPEN) {
-                                testPortResult(status)  //开门成功
-                            } else if (geStartDoorType == CmdCode.GE_CLOSE && status == CmdCode.GE_CLOSE) {
-                                testPortResult(status)//关门成功
-                                LiveBus.get(BusType.BUS_DELIVERY_STATUS).post(BusType.BUS_DELIVERY_CLOSE)
-                            } else if (status == CmdCode.GE_OPEN_CLOSE_ING) {//开关门中
-                                doorReturnStatus(CmdCode.GE_OPEN_CLOSE_ING)
-                            } else if (status == CmdCode.GE_OPEN_CLOSE_FAULT) {//开关门故障
-                                doorReturnStatus(CmdCode.GE_OPEN_CLOSE_FAULT)
-                            }
+                            doorReturnDoor(status)
                         }, sendCallback)
                     }
                     //清运门开启
@@ -540,7 +549,7 @@ import kotlin.random.Random
                             doorReturnWeight(weight)
                         }, sendCallback)
                     }
-                    ////查询格口重量
+                    //查询状态
                     CmdType.CMD5 -> {
                         CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
                     }
@@ -576,57 +585,91 @@ import kotlin.random.Random
     }
 
     /***
-     *
-     * 当前门状态
-     * @param doorStatus
+     * 开格口前记录当前中，存储关闭格口上报数据
      */
-    private fun doorReturnStatus(doorStatus: Int) {
+    fun queryBeforeWeight() {
         ioScope.launch {
-            when (doorStatus) {
-                CmdCode.GE_WEIGHT_FAULT_1 -> {
-                    when (doorGeX) {
-                        CmdCode.GE1 -> {
-                            flowDoor1Value.emit(BusType.BUS_NORMAL)
-                        }
-
-                        CmdCode.GE2 -> {
-                            flowDoor1Value.emit(BusType.BUS_NORMAL)
-                        }
-                    }
+            val curWeightValue = when (doorGeX) {
+                CmdCode.GE1 -> {
+                    weight1Before
                 }
 
-                CmdCode.GE_OPEN_CLOSE_FAULT -> {
-                    flowCmd04.emit(false)
-                    when (doorGeX) {
-                        CmdCode.GE1 -> {
-                            flowDoor1Value.emit(BusType.BUS_FAULT)
-                        }
-
-                        CmdCode.GE2 -> {
-                            flowDoor1Value.emit(BusType.BUS_FAULT)
-                        }
-                    }
+                CmdCode.GE2 -> {
+                    weight2Before
                 }
 
-                CmdCode.GE_OPEN_CLOSE_ING -> {
-                    println("调试socket 调试串口 开门中 ${getCmd04.value}")
-                    frontBackState = CmdCode.GE_WEIGHT_ING
-                    if (!getCmd04.value) {
-                        flowCmd04.emit(true)
-                    }
+                else -> {
+                    "0.00"
                 }
-
             }
+
+            val weightEntity = WeightEntity().apply {
+                cmd = "openDoor"
+                transId = curTransId
+                curWeight = curWeightValue
+                time = AppUtils.getDateYMDHMS()
+            }
+            val traRow = DatabaseManager.insertWeight(AppUtils.getContext(), weightEntity)
+            refreshViewUI()//门开前 刷新重量和事务
+            println("调试socket 调试串口 开格口前插入前后重量数据 $traRow")
         }
     }
 
     /***
-     * 当前检测重量
-     * @param weight
+     * 投递门状态
+     * @param statusDoor
      */
+    private fun doorReturnDoor(statusDoor: Int) {
+        ioScope.launch {
+            println("调试socket 调试串口 doorReturnDoor statusDoor $statusDoor frontBackState $frontBackState geStartDoorType $geStartDoorType doorGeX $doorGeX ${getCmd02.value}")
+            if (geStartDoorType == CmdCode.GE_OPEN && statusDoor == CmdCode.GE_OPEN) {
+                flowCmd02.emit(false)
+                //开门成功
+                if (frontBackState == CmdCode.GE_WEIGHT_FRONT) {
+                    frontBackState = CmdCode.GE_WEIGHT_ING
+                }
+                flowDeliveryTypeEnd.emit(ResultType.RESULT310)
+            } else if (geStartDoorType == CmdCode.GE_CLOSE && statusDoor == CmdCode.GE_CLOSE) {
+                flowCmd02.emit(false)
+                LiveBus.get(BusType.BUS_DELIVERY_STATUS).post(BusType.BUS_DELIVERY_CLOSE)
+                //关门成功
+                frontBackState = CmdCode.GE_WEIGHT_BACK
+                flowDeliveryTypeEnd.emit(ResultType.RESULT301)
+            } else if (statusDoor == CmdCode.GE_OPEN_CLOSE_ING) {
+                //开关门中
+                frontBackState = CmdCode.GE_WEIGHT_ING
+                if (!getCmd04.value) {
+                    flowCmd04.emit(true)
+                }
+            } else if (statusDoor == CmdCode.GE_OPEN_CLOSE_FAULT) {
+                //开关门故障
+                flowCmd04.emit(false)
+                when (doorGeX) {
+                    CmdCode.GE1 -> {
+                        flowDoor1Value.emit(BusType.BUS_FAULT)
+                    }
+
+                    CmdCode.GE2 -> {
+                        flowDoor1Value.emit(BusType.BUS_FAULT)
+                    }
+                }
+            } else {
+//                when (doorGeX) {
+//                    CmdCode.GE1 -> {
+//                        flowDoor1Value.emit(BusType.BUS_NORMAL)
+//                    }
+//
+//                    CmdCode.GE2 -> {
+//                        flowDoor1Value.emit(BusType.BUS_NORMAL)
+//                    }
+//                }
+            }
+        }
+    }
+
     private fun doorReturnWeight(weight: Int) {
         ioScope.launch {
-            println("调试socket 调试串口 进入重量回调 frontBackState = $frontBackState")
+            println("调试socket 调试串口 doorReturnWeight doorGeX $doorGeX | ${getCmd04.value} | frontBackState = $frontBackState")
             when (doorGeX) {
                 CmdCode.GE1 -> {
                     val curG1Total = curG1TotalWeight.toFloat()
@@ -634,10 +677,10 @@ import kotlin.random.Random
                     curG1Weight = HexConverter.getWeight(weight)
                     //剩余可投重量
                     curG1VotWeight = subtractFloats(curG1TotalWeight, curG1Weight ?: "0.00")
-
                     when (frontBackState) {
 
                         CmdCode.GE_WEIGHT_FRONT -> {
+                            println("调试socket 调试串口 doorReturnWeight 查询重量前 $curG1Weight")
                             weight1Before = curG1Weight
                             flowCmd04.emit(false)
                             //打开/ 关闭投口
@@ -646,13 +689,15 @@ import kotlin.random.Random
                         }
 
                         CmdCode.GE_WEIGHT_ING -> {
+                            println("调试socket 调试串口 doorReturnWeight 查询重量中 $curG1Weight | $weight1Before")
                             //获取上称物品的重量
-                            weight1AfterIng =
-                                    subtractFloats(curG1Weight ?: "0.00", weight1Before ?: "0.00")
-                            sendBusRefreshData()
+                            weight1AfterIng = curG1Weight
+                            subtractFloats(curG1Weight ?: "0.00", weight1Before ?: "0.00")
+                            refreshViewUI()//门开中 刷新重量和事务
                         }
 
                         CmdCode.GE_WEIGHT_BACK -> {
+                            println("调试socket 调试串口 doorReturnWeight 查询重量后 $curG1Weight")
                             weight1AfterEnd = curG1Weight
                             flowCmd04.emit(false)
                             flowCmd05.emit(true)
@@ -690,103 +735,117 @@ import kotlin.random.Random
     }
 
     /***
-     * 取消job检测
+     * 打开语音
      */
-    fun cancelDoorJob() {
-        doorJob?.cancel()
-        doorJob = null
-    }
-
-    /***************************************** 发送 启动格口开门 查询投口门状态 查询格口重量 ******************************************/
-
-    /***
-     * 灯光操作
-     */
-    fun testLightsCmd() {
-        val code = Random.nextInt(1, 2)
-        println("调试socket 调试串口 testLightsCmd code $code")
-        CabinetSdk.startLights(code, lightsCallback = { lockerNo, status ->
-            println("调试socket 调试串口 testClearCmd 接收到回调 灯光：$lockerNo ,$status")
-        }, sendCallback)
-    }
-
-    /***
-     * 打开清运门
-     */
-    fun testClearCmd() {
-        val code = Random.nextInt(1, 3)
-        println("调试socket 调试串口 testClearCmd code $code")
-        CabinetSdk.openClear(code, onOpenStatus = { lockerNo, status ->
-            println("调试socket 调试串口 testClearCmd 接收到回调 格口：$lockerNo ,$status")
-        }, sendCallback)
-    }
-
-    /***
-     * 重量查询
-     */
-    fun testWeightCmd() {
-//        flowCurWeight.value = false
-        addDoorQueue(4)
-    }
-
-    /***
-     * @param status
-     * 0.门关动作
-     * 1.门开动作
-     *
-     * 3.发送开门
-     * 4.发送关门
-     * 5.查询门状态
-     */
-    fun testSendCmd(status: Int) {
-        this.geStartDoorType = status
-        pollingDoor()
-        addDoorQueue(1)
-    }
-
-    suspend fun testSendCmd2(status: Int) {
-        this.geStartDoorType = status
-        flowCmd01.emit(true)
-    }
-
-    /***
-     * @param typeEnd
-     * 1.点击
-     * 2.计时结束
-     */
-    fun testTypeEnd(typeEnd: Int) {
+    fun toGoOpenAudio() {
         ioScope.launch {
-            flowDeliveryTypeEnd.emit(typeEnd)
+            MediaPlayerHelper.playAudioAsset(AppUtils.getContext(),  "opendoor.wav")
         }
     }
 
     /***
-     * 门状态返回
-     * @param status
-     * 开门成功 和 关门成功
+     * 关闭语音
      */
-    fun testPortResult(status: Int) {
+    fun toGoCloseAudio() {
         ioScope.launch {
-            println("调试socket 调试串口 通知锁状态 $status |$frontBackState")
-            if (status == CmdCode.GE_OPEN) {
-                if (frontBackState == CmdCode.GE_WEIGHT_FRONT) {
-                    frontBackState = CmdCode.GE_WEIGHT_ING
+            MediaPlayerHelper.playAudioAsset(AppUtils.getContext(), "opendoor.wav")
+        }
+    }
+
+    /***
+     * 接收服务器 扫码方式
+     */
+    fun toGoSweepCodeCode(model: DoorOpenBean) {
+        ioScope.launch {
+            val trensEntity = TransEntity().apply {
+                cmd = "openDoor"
+                transId = model.transId
+                openType = model.openType
+                transType = if (TextUtils.isEmpty(model.phoneNumber)) 0 else 1
+                userId = model.userId
+                cabinId = model.cabinId
+                openStatus = -1
+                time = AppUtils.getDateYMDHMS()
+            }
+            curTransId = model.transId ?: ""
+            SPreUtil.put(AppUtils.getContext(), "transId", curTransId)
+            SPreUtil.put(AppUtils.getContext(), "userId", curUserId)
+            LiveBus.get(BusType.BUS_MOBILE_CLOS).post(BusType.BUS_MOBILE_CLOS)
+            //记录事务数据
+            val row = DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)
+//            //匹配当前投口几
+//            val lattices = DatabaseManager.queryLattices(AppUtils.getContext())
+//            lattices.withIndex().forEach { (index, lattice) ->
+//                when (index) {
+//                    0 -> {
+//                        if (lattice.cabinId == model.cabinId) {
+//                            doorGeX = CmdCode.GE1
+//                            cur1Cabinld = lattice.cabinId ?: ""
+//                        }
+//                    }
+//
+//                    1 -> {
+//                        if (lattice.cabinId == model.cabinId) {
+//                            doorGeX = CmdCode.GE2
+//                            cur2Cabinld = lattice.cabinId ?: ""
+//
+//                        }
+//                    }
+//                }
+//            }
+
+            //匹配当前投口几
+            val states = DatabaseManager.queryStateList(AppUtils.getContext())
+            states.withIndex().forEach { (index, state) ->
+                when (index) {
+                    0 -> {
+                        if (state.cabinId == model.cabinId) {
+                            doorGeX = CmdCode.GE1
+                            cur1Cabinld = state.cabinId ?: ""
+                            curG1Weight = state.weigh.toString()
+                        }
+                    }
+
+                    1 -> {
+                        if (state.cabinId == model.cabinId) {
+                            doorGeX = CmdCode.GE2
+                            cur2Cabinld = state.cabinId ?: ""
+                            curG2Weight = state.weigh.toString()
+                        }
+                    }
                 }
-                flowCmd02.emit(false)
-                flowDeliveryTypeEnd.emit(ResultType.RESULT310)
-            } else if (status == CmdCode.GE_CLOSE) {
-                frontBackState = CmdCode.GE_WEIGHT_BACK
-                flowCmd02.emit(false)
-                flowDeliveryTypeEnd.emit(ResultType.RESULT301)
+            }
+
+            //判断当前格口
+            if (doorGeXType == CmdCode.GE1) {
+                val doorOpen = DoorOpenBean().apply {
+                    cmd = "openDoor"
+                    transId = model.transId
+                    cabinId = model.cabinId
+                    phoneNumber = model.phoneNumber
+                    curWeight = curG1Weight
+                    retCode = 0
+                    timestamp = AppUtils.getDateYMDHMS()
+                }
+                val json = convertToJsonString(doorOpen)
+                vmClient?.sendText(json)
+            } else if (doorGeXType == CmdCode.GE2) {
 
             }
+
+            println("调试socket 添加开仓记录 $row ,执行格口：$doorGeX")
+            frontBackState = CmdCode.GE_WEIGHT_FRONT
+            geStartDoorType = CmdCode.GE_OPEN
+            toGoOpenAudio()
+            flowCmd05.emit(false)
+            flowCmd04.emit(true)
         }
     }
 
     /***
-     * 接收服务器 启动格口开门
+     * 接收服务器 手机号方式
      */
-    fun toGoDownDoorOpen(model: DoorOpenBean) {
+    fun toGoMobileCode(model: DoorOpenBean) {
         ioScope.launch {
             val trensEntity = TransEntity().apply {
                 cmd = "openDoor"
@@ -956,38 +1015,6 @@ import kotlin.random.Random
     }
 
     /***
-     * 开格口前记录当前中，存储关闭格口上报数据
-     */
-    fun queryBeforeWeight() {
-        ioScope.launch {
-            resetWeightPrice()
-            val curWeightValue = when (doorGeX) {
-                CmdCode.GE1 -> {
-                    weight1Before
-                }
-
-                CmdCode.GE2 -> {
-                    weight2Before
-                }
-
-                else -> {
-                    "0.00"
-                }
-            }
-
-            val weightEntity = WeightEntity().apply {
-                cmd = "openDoor"
-                transId = curTransId
-                curWeight = curWeightValue
-                time = AppUtils.getDateYMDHMS()
-            }
-            val traRow = DatabaseManager.insertWeight(AppUtils.getContext(), weightEntity)
-            sendBusRefreshData()
-            println("调试socket 调试串口 开格口前插入前后重量数据 $traRow")
-        }
-    }
-
-    /***
      * 相减
      * @param after
      * @param before
@@ -1085,9 +1112,38 @@ import kotlin.random.Random
                 vmClient?.sendText(json)
                 lattice.weightMonitor = lattice.weight
                 val rowCabin = DatabaseManager.upLatticeEntity(AppUtils.getContext(), lattice)
-                println("调试socket 调试串口 关闭格口 更新重量 $rowCabin")
-                sendBusRefreshData()
-//                resetWeightPrice()
+                println("调试socket 调试串口 关闭格口 更新格口重量 $rowCabin")
+                val index = when (doorGeX) {
+                    CmdCode.GE1 -> {
+                        0
+                    }
+
+                    CmdCode.GE2 -> {
+                        1
+                    }
+
+                    else -> {
+                        -1
+                    }
+                }
+                val cabinld = when (doorGeX) {
+                    CmdCode.GE1 -> {
+                        cur1Cabinld
+                    }
+
+                    CmdCode.GE2 -> {
+                        cur2Cabinld
+                    }
+
+                    else -> {
+                        ""
+                    }
+                }
+                val stateEntity =
+                        DatabaseManager.queryStateEntity(AppUtils.getContext(), cabinId = cabinld)
+                stateEntity.weigh = curWeightValueAfter?.toFloat() ?: 0.00f
+                synStateHeart(stateEntity, index)
+                println("调试socket 调试串口 关闭格口 更新心跳状态")
             }
         }
     }
@@ -1095,7 +1151,7 @@ import kotlin.random.Random
     /***
      * 刷新当前重量
      */
-    fun sendBusRefreshData() {
+    fun refreshViewUI() {
         println("调试socket 调试串口 刷新Ui")
         if (doorGeXType == CmdCode.GE1) LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).post(BusType.BUS_REFRESH_DATA) else if (doorGeXType == CmdCode.GE2) LiveBus.get(BusType.BUS_TOU2_DOOR_STATUS).post(BusType.BUS_REFRESH_DATA)
         refreshWeight()
@@ -1107,6 +1163,7 @@ import kotlin.random.Random
     fun refreshWeight() {
         val transId = SPreUtil[AppUtils.getContext(), "transId", curTransId] as String
         val weight = DatabaseManager.queryWeightId(AppUtils.getContext(), transId)
+        println("调试socket 调试串口 刷新 refreshWeight $doorGeX")
         if (weight != null) {
             //未上称物品的重量
             val curWeightValueBefore = when (doorGeX) {
@@ -1165,6 +1222,7 @@ import kotlin.random.Random
      */
     fun refreshWeightStatus() {
         ioScope.launch {
+            println("调试socket 调试串口 刷新 refreshWeightStatus")
             val weight = DatabaseManager.queryWeightMax(AppUtils.getContext())
             if (weight != null) {
                 weight.transId?.let { transId ->
@@ -1182,10 +1240,118 @@ import kotlin.random.Random
         }
     }
 
+    /***
+     * 取消job检测
+     */
+    fun cancelDoorJob() {
+        doorJob?.cancel()
+        doorJob = null
+    }
+
+    /***************************************** 发送 启动格口开门 查询投口门状态 查询格口重量 ******************************************/
+    /***************************************** 发送 测试 ******************************************/
+
+    /***
+     * 灯光操作
+     */
+    fun testLightsCmd() {
+        val code = Random.nextInt(1, 2)
+        println("调试socket 调试串口 testLightsCmd code $code")
+        CabinetSdk.startLights(code, lightsCallback = { lockerNo, status ->
+            println("调试socket 调试串口 testClearCmd 接收到回调 灯光：$lockerNo ,$status")
+        }, sendCallback)
+    }
+
+    fun testclose() {
+        ioScope.launch {
+            val trans = DatabaseManager.queryTransMax(AppUtils.getContext())
+            val weight = DatabaseManager.queryWeightMax(AppUtils.getContext())
+            if (trans != null) {
+                val doorClose = DoorCloseBean().apply {
+                    cmd = "closeDoor"
+                    transId = trans.transId
+                    cabinId = trans.cabinId
+                    phoneNumber = ""
+                    //当前设备称重重量
+                    curWeight = weight.curWeight
+
+                    //上称物品的重量
+                    changeWeight = weight.changeWeight
+                    refWeight = weight.refWeight
+
+                    //未上称物品前重量
+                    beforeUpWeight = weight.beforeUpWeight
+                    afterUpWeight = weight.afterUpWeight
+
+                    //已上称物品前重量
+                    beforeDownWeight = weight.beforeDownWeight
+                    afterDownWeight = weight.afterDownWeight
+
+                    timestamp = AppUtils.getDateYMDHMS()
+                }
+                val json = convertToJsonString(doorClose)
+                println("调试socket 调试串口 发送关门成功 $json")
+                vmClient?.sendText(json)
+            }
+        }
+    }
+
+    /***
+     * 打开清运门
+     */
+    fun testClearCmd() {
+        val code = Random.nextInt(1, 3)
+        println("调试socket 调试串口 testClearCmd code $code")
+        CabinetSdk.openClear(code, onOpenStatus = { lockerNo, status ->
+            println("调试socket 调试串口 testClearCmd 接收到回调 格口：$lockerNo ,$status")
+        }, sendCallback)
+    }
+
+    /***
+     * 重量查询
+     */
+    fun testWeightCmd() {
+//        flowCurWeight.value = false
+        addDoorQueue(4)
+    }
+
+    /***
+     * @param status
+     * 0.门关动作
+     * 1.门开动作
+     *
+     * 3.发送开门
+     * 4.发送关门
+     * 5.查询门状态
+     */
+    fun testSendCmd(status: Int) {
+        this.geStartDoorType = status
+        startPollingDoor()
+        addDoorQueue(1)
+    }
+
+    suspend fun testSendCmd2(status: Int) {
+        this.geStartDoorType = status
+        flowCmd01.emit(true)
+        toGoCloseAudio()
+    }
+
+    /***
+     * @param typeEnd
+     * 1.点击
+     * 2.计时结束
+     */
+    fun testTypeEnd(typeEnd: Int) {
+        ioScope.launch {
+            flowDeliveryTypeEnd.emit(typeEnd)
+        }
+    }
+    /***************************************** 发送 测试 ******************************************/
+
     /**
      * 初始化保存网络数据
      */
-    fun saveInitNet(loginModel: ConfigBean, init: Boolean) {
+    fun saveInitNet(loginModel: ConfigBean, oneInit: Boolean) {
         println("调试socket saveInitNet ${Thread.currentThread().name}")
         ioScope.launch {
             println("调试socket saveInitNet ioScope ${Thread.currentThread().name}")
@@ -1239,7 +1405,7 @@ import kotlin.random.Random
 
             println("测试我来了 ${FileMdUtil.checkNameFileExists("qrCode.png")}")
 
-            if (init) {
+            if (oneInit) {
                 config.qrCode?.let { initQRCode(it) }
             } else if (!FileMdUtil.checkNameFileExists("qrCode.png")) {
                 config.qrCode?.let { initQRCode(it) }
@@ -1342,11 +1508,13 @@ import kotlin.random.Random
                             when (index) {
                                 0 -> {
                                     stateMap[0] = states
+                                    cur1Cabinld = states.cabinId ?: ""
                                     curG1Weight = states.weigh.toString()
                                 }
 
                                 1 -> {
                                     stateMap[1] = states
+                                    cur2Cabinld = states.cabinId ?: ""
                                     curG2Weight = states.weigh.toString()
                                 }
                             }
@@ -1383,9 +1551,9 @@ import kotlin.random.Random
                         if (queryResource.md5 != resource.md5) {
                             val fileName = resource.filename ?: ""
                             var dir = FileMdUtil.matchNewFileName("audio", fileName)
-                            if (shouldAudio(fileName)) {
+                            if (FileMdUtil.shouldAudio(fileName)) {
                                 dir = FileMdUtil.matchNewFileName("audio", fileName)
-                            } else if (shouldPGJ(fileName)) {
+                            } else if (FileMdUtil.shouldPGJ(fileName)) {
                                 dir = FileMdUtil.matchNewFileName("res", fileName)
                             }
                             queryResource.url?.let { url ->
@@ -1406,12 +1574,11 @@ import kotlin.random.Random
                                 }
                             }
                         }
-
                     }
                 }
             }
             println("调试socket saveInitNet 启动页面")
-            if (!init) {
+            if (!oneInit) {
                 //发送心跳
                 vmClient?.sendHeartbeat()
                 delay(2000)
@@ -1441,249 +1608,10 @@ import kotlin.random.Random
                 override fun onRendered(renderer: AwesomeQRCode.Renderer, bitmap: Bitmap) {
                     mQrCode = bitmap
                     println("调试socket saveInitNet 创建二维码成功 保存开始")
-                    saveBitmapToInternalStorage(bitmap, "qrCode.png")
+                    FileMdUtil.saveBitmapToInternalStorage(bitmap, "qrCode.png")
 
                 }
             })
-    }
-
-    /**
-     * 保存 音频 图片资源
-     * @param bitmap
-     * @param fileName
-     */
-    fun saveBitmapToInternalStorage(bitmap: Bitmap, fileName: String): String? {
-        // 指定存储目录：/data/data/包名/files/userAvatar/
-//        val dir = File(AppUtils.getContext().filesDir, "faceVerify")
-        val dir = FileMdUtil.matchNewFile("res")
-        if (!dir.exists()) {
-            dir.mkdirs() // 创建目录
-        }
-
-        // 创建保存文件
-        val file = File(dir, fileName)
-        var fos: FileOutputStream? = null
-
-        try {
-            fos = FileOutputStream(file)
-            // 将 Bitmap 压缩为 PNG 格式保存
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-            fos.flush()
-            return file.absolutePath // 返回保存路径
-        } catch (e: IOException) {
-            e.printStackTrace()
-
-        } finally {
-            fos?.close() // 关闭输出流
-        }
-        return null
-    }
-
-    /***
-     * @param config 配置信息
-     * 保存配置信息
-     */
-    fun toGetSaveConfigEntity(snCode: String, config: ConfigInfo) {
-        ioScope.launch {
-            println("调试socket 开始添加配置 ${Thread.currentThread().name}")
-
-            val saveConfig = ConfigEntity().apply {
-                sn = snCode
-                heartBeatInterval = config.heartBeatInterval
-                turnOnLight = config.turnOnLight
-                turnOffLight = config.turnOffLight
-                lightTime = config.lightTime
-                uploadPhotoURL = config.uploadPhotoURL
-                uploadLogURL = config.uploadLogURL
-                qrCode = config.qrCode
-                logLevel = config.logLevel
-                status = config.status
-                debugPasswd = config.debugPasswd
-                irDefaultState = config.irDefaultState
-                weightSensorMode = config.weightSensorMode
-            }
-            val queryConfig = DatabaseManager.queryInitConfig(AppUtils.getContext(), snCode)
-            if (queryConfig == null) {
-                val row = DatabaseManager.insertConfig(AppUtils.getContext(), saveConfig)
-                println("调试socket 添加配置 $row")
-            } else {
-                queryConfig.heartBeatInterval = config.heartBeatInterval
-                queryConfig.heartBeatInterval = config.heartBeatInterval
-                queryConfig.turnOnLight = config.turnOnLight
-                queryConfig.turnOffLight = config.turnOffLight
-                queryConfig.lightTime = config.lightTime
-                queryConfig.uploadPhotoURL = config.uploadPhotoURL
-                queryConfig.uploadLogURL = config.uploadLogURL
-                queryConfig.qrCode = config.qrCode
-                queryConfig.logLevel = config.logLevel
-                queryConfig.status = config.status
-                queryConfig.debugPasswd = config.debugPasswd
-                queryConfig.irDefaultState = config.irDefaultState
-                queryConfig.weightSensorMode = config.weightSensorMode
-                val row = DatabaseManager.upConfigEntity(AppUtils.getContext(), saveConfig)
-                println("调试socket 更新配置 $row")
-            }
-//            return row
-        }
-    }
-
-    /***
-     * @param lattices 格口信息
-     * 保存格口信息
-     */
-    fun toGetSaveLattice(lattices: List<ConfigLattice>?) {
-        ioScope.launch {
-            println("调试socket 开始保存保存格口信息 ${Thread.currentThread().name}")
-            val stateBox = mutableListOf<StateEntity>()
-            var volume = 3
-            lattices?.let {
-                for (lattice in lattices) {
-                    val saveConfig = LatticeEntity().apply {
-                        cabinId = lattice.cabinId
-                        capacity = lattice.capacity
-                        createTime = lattice.createTime
-                        delFlag = lattice.delFlag
-                        doorStatus = lattice.doorStatus
-                        filledTime = lattice.filledTime
-                        netId = lattice.id
-                        ir = lattice.ir
-                        overweight = lattice.overweight
-                        price = lattice.price
-                        rodHinderValue = lattice.rodHinderValue
-                        sn = lattice.sn
-                        smoke = lattice.smoke
-                        sort = lattice.sort
-                        sync = lattice.sync
-                        volume = lattice.volume
-                        weight = lattice.weight
-                    }
-                    volume = lattice.volume
-                    val queryLattice =
-                            lattice.cabinId?.let { cabinId -> DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cabinId) }
-                    if (queryLattice == null) {
-                        val rowCabin =
-                                DatabaseManager.insertLattice(AppUtils.getContext(), saveConfig)
-                        println("调试socket 添加保存格口信息 $rowCabin")
-                        val setCapacity = lattice.capacity?.toInt() ?: 0
-                        val setIrState = lattice.ir
-                        val setWeigh = lattice.weight?.toFloat() ?: 0.00f
-                        val setCabinId = lattice.cabinId ?: ""
-                        val state = StateEntity().apply {
-                            smoke = 0
-                            capacity = setCapacity
-                            irState = setIrState
-                            weigh = setWeigh
-                            doorStatus = 0
-                            lockStatus = 0
-                            cabinId = setCabinId
-                            time = AppUtils.getDateYMDHMS()
-                        }
-                        stateBox.add(state)
-
-                    } else {
-                        queryLattice.cabinId = lattice.cabinId
-                        queryLattice.capacity = lattice.capacity
-                        queryLattice.createTime = lattice.createTime
-                        queryLattice.delFlag = lattice.delFlag
-                        queryLattice.doorStatus = lattice.doorStatus
-                        queryLattice.filledTime = lattice.filledTime
-                        queryLattice.netId = lattice.id
-                        queryLattice.ir = lattice.ir
-                        queryLattice.overweight = lattice.overweight
-                        queryLattice.price = lattice.price
-                        queryLattice.rodHinderValue = lattice.rodHinderValue
-                        queryLattice.sn = lattice.sn
-                        queryLattice.smoke = lattice.smoke
-                        queryLattice.sort = lattice.sort
-                        queryLattice.sync = lattice.sync
-                        queryLattice.volume = lattice.volume
-                        queryLattice.weight = lattice.weight
-                        val rowCabin =
-                                DatabaseManager.upLatticeEntity(AppUtils.getContext(), queryLattice)
-                        println("调试socket 更新保存格口信息 $rowCabin")
-                    }
-                }
-                //配置音量
-                MediaPlayerHelper.setVolume(AppUtils.getContext(), 2)
-                for (state in stateBox) {
-                    val rowState = DatabaseManager.insertState(AppUtils.getContext(), state)
-                    println("调试socket 添加心跳信息 $rowState")
-                }
-            }
-        }
-
-    }
-
-    /***
-     * @param resources 资源
-     *
-     */
-    fun toGetResource(resources: List<ConfigRes>?) {
-        ioScope.launch {
-            println("调试socket 开始加载资源 ${Thread.currentThread().name}")
-            resources?.let {
-                for (resource in resources) {
-                    val saveResource = ResEntity().apply {
-                        filename = resource.filename
-                        url = resource.url
-                        md5 = resource.md5
-                        time = AppUtils.getDateYMDHMS()
-                    }
-                    val queryResource =
-                            DatabaseManager.queryRes(AppUtils.getContext(), resource.filename ?: "")
-                    if (queryResource == null) {
-                        val row = DatabaseManager.insertRes(AppUtils.getContext(), saveResource)
-                        println("调试socket 添加资源 $row")
-                    } else {
-                        queryResource.filename = resource.filename
-                        queryResource.url = resource.filename
-                        queryResource.md5 = resource.md5
-                        //资源不一致下载到本地
-                        if (queryResource.md5 != resource.md5) {
-                            val fileName = resource.filename ?: ""
-                            var dir = FileMdUtil.matchNewFileName("audio", fileName)
-                            if (shouldAudio(fileName)) {
-                                dir = FileMdUtil.matchNewFileName("audio", fileName)
-                            } else if (shouldPGJ(fileName)) {
-                                dir = FileMdUtil.matchNewFileName("res", fileName)
-                            }
-                            queryResource.url?.let { url ->
-                                downloadRes(url, dir) { success ->
-                                    if (success) {
-                                        queryResource.status = 0
-                                        val row =
-                                                DatabaseManager.upResEntity(AppUtils.getContext(), queryResource)
-                                        println("调试socket 下载资源成功 ${queryResource.filename}")
-                                        println("调试socket 下载资源成功 更新数据 $row")
-                                    } else {
-                                        queryResource.status = 1
-                                        val row =
-                                                DatabaseManager.upResEntity(AppUtils.getContext(), queryResource)
-                                        println("调试socket 下载资源失败 $row")
-                                        println("调试socket 下载资源失败 更新数据 $row")
-                                    }
-                                }
-                            }
-                        }
-
-                    }
-                }
-            }
-        }
-    }
-
-    /***
-     * 检测音频文件
-     */
-    private fun shouldAudio(fileName: String): Boolean {
-        return fileName.contains("wav", ignoreCase = true) || fileName.contains("mp3", ignoreCase = true) || fileName.contains("mp4", ignoreCase = true)
-    }
-
-    /***
-     * 检测png文件
-     */
-    private fun shouldPGJ(fileName: String): Boolean {
-        return fileName.contains("png", ignoreCase = true) || fileName.contains("gif", ignoreCase = true) || fileName.contains("jpg", ignoreCase = true)
     }
 
     /***
@@ -1745,7 +1673,7 @@ import kotlin.random.Random
         //更新心跳数据
         val upperMachines = DatabaseManager.queryStateList(AppUtils.getContext())
         val size = upperMachines.size
-        println("调试socket 调试串口 下位机上报更新 size $size")
+        println("调试socket 调试串口 下位机上报更新 size $size ${Thread.currentThread().name}")
         if (upperMachines.isNotEmpty()) {
             lowerMachines.withIndex().forEach { (index, lower) ->
                 when (index) {
@@ -1758,8 +1686,8 @@ import kotlin.random.Random
                         state.lockStatus = lower.lockStatus ?: 0
                         state.time = AppUtils.getDateYMDHMS()
                         println("调试socket 调试串口 下位机上报更新格口一心跳 $state | $lower")
-                        synStateHeart(state)
-                        stateMap[0] = state
+                        synStateHeart(state, 0)
+
                     }
 
                     1 -> {
@@ -1772,21 +1700,22 @@ import kotlin.random.Random
                             state.lockStatus = lower.lockStatus ?: 0
                             state.time = AppUtils.getDateYMDHMS()
                             println("调试socket 调试串口 下位机上报更新格口二心跳 $state | $lower")
-                            synStateHeart(state)
-                            stateMap[1] = state
+                            synStateHeart(state, 1)
                         }
                     }
                 }
             }
-            sendBusRefreshData()
+
         }
     }
 
     //同步心跳重量
-    private fun synStateHeart(state: StateEntity) {
+    private fun synStateHeart(state: StateEntity, index: Int) {
         ioScope.launch {
             val row = DatabaseManager.upStateEntity(AppUtils.getContext(), state)
             println("调试socket 同步更新心跳上传重量 $row")
+            stateMap[index] = state
+            refreshViewUI()//心跳 刷新重量和事务
         }
     }
     /*******************************************下位机通信部分*************************************************/

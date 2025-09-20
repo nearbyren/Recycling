@@ -17,7 +17,7 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "cmd", typeAffinity = TEXT, defaultValue = "") var cmd: String? = null,
     /***
-     * 事务ID
+     * 事务ID交易
      */
     @ColumnInfo(name = "transId", typeAffinity = TEXT, defaultValue = "") var transId: String? = null,
     /***
@@ -29,6 +29,17 @@ import androidx.room.PrimaryKey
      * 仓门编码
      */
     @ColumnInfo(name = "cabinId", typeAffinity = TEXT, defaultValue = "") var cabinId: String? = null,
+
+    /***
+     * 用户ID
+     */
+    @ColumnInfo(name = "userId",typeAffinity = TEXT, defaultValue = "") var userId: String? = null,
+    /***
+     * 事务类型
+     * 0.二维码
+     * 1.手机号
+     */
+    @ColumnInfo(name = "transType", typeAffinity = INTEGER) var transType: Int = -1,
     /***
      * 关闭 0.关闭成功
      */
@@ -40,20 +51,23 @@ import androidx.room.PrimaryKey
     /***
      * 创建时间
      */
-    @ColumnInfo(name = "time", typeAffinity = TEXT) var time: String? = null, ) {
+    @ColumnInfo(name = "time", typeAffinity = TEXT) var time: String? = null,
+) {
     @Ignore constructor() : this(
         0,
         null,
         null,
         0,
         null,
+        null,
+        -1,
         -1,
         -1,
         null,
     )
 
     override fun toString(): String {
-        return "id=$id," + "transId=${transId}," + "openType=${openType}," + "cabinId=${cabinId}" + "closeStatus=${closeStatus}" + "openStatus=${openStatus}" + "time=${time}"
+        return "id=$id," + "transId=${transId}," + "openType=${openType}," + "cabinId=${cabinId}" + "userId=${userId}" + "cabinType=${transType}" + "closeStatus=${closeStatus}" + "openStatus=${openStatus}" + "time=${time}"
     }
 }
 

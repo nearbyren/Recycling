@@ -4,19 +4,28 @@ import android.graphics.Color
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatEditText
+import androidx.appcompat.widget.AppCompatImageView
+import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.isVisible
+import androidx.core.view.size
 import androidx.fragment.app.viewModels
 import com.blankj.utilcode.util.LogUtils.D
+import com.bumptech.glide.Glide
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.R.drawable.btn_tab_2_bg
 import com.recycling.toolsapp.databinding.FragmentDebugTypeBinding
 import com.recycling.toolsapp.databinding.FragmentMobileBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
+import com.recycling.toolsapp.socket.DoorOpenBean
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
+import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
+import nearby.lib.signal.livebus.BusType
+import nearby.lib.signal.livebus.LiveBus
 
 
 /***
@@ -56,6 +65,30 @@ import dagger.hilt.android.AndroidEntryPoint
 //        binding.acivClose.setOnClickListener {
 //            binding.clSelect.isVisible =  !binding.clSelect.isVisible
 //        }
+
+        //匹配是否显示两个格口
+        if (cabinetVM.doorGeXType == CmdCode.GE1) {
+            binding.clCastLeft.isVisible = true
+            binding.clCastRight.isVisible = false
+        } else if (cabinetVM.doorGeXType == CmdCode.GE2) {
+            binding.clCastLeft.isVisible = true
+            binding.clCastRight.isVisible = true
+        }
+        //接收图片
+        LiveBus.get(BusType.BUS_MOBILE_CLOS).observeForever { filepath ->
+            mActivity?.fragmentCoordinator?.navigateBack()
+        }
+
+        binding.acetCastLeft.setOnClickListener {
+            val mobile = binding.acetMobile.text.toString()
+            cabinetVM.toGoMobile(mobile)
+        }
+        binding.acetCastRight.setOnClickListener {
+            val mobile = binding.acetMobile.text.toString()
+            cabinetVM.toGoMobile(mobile)
+        }
+
+
         binding.actvExit.setOnClickListener {
             mActivity?.fragmentCoordinator?.navigateBack()
         }
@@ -68,7 +101,7 @@ import dagger.hilt.android.AndroidEntryPoint
 
         }
         val selectableViews =
-                listOf(binding.acet1, binding.acet2, binding.acet3, binding.acet4, binding.acet5, binding.acet6, binding.acet7, binding.acet8, binding.acet9, binding.acet0, binding.acetDel, binding.acetMobile)
+                listOf(binding.acet1, binding.acet2, binding.acet3, binding.acet4, binding.acet5, binding.acet6, binding.acet7, binding.acet8, binding.acet9, binding.acet0, binding.acetDel, binding.acetMobile, binding.actvLogin)
         selectableViews.forEach { view ->
             view.setOnClickListener {
                 val acetMbile = binding.acetMobile
@@ -168,12 +201,11 @@ import dagger.hilt.android.AndroidEntryPoint
 
                     R.id.actv_login -> {
                         Loge.d("handle actv_login")
-                        if (value.length != 12) {
+                        if (value.length != 11) {
                             cabinetVM.tipMessage("请输入手机号")
                             return@setOnClickListener
                         }
-                        val mobile = binding.acetMobile.toString()
-                        cabinetVM.toGoMobile(mobile)
+                        binding.clSelect.isVisible = !binding.clSelect.isVisible
                     }
                 }
             }
