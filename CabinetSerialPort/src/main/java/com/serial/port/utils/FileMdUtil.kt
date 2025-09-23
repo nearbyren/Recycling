@@ -34,6 +34,7 @@ object FileMdUtil {
     fun matchNewFileName(path: String, fileName: String): String {
         return File("${AppUtils.getContext().filesDir}/${path}/${fileName}").absolutePath
     }
+
     fun matchDownloadsName(path: String, fileName: String): String {
         return File("${AppUtils.getContext().filesDir}/${path}/${fileName}").absolutePath
     }
@@ -49,9 +50,19 @@ object FileMdUtil {
     }
 
     /**
-     * 检测文件是否存在
+     * 检测音频文件是否存在
      */
-    fun checkNameFileExists(fileName: String): Boolean {
+    fun checkAudioFileExists(fileName: String): Boolean {
+        val dataFiles = FileMdUtil.matchNewFile("audio")
+        return dataFiles?.let { dir ->
+            File(dir, fileName).takeIf { it.exists() && it.isFile } != null
+        } ?: false
+    }
+
+    /**
+     * 检测资源文件是否存在
+     */
+    fun checkResFileExists(fileName: String): Boolean {
         val dataFiles = FileMdUtil.matchNewFile("res")
         return dataFiles?.let { dir ->
             File(dir, fileName).takeIf { it.exists() && it.isFile } != null

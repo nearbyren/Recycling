@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
+import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
@@ -27,7 +28,7 @@ import nearby.lib.signal.livebus.LiveBus
 @AndroidEntryPoint class TouDoubleFragment : BaseBindFragment<FragmentTouDoubleBinding>() {
     // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
     private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
-
+    private var downTime = 0L
     override fun layoutRes(): Int {
         return R.layout.fragment_tou_double
     }
@@ -41,6 +42,26 @@ import nearby.lib.signal.livebus.LiveBus
     }
 
     override fun initialize(savedInstanceState: Bundle?) {
+        binding.clRoot.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    downTime = System.currentTimeMillis()
+                    true
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    if (System.currentTimeMillis() - downTime >= 2000) {
+                        // 执行2秒长按回调
+                        mActivity?.navigateTo(fragmentClass = ReportingBoxFragment::class.java, args = Bundle().apply {
+
+                        })
+                        true // 消耗事件
+                    } else false
+                }
+
+                else -> false
+            }
+        }
         cabinetVM.doorGeXType = CmdCode.GE2
         refresh()
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->

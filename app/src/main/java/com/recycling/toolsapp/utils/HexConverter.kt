@@ -45,6 +45,18 @@ object HexConverter {
         return "%.2f".format(weight / 100.0)
     }
 
+    /***
+     * 计算获取百分比
+     */
+    fun getWeightPercent(weight: Float, totalWeight: Float): String {
+        return if (totalWeight == 0.00f) {
+            "0%"// 避免除零错误
+        } else {
+            val result = (weight / totalWeight) * 100
+            "$result%"
+        }
+    }
+
     /**
      * 将字节数组转换为十六进制字符串
      * @param bytes 字节数组

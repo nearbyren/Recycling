@@ -8,6 +8,7 @@ import android.provider.ContactsContract.Data
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
+import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
@@ -32,7 +33,7 @@ import nearby.lib.signal.livebus.LiveBus
 @AndroidEntryPoint class TouSingleFragment : BaseBindFragment<FragmentTouSingleBinding>() {
     // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
     private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
-
+    private var downTime = 0L
     override fun layoutRes(): Int {
         return R.layout.fragment_tou_single
     }
@@ -46,13 +47,35 @@ import nearby.lib.signal.livebus.LiveBus
     }
 
     override fun initialize(savedInstanceState: Bundle?) {
+        binding.clRoot.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    downTime = System.currentTimeMillis()
+                    true
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    if (System.currentTimeMillis() - downTime >= 2000) {
+                        // 执行2秒长按回调
+                        mActivity?.navigateTo(fragmentClass = ReportingBoxFragment::class.java, args = Bundle().apply {
+
+                        })
+                        true // 消耗事件
+                    } else false
+                }
+
+                else -> false
+            }
+        }
         binding.tvTitle.setOnClickListener {
-            HexConverter.restartApp2(AppUtils.getContext(), 2 * 500L)
+//            HexConverter.restartApp2(AppUtils.getContext(), 2 * 500L)
+            mActivity?.navigateTo(fragmentClass = DeliveryFragment::class.java)
+
         }
         cabinetVM.doorGeXType = CmdCode.GE1
         refresh()
         binding.tvClsoe.setOnClickListener {
-         cabinetVM.testclose()
+            cabinetVM.testclose()
         }
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
             when (msg) {
@@ -125,7 +148,7 @@ import nearby.lib.signal.livebus.LiveBus
         binding.tvSinglePrice.text = cabinetVM.curGePrice
         //当前重量
 
-        val curWeight = cabinetVM.curG1Weight
+        val curWeight = cabinetVM.curG1Weight//刷新ui当前格口重量
         val votable = cabinetVM.getVot1Weight()
         println("调试socket 调试串口 刷新Ui $curWeight | $votable")
         binding.tvCurWeight.text = "当前重量(kg)：$curWeight"

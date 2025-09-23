@@ -16,6 +16,26 @@ import kotlin.random.Random
 ///测试  单独运行文件 便于测试某些功能
 
 @RequiresApi(Build.VERSION_CODES.O) fun main() {
+    //测试重量问题
+    val byteArray = HexConverter.intToByteArray(600)
+    println("测试 发送的字节 byte:${ByteUtils.toHexString(byteArray)}")
+    val weight = HexConverter.byteArrayToInt(byteArray)
+    println("测试 发送的字节 weight：${weight}")
+
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(18))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(20))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(800))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1000))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1200))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1400))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1600))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1800))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2000))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2200))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2400))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2600))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2800))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(3000))}")
     ///高阶函数
 //    println("${cal(1, 2, ::add)}")
 //    testSend485S()
@@ -77,11 +97,7 @@ import kotlin.random.Random
 //    //电量
 //    send485(command = 0x06.toByte(), add = address, data = byteArrayDL1)
 
-    //测试重量问题
-    val byteArray = HexConverter.intToByteArray(2)
-    println("测试 发送的字节 byte:${ByteUtils.toHexString(byteArray)}")
-    val weight = HexConverter.byteArrayToInt(byteArray)
-    println("测试 发送的字节 weight：${weight}")
+
 }
 
 private var buffer2322 = ByteArray(0)

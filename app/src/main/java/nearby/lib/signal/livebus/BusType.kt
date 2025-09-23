@@ -18,6 +18,7 @@ object BusType {
      * 计重页
      */
     const val BUS_DELIVERY_STATUS = "deliveryStatus"
+
     /***
      * 计重页关闭
      */

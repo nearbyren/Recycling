@@ -88,11 +88,9 @@ import kotlin.random.Random
                     when (cmd) {
 
                         CmdValue.CMD_HEART_BEAT -> {
-                            println("调试socket recv: 接收心跳成功")
                         }
 
                         CmdValue.CMD_LOGIN -> {
-                            println("调试socket recv: 接收登录成功")
                             val loginModel = Gson().fromJson(json, ConfigBean::class.java)
                             val heartbeatIntervalMillis =
                                     loginModel.config.heartBeatInterval?.toLong() ?: 3
@@ -104,35 +102,24 @@ import kotlin.random.Random
 
                         CmdValue.CMD_INIT_CONFIG -> {
                             val initConfigModel = Gson().fromJson(json, ConfigBean::class.java)
-                            println("调试socket recv: 接收 initConfig 成功")
                         }
 
                         CmdValue.CMD_OPEN_DOOR -> {
-                            println("调试socket recv: 接收 openDoor 成功")
                         }
 
                         CmdValue.CMD_CLOSE_DOOR -> {
-                            println("调试socket recv: 接收 closeDoor成功")
                         }
 
                         CmdValue.CMD_PHONE_NUMBER_LOGIN -> {
-                            println("调试socket recv: 接收 phoneNumberLogin 成功")
-                        }
-
-                        CmdValue.CMD_PHONE_USER_OPEN_DOOR -> {
-                            println("调试socket recv: 接收 phoneUserOpenDoor 成功")
                         }
 
                         CmdValue.CMD_RESTART -> {
-                            println("调试socket recv: 接收 restart 成功")
                         }
 
                         CmdValue.CMD_UPLOAD_LOG -> {
-                            println("调试socket recv: 接收 uploadLog 成功")
                         }
 
                         CmdValue.CMD_OTA -> {
-                            println("调试socket recv: 接收 OTA 成功")
                         }
                     }
                 }

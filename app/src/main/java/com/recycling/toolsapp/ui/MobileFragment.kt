@@ -19,6 +19,7 @@ import com.recycling.toolsapp.databinding.FragmentDebugTypeBinding
 import com.recycling.toolsapp.databinding.FragmentMobileBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.socket.DoorOpenBean
+import com.recycling.toolsapp.utils.HexConverter
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.CmdCode
@@ -66,6 +67,17 @@ import nearby.lib.signal.livebus.LiveBus
 //            binding.clSelect.isVisible =  !binding.clSelect.isVisible
 //        }
 
+        val curWeight1 = cabinetVM.curG1Weight//手机登录读取格口重量一
+        val curWeight2 = cabinetVM.curG2Weight//手机登录读取格口重量二
+
+        val leftValue =
+                HexConverter.getWeightPercent(curWeight1?.toFloat() ?: 0.00f, cabinetVM.curG1TotalWeight.toFloat())
+        val rightValue =
+                HexConverter.getWeightPercent(curWeight2?.toFloat() ?: 0.00f, cabinetVM.curG2TotalWeight.toFloat())
+
+        binding.actvCastLeftValue.text = "容量已满$leftValue\n (${curWeight1}kg)"
+        binding.actvCastRightValue.text = "容量已满$rightValue\n (${curWeight2}kg)"
+
         //匹配是否显示两个格口
         if (cabinetVM.doorGeXType == CmdCode.GE1) {
             binding.clCastLeft.isVisible = true
@@ -79,11 +91,11 @@ import nearby.lib.signal.livebus.LiveBus
             mActivity?.fragmentCoordinator?.navigateBack()
         }
 
-        binding.acetCastLeft.setOnClickListener {
+        binding.acivCastLeftLogo.setOnClickListener {
             val mobile = binding.acetMobile.text.toString()
             cabinetVM.toGoMobile(mobile)
         }
-        binding.acetCastRight.setOnClickListener {
+        binding.acivCastRightLogo.setOnClickListener {
             val mobile = binding.acetMobile.text.toString()
             cabinetVM.toGoMobile(mobile)
         }

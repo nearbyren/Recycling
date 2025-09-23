@@ -13,6 +13,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.recycling.toolsapp.dao.LatticeFlowDao
 import com.recycling.toolsapp.dao.ConfigFlowDao
+import com.recycling.toolsapp.dao.FileFlowDao
 import com.recycling.toolsapp.dao.LogFlowDao
 import com.recycling.toolsapp.dao.ResFlowDao
 import com.recycling.toolsapp.dao.StateFlowDao
@@ -22,6 +23,7 @@ import com.recycling.toolsapp.http.MailConfig
 import com.recycling.toolsapp.http.MailSender
 import com.recycling.toolsapp.model.LatticeEntity
 import com.recycling.toolsapp.model.ConfigEntity
+import com.recycling.toolsapp.model.FileEntity
 import com.recycling.toolsapp.model.LogEntity
 import com.recycling.toolsapp.model.ResEntity
 import com.recycling.toolsapp.model.StateEntity
@@ -399,6 +401,48 @@ object DatabaseManager {
     }
 
     /***************************************获取 记录当前重量*************************************************/
+
+    /***************************************获取 文件上传 实例*************************************************/
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @return
+     */
+    private fun getFileFlowDao(context: Context): FileFlowDao {
+        return getDatabase(context).fileFlowDao()
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param fileEntity 插入一条记录
+     */
+    fun insertFile(context: Context, fileEntity: FileEntity): Long {
+        return getFileFlowDao(context).insert(fileEntity)
+    }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param cmd
+     * @param transId
+     * @return
+     */
+    fun queryFileEntity(context: Context, cmd: String, transId: String): FileEntity {
+        return getFileFlowDao(context).queryFileEntity(cmd, transId)
+    }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param FileEntity
+     * @return
+     */
+    fun upFileEntity(context: Context, fileEntity: FileEntity): Int {
+        return getFileFlowDao(context).upFileEntity(fileEntity)
+    }
+
+    /***************************************获取 文件上传*************************************************/
 
     /***************************************获取 资源 实例*************************************************/
     /***

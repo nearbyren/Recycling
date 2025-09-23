@@ -38,4 +38,8 @@ class RepoImpl : Repo {
     override suspend fun addUserFace(params: MutableMap<String, Any>): ResponseHolder<UserDto> {
         return CorHttp.getInstance().postMultipart(url = HttpUrl.addFaceUser, params = params, type = object : TypeToken<InfoResponse<UserDto>>() {}.type, kClazz = Any::class)
     }
+
+    override suspend fun uploadPhoto(params: MutableMap<String, Any>): ResponseHolder<String> {
+        return CorHttp.getInstance().postMultipart(url = HttpUrl.addFaceUser, params = params, type = object : TypeToken<InfoResponse<String>>() {}.type, kClazz = String::class)
+    }
 }

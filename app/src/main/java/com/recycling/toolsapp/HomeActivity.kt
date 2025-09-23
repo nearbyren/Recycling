@@ -8,8 +8,10 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -21,6 +23,7 @@ import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindActivity
 import com.recycling.toolsapp.socket.DoorOpenBean
 import com.recycling.toolsapp.socket.ConfigBean
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
+import com.recycling.toolsapp.ui.Camera2Fragment
 import com.recycling.toolsapp.ui.DeliveryFragment
 import com.recycling.toolsapp.ui.TouSingleFragment
 import com.recycling.toolsapp.ui.TouDoubleFragment
@@ -74,18 +77,21 @@ import java.io.File
         }
     }
 
+
     @RequiresApi(Build.VERSION_CODES.M) override fun initialize(savedInstanceState: Bundle?) {
         initNetworkState()
         initDoorStatus()
         initPort()
+        cabinetVM.ioScope.launch {
+            // 预热相机Provider 快速启动相机能从6秒到2秒
+            cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
+            cabinetVM.cameraProviderFuture2 =
+                    ProcessCameraProvider.getInstance(this@HomeActivity).get()
+        }
         val initSocket = SPreUtil.get(AppUtils.getContext(), "initSocket", false) as Boolean
         if (initSocket) {
             initSocket()
         }
-//        cabinetVM.ioScope.launch {
-//            // 预热相机Provider 快速启动相机能从6秒到2秒
-//            cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
-//        }
 
 //        countdownUI()
 //        lifeUpgradeApk()
@@ -212,6 +218,44 @@ import java.io.File
                 }
             }
         }
+        manager = supportFragmentManager
+        //接收启动相机
+        lifecycleScope.launch {
+            cabinetVM.getStartCamera.collect { cType ->
+                when (cType) {
+                    0 -> {//移除
+                        Loge.d("调试socket 调试串口 添加预览相机 ")
+                        removeCamera()
+                    }
+
+                    1 -> {//添加
+                        Loge.d("调试socket 调试串口 移除预览相机")
+                        addCamera()
+                    }
+                }
+            }
+        }
+    }
+
+    var manager: FragmentManager? = null
+    fun addCamera() {
+        manager?.let {
+            val beginTransaction = it.beginTransaction()
+            val f = Camera2Fragment()
+            f?.let { fragment ->
+                beginTransaction.add(R.id.fl_camera2, fragment, "camera2")
+                beginTransaction.commit()
+            }
+        }
+    }
+
+    fun removeCamera() {
+        manager?.let { mg ->
+            val fragment =   mg.findFragmentByTag("camera2")
+            fragment?.let {ft->
+                mg.beginTransaction().remove(ft).commit()
+            }
+        }
     }
 
     /***
@@ -267,12 +311,12 @@ import java.io.File
 
                     CmdValue.CMD_LOGIN -> {
                         val loginModel = Gson().fromJson(json, ConfigBean::class.java)
-                        cabinetVM.saveInitNet(loginModel,false)
+                        cabinetVM.saveInitNet(loginModel, false)
                     }
 
                     CmdValue.CMD_INIT_CONFIG -> {
                         val initConfigModel = Gson().fromJson(json, ConfigBean::class.java)
-                        cabinetVM.saveInitNet(initConfigModel,true)
+                        cabinetVM.saveInitNet(initConfigModel, true)
                     }
 
                     CmdValue.CMD_OPEN_DOOR -> {
@@ -289,10 +333,8 @@ import java.io.File
                         cabinetVM.toGoMobileOpen(cabinetVM.cur1Cabinld, doorOpenModel.userId ?: "")
                     }
 
-                    CmdValue.CMD_PHONE_USER_OPEN_DOOR -> {
-                    }
-
                     CmdValue.CMD_RESTART -> {
+                        HexConverter.restartApp2(AppUtils.getContext(), 3 * 1000L)
                     }
 
                     CmdValue.CMD_UPLOAD_LOG -> {
@@ -574,25 +616,13 @@ import java.io.File
     private fun navigateToHome() {
         val typeGrid = SPreUtil[AppUtils.getContext(), "type_grid", -1]
         println("调试socket navigateToHome $typeGrid")
-        val sn = SPreUtil[AppUtils.getContext(), "sn", ""]
-        val typeText = when (typeGrid) {
-            1 -> {
-                "单格口"
-            }
-
-            2 -> {
-                "双格口"
-            }
-
-            3 -> {
-                "子母格口"
-            }
-
-            else -> {
-                "-"
-            }
+        val initSn = SPreUtil[AppUtils.getContext(), "init_sn", "init_sn"]
+        val loginSn = SPreUtil[AppUtils.getContext(), "login_sn", "login_sn"]
+        if (initSn == loginSn) {
+            binding.tvSn.text = "sn：$initSn"
+        } else {
+            binding.tvSn.text = "sn：$initSn|$loginSn"
         }
-        binding.tvSn.text = "sn：$sn"
         binding.tvVersion.text = "版本号：v${AppUtils.getVersionName()}"
         when (typeGrid) {
             1, 3 -> {
@@ -615,6 +645,7 @@ import java.io.File
         cabinetVM.closeSock()
         super.onDetachedFromWindow()
     }
+
     override fun onDestroy() {
         println("调试socket home onDestroy")
         cabinetVM.closeSock()

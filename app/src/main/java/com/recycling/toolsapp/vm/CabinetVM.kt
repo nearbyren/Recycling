@@ -21,14 +21,15 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.github.sumimakito.awesomeqr.AwesomeQRCode
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.gson.Gson
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.db.DatabaseManager
 import com.recycling.toolsapp.http.HttpUrl
 import com.recycling.toolsapp.http.RepoImpl
 import com.recycling.toolsapp.http.VersionDto
 import com.recycling.toolsapp.model.ConfigEntity
+import com.recycling.toolsapp.model.FileEntity
 import com.recycling.toolsapp.model.LatticeEntity
+import com.recycling.toolsapp.model.LogEntity
 import com.recycling.toolsapp.model.ResEntity
 import com.recycling.toolsapp.model.StateEntity
 import com.recycling.toolsapp.model.TransEntity
@@ -39,7 +40,9 @@ import com.recycling.toolsapp.socket.DoorOpenBean
 import com.recycling.toolsapp.socket.SocketClient
 import com.recycling.toolsapp.utils.CmdType
 import com.recycling.toolsapp.utils.CmdValue
+import com.recycling.toolsapp.utils.Define
 import com.recycling.toolsapp.utils.HexConverter
+import com.recycling.toolsapp.utils.JsonBuilder
 import com.recycling.toolsapp.utils.MediaPlayerHelper
 import com.recycling.toolsapp.utils.ResultType
 import com.serial.port.CabinetSdk
@@ -66,8 +69,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import nearby.lib.netwrok.download.SingleDownloader
 import nearby.lib.netwrok.response.CorHttp
 import nearby.lib.netwrok.response.SPreUtil
@@ -147,6 +148,7 @@ import kotlin.random.Random
 
     //相机提供者
     var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>? = null
+    var cameraProviderFuture2: ProcessCameraProvider? = null
 
     //处理摄像头提供程序
     var cameraProvider1: ProcessCameraProvider? = null
@@ -158,15 +160,84 @@ import kotlin.random.Random
 
     var cameraProvider2: ProcessCameraProvider? = null
     var cameraSelector2: CameraSelector? = null
+    var imageAnalysis2: ImageAnalysis? = null
     var imageCapture2: ImageCapture? = null
     var videoCapture2: VideoCapture<Recorder>? = null
     var recording2: Recording? = null
 
-    val delays = listOf(3, 5, 6) // 延迟时间列表（秒）
+    val delays = listOf(3/*, 5, 6*/) // 延迟时间列表（秒）
 
     //计时指定秒跑着
     private val flowDelays = MutableSharedFlow<Long>(replay = 1)
     val getDelays = flowDelays.asSharedFlow()
+
+    /***
+     * 主动拍摄照片
+     * 1.开仓
+     * 0.关仓
+     */
+    private val flowActive = MutableSharedFlow<String>(replay = 1)
+
+    /***
+     * 主动拍摄照片
+     */
+    val getActive = flowActive.asSharedFlow()
+
+    /**
+     * 主动去拍照
+     */
+    fun toGoActionPhoto(activeType: String) {
+        ioScope.launch {
+            flowActive.emit(activeType)
+        }
+    }
+
+    var activeType = ""
+    var photoOpenIn = ""
+    var photoOpenOut = ""
+    var photoCloseIn = ""
+    var photoCloseOut = ""
+
+    /***
+     * 插入数据库
+     */
+    fun toGoInsertPhoto(mcmd: String) {
+        ioScope.launch {
+            val fileEntity = FileEntity().apply {
+                cmd = mcmd
+                photoIn = photoIn
+                photoOut = photoOut
+                transId = curTransId
+                time = AppUtils.getDateYMDHMS()
+            }
+            var cmdValue = ""
+            fileEntity.msg = when (mcmd) {
+                CmdValue.CMD_OPEN_DOOR -> {
+                    cmdValue = CmdValue.CMD_OPEN_DOOR
+                    "开仓前照片"
+                }
+
+                CmdValue.CMD_CLOSE_DOOR -> {
+                    cmdValue = CmdValue.CMD_CLOSE_DOOR
+                    "开仓后照片"
+                }
+
+                else -> {
+                    "非非非"
+                }
+            }
+            val fileDb =
+                    DatabaseManager.queryFileEntity(AppUtils.getContext(), cmdValue, curTransId)
+            if (fileDb == null) {
+                val row = DatabaseManager.insertFile(AppUtils.getContext(), fileEntity)
+                println("调试socket toGoInsertPhoto 插入 row $row")
+            } else {
+                fileDb.photoOut = photoCloseIn
+                val row = DatabaseManager.upFileEntity(AppUtils.getContext(), fileDb)
+                println("调试socket toGoInsertPhoto 更新 row $row")
+            }
+        }
+    }
 
     //保存的图片
     private val flowTakePic = MutableSharedFlow<String>(replay = 1)
@@ -214,15 +285,15 @@ import kotlin.random.Random
         }
     }
 
-    fun convertToJsonString(obj: Any): String {
-        return Gson().toJson(obj)
-    }
-
+    /***
+     * 手机投递方式
+     * @param mobile
+     */
     fun toGoMobile(mobile: String) {
         ioScope.launch {
             val m =
-                    mapOf("cmd" to "phoneNumberLogin", "phoneNumber" to mobile, "timestamp" to System.currentTimeMillis())
-            val json = convertToJsonString(m)
+                    mapOf("cmd" to CmdValue.CMD_PHONE_NUMBER_LOGIN, "phoneNumber" to mobile, "timestamp" to System.currentTimeMillis())
+            val json = JsonBuilder.convertToJsonString(m)
             vmClient?.sendText(json)
         }
     }
@@ -235,17 +306,20 @@ import kotlin.random.Random
     fun toGoMobileOpen(cabinId: String, userId: String) {
         ioScope.launch {
             val m =
-                    mapOf("cmd" to "phoneUserOpenDoor", "cabinId" to cabinId, "userId" to userId, "timestamp" to System.currentTimeMillis())
-            val json = convertToJsonString(m)
+                    mapOf("cmd" to CmdValue.CMD_PHONE_USER_OPEN_DOOR, "cabinId" to cabinId, "userId" to userId, "timestamp" to System.currentTimeMillis())
+            val json = JsonBuilder.convertToJsonString(m)
             vmClient?.sendText(json)
         }
     }
 
+    /***
+     * 业务通信前，先登录
+     */
     fun toGoCmdLogin() {
         ioScope.launch {
             val m =
-                    mapOf("cmd" to "login", "sn" to "0136004ST00041", "imsi" to "460086096808642", "imei" to "868408061812125", "iccid" to "898604A70821C0049781", "version" to "1.0.0", "timestamp" to System.currentTimeMillis())
-            val json = convertToJsonString(m)
+                    mapOf("cmd" to CmdValue.CMD_LOGIN, "sn" to "0136004ST00041", "imsi" to "460086096808642", "imei" to "868408061812125", "iccid" to "898604A70821C0049781", "version" to "1.0.0", "timestamp" to System.currentTimeMillis())
+            val json = JsonBuilder.convertToJsonString(m)
             vmClient?.sendText(json)
         }
     }
@@ -408,6 +482,19 @@ import kotlin.random.Random
     //启动显示格口页
     private val flowLoginCmd = MutableSharedFlow<Boolean>(replay = 1)
     val getLoginCmd = flowLoginCmd.asSharedFlow()
+
+    /***
+     * 启动相机拍照
+     * 0.移除相机
+     * 1.预览相机
+     */
+    private val flowStartCamera = MutableSharedFlow<Int>(replay = 1)
+    /***
+     * 启动相机拍照
+     * 0.移除相机
+     * 1.预览相机
+     */
+    val getStartCamera = flowStartCamera.asSharedFlow()
 
     /***
      * 倒计时结束  countdownEnd
@@ -611,6 +698,7 @@ import kotlin.random.Random
             }
             val traRow = DatabaseManager.insertWeight(AppUtils.getContext(), weightEntity)
             refreshViewUI()//门开前 刷新重量和事务
+            flowStartCamera.emit(1)
             println("调试socket 调试串口 开格口前插入前后重量数据 $traRow")
         }
     }
@@ -642,6 +730,7 @@ import kotlin.random.Random
                     flowCmd04.emit(true)
                 }
             } else if (statusDoor == CmdCode.GE_OPEN_CLOSE_FAULT) {
+                LiveBus.get(BusType.BUS_DELIVERY_STATUS).post(BusType.BUS_DELIVERY_ABNORMAL)
                 //开关门故障
                 flowCmd04.emit(false)
                 when (doorGeX) {
@@ -674,14 +763,14 @@ import kotlin.random.Random
                 CmdCode.GE1 -> {
                     val curG1Total = curG1TotalWeight.toFloat()
                     //实时总重量
-                    curG1Weight = HexConverter.getWeight(weight)
+                    curG1Weight = HexConverter.getWeight(weight)//读取到下位机重量
                     //剩余可投重量
                     curG1VotWeight = subtractFloats(curG1TotalWeight, curG1Weight ?: "0.00")
                     when (frontBackState) {
 
                         CmdCode.GE_WEIGHT_FRONT -> {
                             println("调试socket 调试串口 doorReturnWeight 查询重量前 $curG1Weight")
-                            weight1Before = curG1Weight
+                            weight1Before = curG1Weight//接收到重量前
                             flowCmd04.emit(false)
                             //打开/ 关闭投口
                             flowCmd01.emit(true)
@@ -691,14 +780,14 @@ import kotlin.random.Random
                         CmdCode.GE_WEIGHT_ING -> {
                             println("调试socket 调试串口 doorReturnWeight 查询重量中 $curG1Weight | $weight1Before")
                             //获取上称物品的重量
-                            weight1AfterIng = curG1Weight
+                            weight1AfterIng = curG1Weight//接收到重量中
                             subtractFloats(curG1Weight ?: "0.00", weight1Before ?: "0.00")
                             refreshViewUI()//门开中 刷新重量和事务
                         }
 
                         CmdCode.GE_WEIGHT_BACK -> {
                             println("调试socket 调试串口 doorReturnWeight 查询重量后 $curG1Weight")
-                            weight1AfterEnd = curG1Weight
+                            weight1AfterEnd = curG1Weight//接收到重量后
                             flowCmd04.emit(false)
                             flowCmd05.emit(true)
                             flowCurWeightType.emit(CmdCode.GE_WEIGHT_BACK)
@@ -706,49 +795,82 @@ import kotlin.random.Random
                     }
 
                     //上报重量大于总重量则报提示
-                    if (weight > curG1Total) {
-                        flowDoor2Value.emit(BusType.BUS_OVERFLOW)
-                    }
+//                    if (weight > curG1Total) {
+//                        flowDoor2Value.emit(BusType.BUS_OVERFLOW)
+//                    }
                 }
 
                 CmdCode.GE2 -> {
                     val curG2Total = curG2TotalWeight.toFloat()
-                    curG2Weight = HexConverter.getWeight(weight)
+                    //实时总重量
+                    curG2Weight = HexConverter.getWeight(weight)//读取到下位机重量
+                    //剩余可投重量
                     curG2VotWeight = subtractFloats(curG2TotalWeight, curG2Weight ?: "0.00")
                     when (frontBackState) {
+
                         CmdCode.GE_WEIGHT_FRONT -> {
-                            weight2Before = curG2Weight
+                            println("调试socket 调试串口 doorReturnWeight 查询重量前 $curG2Weight")
+                            weight2Before = curG2Weight//接收到重量前
+                            flowCmd04.emit(false)
+                            //打开/ 关闭投口
+                            flowCmd01.emit(true)
                             flowCurWeightType.emit(CmdCode.GE_WEIGHT_FRONT)
                         }
 
+                        CmdCode.GE_WEIGHT_ING -> {
+                            println("调试socket 调试串口 doorReturnWeight 查询重量中 $curG2Weight | $weight2Before")
+                            //获取上称物品的重量
+                            weight2AfterIng = curG2Weight//接收到重量中
+                            subtractFloats(curG2Weight ?: "0.00", weight2Before ?: "0.00")
+                            refreshViewUI()//门开中 刷新重量和事务
+                        }
+
                         CmdCode.GE_WEIGHT_BACK -> {
-                            weight2AfterEnd = curG2Weight
+                            println("调试socket 调试串口 doorReturnWeight 查询重量后 $curG2Weight")
+                            weight2AfterEnd = curG2Weight//接收到重量后
+                            flowCmd04.emit(false)
+                            flowCmd05.emit(true)
+                            flowStartCamera.emit(0)
                             flowCurWeightType.emit(CmdCode.GE_WEIGHT_BACK)
                         }
                     }
-                    if (weight > curG2Total) {
-                        flowDoor2Value.emit(BusType.BUS_OVERFLOW)
-                    }
+
+                    //上报重量大于总重量则报提示
+//                    if (weight > curG2Total) {
+//                        flowDoor2Value.emit(BusType.BUS_OVERFLOW)
+//                    }
                 }
             }
         }
     }
 
     /***
-     * 打开语音
+     * 打开关闭语音
      */
-    fun toGoOpenAudio() {
+    fun toGoOpenCloseAudio(type: Int) {
         ioScope.launch {
-            MediaPlayerHelper.playAudioAsset(AppUtils.getContext(),  "opendoor.wav")
-        }
-    }
+            //检测文件是否存在，否则取asset音频
+            when (type) {
+                CmdCode.GE_OPEN -> {
+                    val isAudio = FileMdUtil.checkAudioFileExists("opendoor.wav")
+                    println("调试socket 播放语音 $isAudio - true：播放下载语音")
+                    if (!isAudio) {
+                        MediaPlayerHelper.playAudioAsset(AppUtils.getContext(), "opendoor.wav")
+                    } else {
+                        MediaPlayerHelper.playAudioFromAppFiles(AppUtils.getContext(), "audio", "opendoor.wav")
+                    }
+                }
 
-    /***
-     * 关闭语音
-     */
-    fun toGoCloseAudio() {
-        ioScope.launch {
-            MediaPlayerHelper.playAudioAsset(AppUtils.getContext(), "opendoor.wav")
+                CmdCode.GE_CLOSE -> {
+                    val isAudio = FileMdUtil.checkAudioFileExists("closedoor.wav")
+                    println("调试socket 播放语音 $isAudio - true：播放下载语音")
+                    if (!isAudio) {
+                        MediaPlayerHelper.playAudioAsset(AppUtils.getContext(), "closedoor.wav")
+                    } else {
+                        MediaPlayerHelper.playAudioFromAppFiles(AppUtils.getContext(), "audio", "closedoor.wav")
+                    }
+                }
+            }
         }
     }
 
@@ -801,16 +923,16 @@ import kotlin.random.Random
                     0 -> {
                         if (state.cabinId == model.cabinId) {
                             doorGeX = CmdCode.GE1
-                            cur1Cabinld = state.cabinId ?: ""
-                            curG1Weight = state.weigh.toString()
+                            cur1Cabinld = state.cabinId ?: ""//打开格口前读取db格口编码
+                            curG1Weight = state.weigh.toString()//打开格口前读取db格口重量
                         }
                     }
 
                     1 -> {
                         if (state.cabinId == model.cabinId) {
                             doorGeX = CmdCode.GE2
-                            cur2Cabinld = state.cabinId ?: ""
-                            curG2Weight = state.weigh.toString()
+                            cur2Cabinld = state.cabinId ?: ""//打开格口前读取db格口编码
+                            curG2Weight = state.weigh.toString()//打开格口前读取db格口重量
                         }
                     }
                 }
@@ -821,13 +943,14 @@ import kotlin.random.Random
                 val doorOpen = DoorOpenBean().apply {
                     cmd = "openDoor"
                     transId = model.transId
+                    openType = model.openType
                     cabinId = model.cabinId
                     phoneNumber = model.phoneNumber
-                    curWeight = curG1Weight
+                    curWeight = curG1Weight//响应打开格口重量
                     retCode = 0
                     timestamp = AppUtils.getDateYMDHMS()
                 }
-                val json = convertToJsonString(doorOpen)
+                val json = JsonBuilder.convertToJsonString(doorOpen)
                 vmClient?.sendText(json)
             } else if (doorGeXType == CmdCode.GE2) {
 
@@ -836,92 +959,7 @@ import kotlin.random.Random
             println("调试socket 添加开仓记录 $row ,执行格口：$doorGeX")
             frontBackState = CmdCode.GE_WEIGHT_FRONT
             geStartDoorType = CmdCode.GE_OPEN
-            toGoOpenAudio()
-            flowCmd05.emit(false)
-            flowCmd04.emit(true)
-        }
-    }
-
-    /***
-     * 接收服务器 手机号方式
-     */
-    fun toGoMobileCode(model: DoorOpenBean) {
-        ioScope.launch {
-            val trensEntity = TransEntity().apply {
-                cmd = "openDoor"
-                transId = model.transId
-                openType = model.openType
-                cabinId = model.cabinId
-                openStatus = -1
-                time = AppUtils.getDateYMDHMS()
-            }
-            curTransId = model.transId ?: ""
-            SPreUtil.put(AppUtils.getContext(), "transId", curTransId)
-            //记录事务数据
-            val row = DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)
-//            //匹配当前投口几
-//            val lattices = DatabaseManager.queryLattices(AppUtils.getContext())
-//            lattices.withIndex().forEach { (index, lattice) ->
-//                when (index) {
-//                    0 -> {
-//                        if (lattice.cabinId == model.cabinId) {
-//                            doorGeX = CmdCode.GE1
-//                            cur1Cabinld = lattice.cabinId ?: ""
-//                        }
-//                    }
-//
-//                    1 -> {
-//                        if (lattice.cabinId == model.cabinId) {
-//                            doorGeX = CmdCode.GE2
-//                            cur2Cabinld = lattice.cabinId ?: ""
-//
-//                        }
-//                    }
-//                }
-//            }
-
-            //匹配当前投口几
-            val states = DatabaseManager.queryStateList(AppUtils.getContext())
-            states.withIndex().forEach { (index, state) ->
-                when (index) {
-                    0 -> {
-                        if (state.cabinId == model.cabinId) {
-                            doorGeX = CmdCode.GE1
-                            cur1Cabinld = state.cabinId ?: ""
-                            curG1Weight = state.weigh.toString()
-                        }
-                    }
-
-                    1 -> {
-                        if (state.cabinId == model.cabinId) {
-                            doorGeX = CmdCode.GE2
-                            cur2Cabinld = state.cabinId ?: ""
-                            curG2Weight = state.weigh.toString()
-                        }
-                    }
-                }
-            }
-
-            //判断当前格口
-            if (doorGeXType == CmdCode.GE1) {
-                val doorOpen = DoorOpenBean().apply {
-                    cmd = "openDoor"
-                    transId = model.transId
-                    cabinId = model.cabinId
-                    phoneNumber = ""
-                    curWeight = curG1Weight
-                    retCode = 0
-                    timestamp = AppUtils.getDateYMDHMS()
-                }
-                val json = convertToJsonString(doorOpen)
-                vmClient?.sendText(json)
-            } else if (doorGeXType == CmdCode.GE2) {
-
-            }
-
-            println("调试socket 添加开仓记录 $row ,执行格口：$doorGeX")
-            frontBackState = CmdCode.GE_WEIGHT_FRONT
-            geStartDoorType = CmdCode.GE_OPEN
+            toGoOpenCloseAudio(CmdCode.GE_OPEN)
             flowCmd05.emit(false)
             flowCmd04.emit(true)
         }
@@ -961,7 +999,7 @@ import kotlin.random.Random
                             retCode = 0
                             timestamp = AppUtils.getDateYMDHMS()
                         }
-                        val json = convertToJsonString(doorOpen)
+                        val json = JsonBuilder.convertToJsonString(doorOpen)
                         vmClient?.sendText(json)
                         flowIsOpenDoor.emit(true)
                     } else {
@@ -993,7 +1031,7 @@ import kotlin.random.Random
                             retCode = 0
                             timestamp = AppUtils.getDateYMDHMS()
                         }
-                        val json = convertToJsonString(doorOpen)
+                        val json = JsonBuilder.convertToJsonString(doorOpen)
                         val traRow =
                                 DatabaseManager.insertWeight(AppUtils.getContext(), weightEntity)
                         println("调试socket 调试串口 接收开仓 记录一条前后重量数据 $traRow")
@@ -1003,6 +1041,7 @@ import kotlin.random.Random
                         }
                     }
                     flowCmd04.emit(true)
+                    toGoActionPhoto(CmdValue.CMD_OPEN_DOOR)  //开仓拍照片
                 }
 
             }
@@ -1010,6 +1049,7 @@ import kotlin.random.Random
             CmdValue.CMD_CLOSE_DOOR -> {
                 println("调试socket 调试串口 更新本地关闭状态 ")
                 frontBackState = CmdCode.GE_WEIGHT_BACK
+                toGoActionPhoto(CmdValue.CMD_CLOSE_DOOR)  //关仓拍照片
             }
         }
     }
@@ -1107,10 +1147,10 @@ import kotlin.random.Random
 
                     timestamp = AppUtils.getDateYMDHMS()
                 }
-                val json = convertToJsonString(doorClose)
+                val json = JsonBuilder.convertToJsonString(doorClose)
                 println("调试socket 调试串口 发送关门成功 $json")
                 vmClient?.sendText(json)
-                lattice.weightMonitor = lattice.weight
+                lattice.weightMonitor = "${lattice.weight},${curWeightValueAfter}"
                 val rowCabin = DatabaseManager.upLatticeEntity(AppUtils.getContext(), lattice)
                 println("调试socket 调试串口 关闭格口 更新格口重量 $rowCabin")
                 val index = when (doorGeX) {
@@ -1289,7 +1329,7 @@ import kotlin.random.Random
 
                     timestamp = AppUtils.getDateYMDHMS()
                 }
-                val json = convertToJsonString(doorClose)
+                val json = JsonBuilder.convertToJsonString(doorClose)
                 println("调试socket 调试串口 发送关门成功 $json")
                 vmClient?.sendText(json)
             }
@@ -1333,7 +1373,7 @@ import kotlin.random.Random
     suspend fun testSendCmd2(status: Int) {
         this.geStartDoorType = status
         flowCmd01.emit(true)
-        toGoCloseAudio()
+        toGoOpenCloseAudio(CmdCode.GE_CLOSE)
     }
 
     /***
@@ -1364,6 +1404,7 @@ import kotlin.random.Random
             //保存基础配置信息
             loginModel.sn?.let { snCode ->
                 println("调试socket saveInitNet 开始添加配置")
+                SPreUtil.put(AppUtils.getContext(), "login_sn", snCode)
                 val saveConfig = ConfigEntity().apply {
                     sn = snCode
                     heartBeatInterval = config.heartBeatInterval
@@ -1403,11 +1444,11 @@ import kotlin.random.Random
                 }
             }
 
-            println("测试我来了 ${FileMdUtil.checkNameFileExists("qrCode.png")}")
+            println("测试我来了 ${FileMdUtil.checkResFileExists("qrCode.png")}")
 
             if (oneInit) {
                 config.qrCode?.let { initQRCode(it) }
-            } else if (!FileMdUtil.checkNameFileExists("qrCode.png")) {
+            } else if (!FileMdUtil.checkResFileExists("qrCode.png")) {
                 config.qrCode?.let { initQRCode(it) }
             } else {
                 Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/qrCode.png")).into(object : CustomTarget<Bitmap?>() {
@@ -1429,13 +1470,13 @@ import kotlin.random.Random
                     println("调试socket saveInitNet 当前格口：${index} /价格：${lattice.price}")
                     when (index) {
                         0 -> {
-                            curGePrice = lattice.price
-                            cur1Cabinld = lattice.cabinId ?: ""
+                            curGePrice = lattice.price//初始化登录模式价格
+                            cur1Cabinld = lattice.cabinId ?: ""//初始化登录模式格口编码
                         }
 
                         1 -> {
-                            curGePrice = lattice.price
-                            cur2Cabinld = lattice.cabinId ?: ""
+                            curGePrice = lattice.price//初始化登录模式价格
+                            cur2Cabinld = lattice.cabinId ?: ""//初始化登录模式格口编码
                         }
                     }
                     val saveConfig = LatticeEntity().apply {
@@ -1498,6 +1539,7 @@ import kotlin.random.Random
                         queryLattice.sync = lattice.sync
                         queryLattice.volume = lattice.volume
                         queryLattice.weight = lattice.weight
+                        queryLattice.weightDefault = lattice.weight
                         val rowCabin =
                                 DatabaseManager.upLatticeEntity(AppUtils.getContext(), queryLattice)
                         println("调试socket saveInitNet 更新格口信息 $rowCabin")
@@ -1507,21 +1549,22 @@ import kotlin.random.Random
                         upperMachines.withIndex().forEach { (index, states) ->
                             when (index) {
                                 0 -> {
-                                    stateMap[0] = states
-                                    cur1Cabinld = states.cabinId ?: ""
-                                    curG1Weight = states.weigh.toString()
+                                    stateMap[0] = states//初始化读取db格口数据
+                                    cur1Cabinld = states.cabinId ?: ""//初始化读取db格口编码
+                                    curG1Weight = states.weigh.toString()//初始化读取db格口重量
                                 }
 
                                 1 -> {
-                                    stateMap[1] = states
-                                    cur2Cabinld = states.cabinId ?: ""
-                                    curG2Weight = states.weigh.toString()
+                                    stateMap[1] = states//初始化读取db格口数据
+                                    cur2Cabinld = states.cabinId ?: ""//初始化读取db格口编码
+                                    curG2Weight = states.weigh.toString()//初始化读取db格口重量
                                 }
                             }
                         }
                     }
                 }
                 //配置音量
+//                MediaPlayerHelper.setVolume(AppUtils.getContext(), volume)
                 MediaPlayerHelper.setVolume(AppUtils.getContext(), 2)
                 for (state in stateBox) {
                     val rowState = DatabaseManager.insertState(AppUtils.getContext(), state)
@@ -1687,7 +1730,6 @@ import kotlin.random.Random
                         state.time = AppUtils.getDateYMDHMS()
                         println("调试socket 调试串口 下位机上报更新格口一心跳 $state | $lower")
                         synStateHeart(state, 0)
-
                     }
 
                     1 -> {
@@ -1709,13 +1751,40 @@ import kotlin.random.Random
         }
     }
 
-    //同步心跳重量
+    /***
+     * 同步心跳重量
+     * 刷新满溢状态
+     */
     private fun synStateHeart(state: StateEntity, index: Int) {
         ioScope.launch {
             val row = DatabaseManager.upStateEntity(AppUtils.getContext(), state)
             println("调试socket 同步更新心跳上传重量 $row")
             stateMap[index] = state
             refreshViewUI()//心跳 刷新重量和事务
+
+            //当处于未在投递中则进行提示
+            //刷新满溢状态
+            when (index) {
+                0 -> {
+                    val curG1Total = curG1TotalWeight.toFloat()
+                    //实时总重量
+                    val curG1Weight = state.weigh
+                    //上报重量大于总重量则报提示
+                    if (curG1Weight > curG1Total) {
+                        flowDoor2Value.emit(BusType.BUS_OVERFLOW)
+                    }
+                }
+
+                1 -> {
+                    val curG2Total = curG2TotalWeight.toFloat()
+                    //实时总重量
+                    val curG2Weight = state.weigh
+                    //上报重量大于总重量则报提示
+                    if (curG2Weight > curG2Total) {
+                        flowDoor2Value.emit(BusType.BUS_OVERFLOW)
+                    }
+                }
+            }
         }
     }
     /*******************************************下位机通信部分*************************************************/
@@ -2065,6 +2134,47 @@ import kotlin.random.Random
     }
 
     /*******************************************http模块*************************************************/
+
+    /***
+     * 上传拍照
+     */
+    fun uploadPhoto(sn: String, transId: String, photoType: Int) {
+        ioScope.launch {
+            val post = mutableMapOf<String, Any>()
+            post["sn"] = sn
+            post["transId"] = transId
+            post["photoType"] = 1
+            val file =
+                    File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.path + "/action/${transId}.jpeg")
+            post["file"] = file
+            httpRepo.uploadPhoto(post).onCompletion {
+                Loge.d("网络请求 拍照上传 onCompletion $post")
+                insertInfoLog(LogEntity().apply {
+                    cmd = "opendoor"
+                    msg = "$transId,图片上传"
+                    time = AppUtils.getDateYMDHMS()
+                })
+            }.onSuccess { user ->
+                Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
+
+            }.onFailure { code, message ->
+                Loge.d("网络请求 拍照上传 onFailure $code $message")
+
+            }.onCatch { e ->
+                Loge.d("网络请求 拍照上传 onCatch ${e.errorMsg}")
+            }
+        }
+    }
+
+    /***
+     * 插入日志记录
+     */
+    fun insertInfoLog(logInfoEntity: LogEntity) {
+        ioScope.launch {
+            DatabaseManager.insertLog(AppUtils.getContext(), logInfoEntity)
+        }
+    }
+
     //获取APP版本信息
     private val flowVersionInfo = MutableStateFlow<VersionDto>(VersionDto())
     val versionInfoCollect: StateFlow<VersionDto> = flowVersionInfo

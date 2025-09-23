@@ -8,9 +8,9 @@ import androidx.room.Ignore
 import androidx.room.PrimaryKey
 
 /***
- * 日志信息
+ * 文件信息
  */
-@Entity(tableName = "LogEntity") class LogEntity(
+@Entity(tableName = "FileEntity") class FileEntity(
     /***
      * 日志主键id
      */
@@ -20,6 +20,18 @@ import androidx.room.PrimaryKey
      * 指令
      */
     @ColumnInfo(name = "cmd", typeAffinity = TEXT, defaultValue = "") var cmd: String? = null,
+    /***
+     * 事务ID
+     */
+    @ColumnInfo(name = "transId", typeAffinity = TEXT, defaultValue = "") var transId: String? = null,
+    /***
+     * 照片内
+     */
+    @ColumnInfo(name = "photoIn", typeAffinity = TEXT, defaultValue = "") var photoIn: String? = null,
+    /***
+     * 照片外
+     */
+    @ColumnInfo(name = "photoOut", typeAffinity = TEXT, defaultValue = "") var photoOut: String? = null,
     /***
      * 消息
      */
@@ -33,7 +45,7 @@ import androidx.room.PrimaryKey
     @Ignore constructor() : this(0, null, null)
 
     override fun toString(): String {
-        return "id=$id,cmd=${cmd},time=${time}"
+        return "id=$id,cmd=${cmd},transId=${transId},photoIn=${photoIn},photoOut=${photoOut},msg=${msg},time=${time}"
     }
 }
 

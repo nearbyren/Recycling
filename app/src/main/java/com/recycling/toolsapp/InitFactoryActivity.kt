@@ -81,7 +81,7 @@ class InitFactoryActivity : AppCompatActivity() {
         //SPreUtil.put(AppUtils.getContext(), "init", true)
         SPreUtil.put(AppUtils.getContext(), "initSocket", false)
         val snText = acetSn?.text.toString()
-        SPreUtil.put(AppUtils.getContext(), "sn", snText)
+        SPreUtil.put(AppUtils.getContext(), "init_sn", snText)
         startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
         finish()
     }

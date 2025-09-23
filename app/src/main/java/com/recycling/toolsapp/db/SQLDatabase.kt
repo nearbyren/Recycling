@@ -3,6 +3,7 @@ package com.recycling.toolsapp.db
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.recycling.toolsapp.dao.ConfigFlowDao
+import com.recycling.toolsapp.dao.FileFlowDao
 import com.recycling.toolsapp.dao.LogFlowDao
 import com.recycling.toolsapp.dao.LatticeFlowDao
 import com.recycling.toolsapp.dao.ResFlowDao
@@ -11,6 +12,7 @@ import com.recycling.toolsapp.dao.TransFlowDao
 import com.recycling.toolsapp.dao.WeightFlowDao
 import com.recycling.toolsapp.model.LatticeEntity
 import com.recycling.toolsapp.model.ConfigEntity
+import com.recycling.toolsapp.model.FileEntity
 import com.recycling.toolsapp.model.LogEntity
 import com.recycling.toolsapp.model.ResEntity
 import com.recycling.toolsapp.model.StateEntity
@@ -24,6 +26,7 @@ import com.recycling.toolsapp.model.WeightEntity
     TransEntity::class,
     WeightEntity::class,
     ResEntity::class,
+    FileEntity::class,
     LogEntity::class], version = 1, exportSchema = false)
 abstract class SQLDatabase : RoomDatabase() {
 
@@ -47,4 +50,7 @@ abstract class SQLDatabase : RoomDatabase() {
 
     ///资源
     abstract fun resFlowDao(): ResFlowDao
+
+    ///文件
+    abstract fun fileFlowDao(): FileFlowDao
 }

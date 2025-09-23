@@ -1,9 +1,12 @@
-package com.recycling.toolsapp.ui
+package com.recycling.toolsapp.ui.test
 
 import android.Manifest.permission.CAMERA
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.annotation.SuppressLint
 import android.content.ContentValues
+import android.content.Context
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
@@ -14,6 +17,7 @@ import android.text.TextUtils
 import android.util.Log
 import android.util.Size
 import android.widget.Toast
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalLensFacing
 import androidx.camera.core.ImageCapture
@@ -120,33 +124,103 @@ import java.util.Locale
                     .build().also {
                         it.surfaceProvider = binding.previewView1.surfaceProvider
                     }
+        val preview2 =
+                Preview.Builder().setResolutionSelector(resolutionSelector) // 替代 setTargetResolution
+                    .build().also {
+                        it.surfaceProvider = binding.previewView2.surfaceProvider
+                    }
         // 初始化 ImageCapture (拍照)
         cabinetVM.imageCapture1 =
                 ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).setTargetResolution(Size(640, 480)).build()
-
+        cabinetVM.imageCapture2 =
+                ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).setTargetResolution(Size(640, 480)).build()
         // 初始化 VideoCapture (录像)
         val recorder =
                 Recorder.Builder().setQualitySelector(QualitySelector.from(Quality.HD)).build()
         cabinetVM.videoCapture1 = VideoCapture.withOutput(recorder)
+        cabinetVM.videoCapture2 = VideoCapture.withOutput(recorder)
 
         // 步骤2：快速绑定摄像头
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        val cameraProviderFuture2 = ProcessCameraProvider.getInstance(requireContext())
+        cabinetVM.cameraProvider1 = cameraProviderFuture.get()
+        cabinetVM.cameraProvider2 = cameraProviderFuture2.get()
+        cabinetVM.cameraProvider1?.unbindAll()
+        cabinetVM.cameraProvider2?.unbindAll()
+
+
         cameraProviderFuture.addListener({
             try {
                 Log.e("TestFace", "网络导入用户信息 FaceApplication.cameraProviderFuture addListener")
-                cabinetVM.cameraProvider1 = cameraProviderFuture.get()
-                cabinetVM.cameraSelector1 = findExternalCamera1(LENS_FACING_TYPE0)
-                cabinetVM.cameraProvider1?.unbindAll()
-                cabinetVM.cameraSelector1?.let {
-                    cabinetVM.cameraProvider1?.bindToLifecycle(viewLifecycleOwner, it, preview, cabinetVM.imageCapture1, cabinetVM.videoCapture1)
-                }
 
+                    cabinetVM.cameraProvider1?.bindToLifecycle(viewLifecycleOwner, createCustomCameraSelectorForUsb1(), preview, cabinetVM.imageCapture1, cabinetVM.videoCapture1)
             } catch (e: Exception) {
                 Log.e("TestFace", "网络导入用户信息 Fast start failed: ${e.stackTraceToString()}")
             }
         }, ContextCompat.getMainExecutor(mActivity?.baseContext!!))
+        cameraProviderFuture.addListener({
+            try {
+                Log.e("TestFace", "网络导入用户信息 FaceApplication.cameraProviderFuture addListener")
+
+                cabinetVM.cameraProvider2?.bindToLifecycle(viewLifecycleOwner, createCustomCameraSelectorForUsb2(), preview2, cabinetVM.imageCapture2, cabinetVM.videoCapture2)
+            } catch (e: Exception) {
+                Log.e("TestFace", "网络导入用户信息 Fast start failed: ${e.stackTraceToString()}")
+            }
+        }, ContextCompat.getMainExecutor(mActivity?.baseContext!!))
+
+
     }
 
+    private fun createCustomCameraSelectorForUsb1(): CameraSelector {
+        val cameraManager = context?.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraIdList = cameraManager.cameraIdList
+        // 遍历所有摄像头ID，查找USB摄像头
+        for (cameraId in cameraIdList) {
+            println("测试我来了 2 $cameraId")
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            // 这里需要根据USB摄像头的特性来筛选，例如通过镜头朝向、传感器信息等
+            // 注意：CameraCharacteristics 中可能没有直接标识是否为USB摄像头的字段
+            // 一种常见方式是通过镜头朝向（LENS_FACING_EXTERNAL）或尝试打开摄像头并读取其支持的配置来判断
+            val lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING)
+            if (lensFacing != null && lensFacing == CameraCharacteristics.LENS_FACING_EXTERNAL) {
+                println("测试我来了 2 if ")
+                // 假设你找到了第一个外部摄像头
+                return CameraSelector.Builder().addCameraFilter { cameraInfos ->
+                    cameraInfos.filter {
+                        println("测试我来了 2 filter ${ Camera2CameraInfo.from(it).cameraId}")
+                        Camera2CameraInfo.from(it).cameraId == cameraId
+                    }
+                }.build()
+            }
+        }
+        // 如果没有找到，回退到默认后置摄像头（或其他处理方式）
+        return CameraSelector.DEFAULT_FRONT_CAMERA
+    }
+    private fun createCustomCameraSelectorForUsb2(): CameraSelector {
+        val cameraManager = context?.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraIdList = cameraManager.cameraIdList
+        // 遍历所有摄像头ID，查找USB摄像头
+        for (cameraId in cameraIdList) {
+            println("测试我来了 2 $cameraId")
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            // 这里需要根据USB摄像头的特性来筛选，例如通过镜头朝向、传感器信息等
+            // 注意：CameraCharacteristics 中可能没有直接标识是否为USB摄像头的字段
+            // 一种常见方式是通过镜头朝向（LENS_FACING_EXTERNAL）或尝试打开摄像头并读取其支持的配置来判断
+            val lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING)
+            if (lensFacing != null && lensFacing == CameraCharacteristics.LENS_FACING_EXTERNAL) {
+                println("测试我来了 2 if ")
+                // 假设你找到了第一个外部摄像头
+                return CameraSelector.Builder().addCameraFilter { cameraInfos ->
+                    cameraInfos.filter {
+                        println("测试我来了 2 filter ${ Camera2CameraInfo.from(it).cameraId}")
+                        Camera2CameraInfo.from(it).cameraId == cameraId
+                    }
+                }.build()
+            }
+        }
+        // 如果没有找到，回退到默认后置摄像头（或其他处理方式）
+        return CameraSelector.DEFAULT_BACK_CAMERA
+    }
 
 
     private fun takePicture1() {

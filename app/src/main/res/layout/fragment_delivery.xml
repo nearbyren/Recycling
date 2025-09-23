@@ -124,14 +124,13 @@
             app:layout_constraintTop_toBottomOf="@+id/cl_info">
 
 
-
             <HorizontalScrollView
                 android:id="@+id/hsv"
                 android:layout_width="match_parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
                 android:layout_height="0dp"
-                android:fillViewport="true">
+                android:fillViewport="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
 
                 <androidx.appcompat.widget.LinearLayoutCompat
                     android:id="@+id/ll_photo"
@@ -167,10 +166,26 @@
 
 
         <FrameLayout
-            android:id="@+id/frame1"
+            android:id="@+id/frame0"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/dp_200"
-            android:visibility="gone" />
+            android:layout_height="match_parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+        <!--        <FrameLayout
+                    android:id="@+id/frame1"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    app:layout_constraintBottom_toTopOf="@+id/frame2"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+
+                <FrameLayout
+                    android:id="@+id/frame2"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/frame1" />-->
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

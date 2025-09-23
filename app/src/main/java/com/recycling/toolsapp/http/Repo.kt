@@ -11,4 +11,5 @@ interface Repo {
     suspend fun boxiang(params: MutableMap<String, Any>): ResponseHolder<String>
     suspend fun faceUpdate(params: MutableMap<String, Any>): ResponseHolder<String>
     suspend fun addUserFace(params: MutableMap<String, Any>): ResponseHolder<UserDto>
+    suspend fun uploadPhoto(params: MutableMap<String, Any>): ResponseHolder<String>
 }

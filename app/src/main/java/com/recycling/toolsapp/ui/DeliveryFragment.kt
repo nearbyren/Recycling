@@ -66,7 +66,7 @@ import kotlin.random.Random
                 }
 
                 BusType.BUS_DELIVERY_ABNORMAL -> {
-                    binding.tvOperation.text = "格口关闭异常，再点击关闭"
+                    binding.tvOperation.text = "格口关闭异常，重试再点击关闭"
                 }
             }
         }
@@ -108,18 +108,19 @@ import kotlin.random.Random
         }
         //接收图片
         LiveBus.get(BusType.BUS_DELIVERY_PHOTO).observeForever { filepath ->
-            val iv = AppCompatImageView(requireActivity()).apply {
-                layoutParams =
-                        LinearLayoutCompat.LayoutParams(0, LinearLayoutCompat.LayoutParams.MATCH_PARENT).apply {
-                            weight = 1f
-                            setMargins(20, 20, 20, 20)
-                        }
-                scaleType = ImageView.ScaleType.MATRIX
+            if (isAdded && mActivity?.isDestroyed != true) {
+                val iv = AppCompatImageView(requireActivity()).apply {
+                    layoutParams =
+                            LinearLayoutCompat.LayoutParams(0, LinearLayoutCompat.LayoutParams.MATCH_PARENT).apply {
+                                weight = 1f
+                                setMargins(20, 20, 20, 20)
+                            }
+                    scaleType = ImageView.ScaleType.MATRIX
+                }
+                Glide.with(requireActivity()).load(filepath).into(iv)
+                binding.llPhoto.addView(iv)
+                scrollToPosition(binding.llPhoto.size)
             }
-            Glide.with(requireActivity()).load(filepath).into(iv)
-            binding.llPhoto.addView(iv)
-            scrollToPosition(binding.llPhoto.size)
-
         }
     }
 
@@ -176,12 +177,29 @@ import kotlin.random.Random
         val manager = mActivity?.supportFragmentManager
         manager?.let {
             val beginTransaction = it.beginTransaction()
-            val f = CameraX1Fragment()
+            val f = Camera2Fragment()
             f?.let { fragment ->
-                beginTransaction.add(R.id.frame1, fragment, "station_ad")
+                beginTransaction.add(R.id.frame0, fragment, "camera2")
                 beginTransaction.commit()
             }
         }
+
+//        val manager = mActivity?.supportFragmentManager
+//        manager?.let {
+//            val beginTransaction = it.beginTransaction()
+//            val f = CameraX1Fragment()
+//            f?.let { fragment ->
+//                beginTransaction.add(R.id.frame1, fragment, "station_ad1")
+//                beginTransaction.commit()
+//            }
+//
+//            val beginTransaction2 = it.beginTransaction()
+//            val f2 = CameraX2Fragment()
+//            f2?.let { fragment ->
+//                beginTransaction2.add(R.id.frame2, fragment, "station_ad2")
+//                beginTransaction2.commit()
+//            }
+//        }
     }
     /****************************************权限管理回调***************************************************/
     /****************************************权限管理回调***************************************************/

@@ -1,9 +1,12 @@
-package com.recycling.toolsapp.ui
+package com.recycling.toolsapp.ui.test
 
 import android.Manifest.permission.CAMERA
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.annotation.SuppressLint
 import android.content.ContentValues
+import android.content.Context
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
@@ -14,8 +17,8 @@ import android.text.TextUtils
 import android.util.Log
 import android.util.Size
 import android.widget.Toast
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalLensFacing
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -33,16 +36,15 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.recycling.toolsapp.R
-import com.recycling.toolsapp.databinding.FragmentCamerax1Binding
-import com.recycling.toolsapp.databinding.FragmentCameraxBinding
+import com.recycling.toolsapp.databinding.FragmentCamerax2Binding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
+import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.PermissionRequest
 import com.recycling.toolsapp.utils.PermissionUtils
 import com.recycling.toolsapp.utils.PermissionsRequester
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.FileMdUtil
-import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import nearby.lib.signal.livebus.BusType
@@ -61,7 +63,7 @@ import java.util.concurrent.Executors
  * 称重页
  *
  */
-@AndroidEntryPoint class CameraX1Fragment : BaseBindFragment<FragmentCamerax1Binding>() {
+@AndroidEntryPoint class CameraX2Fragment : BaseBindFragment<FragmentCamerax2Binding>() {
     // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
     private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
 
@@ -72,7 +74,7 @@ import java.util.concurrent.Executors
 
     // 创建任务队列
     override fun layoutRes(): Int {
-        return R.layout.fragment_camerax1
+        return R.layout.fragment_camerax2
     }
 
     override fun isShowActionBar(): Boolean {
@@ -91,20 +93,27 @@ import java.util.concurrent.Executors
         lifecycleScope.launch {
             cabinetVM.getDelays.collect { delay ->
                 when (delay) {
-                    3000L, 5000L, 7000L -> {
+                    3000L/*, 5000L, 7000L */ -> {
                         Log.e("TestFace", "网络导入用户信息 执行拍照 $delay")
                         takePicture1()
                     }
                 }
             }
         }
-        binding.atvPicture1.setOnClickListener {
+
+        lifecycleScope.launch {
+            cabinetVM.getActive.collect { activeType ->
+                Log.e("TestFace", "网络导入用户信息 执行拍照 $activeType")
+                takePicture1(activeType)
+            }
+        }
+        binding.atvPicture2.setOnClickListener {
             takePicture1()
         }
-        binding.atvRecording1.setOnClickListener {
+        binding.atvRecording2.setOnClickListener {
             startRecording1()
         }
-        binding.atvStopRecording1.setOnClickListener {
+        binding.atvStopRecording2.setOnClickListener {
             stopRecording1()
         }
 
@@ -114,9 +123,36 @@ import java.util.concurrent.Executors
         startFaceUi()
     }
 
+    private fun createCustomCameraSelectorForUsb1(): CameraSelector {
+        val cameraManager = context?.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraIdList = cameraManager.cameraIdList
+        // 遍历所有摄像头ID，查找USB摄像头
+        for (cameraId in cameraIdList) {
+            println("测试我来了 2 $cameraId")
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            // 这里需要根据USB摄像头的特性来筛选，例如通过镜头朝向、传感器信息等
+            // 注意：CameraCharacteristics 中可能没有直接标识是否为USB摄像头的字段
+            // 一种常见方式是通过镜头朝向（LENS_FACING_EXTERNAL）或尝试打开摄像头并读取其支持的配置来判断
+            val lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING)
+            if (lensFacing != null && lensFacing == CameraCharacteristics.LENS_FACING_EXTERNAL) {
+                println("测试我来了 2 if ")
+                // 假设你找到了第一个外部摄像头
+                return CameraSelector.Builder().addCameraFilter { cameraInfos ->
+                    cameraInfos.filter {
+                        println("测试我来了 2 filter ${Camera2CameraInfo.from(it).cameraId}")
+                        Camera2CameraInfo.from(it).cameraId == cameraId
+                    }
+                }.build()
+            }
+        }
+        // 如果没有找到，回退到默认后置摄像头（或其他处理方式）
+        return CameraSelector.DEFAULT_BACK_CAMERA
+    }
+// 同理实现 createCustomCameraSelectorForUsb2，但要确保返回另一个摄像头
+    // 在类顶部添加这些变量
     // 在类顶部添加这些变量
 
-    private var isRecording1 = false
+    private var isRecording2 = false
     private fun startLowLatencyPreview1() {
         Log.e("TestFace", "网络导入用户信息 startLowLatencyPreview")
         // 步骤1：立即启动低分辨率预览
@@ -124,25 +160,24 @@ import java.util.concurrent.Executors
                 ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy(Size(640, 480), // 目标分辨率
                     ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)).build()
 
-        val preview =
-                Preview.Builder().setResolutionSelector(resolutionSelector) // 替代 setTargetResolution
-                    .build().also {
-                        it.surfaceProvider = binding.previewView1.surfaceProvider
-                    }
+        val preview = Preview.Builder() // 替代 setTargetResolution
+            .build().also {
+                it.surfaceProvider = binding.previewView2.surfaceProvider
+            }
         // 初始化 ImageCapture (拍照)
-        cabinetVM.imageCapture1 =
-                ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).setTargetResolution(Size(640, 480)).build()
+        cabinetVM.imageCapture2 =
+                ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
 
         // 初始化 VideoCapture (录像)
         val recorder =
                 Recorder.Builder().setQualitySelector(QualitySelector.from(Quality.HD)).build()
-        cabinetVM.videoCapture1 = VideoCapture.withOutput(recorder)
+        cabinetVM.videoCapture2 = VideoCapture.withOutput(recorder)
 
-        cabinetVM.imageAnalysis1 =
+        cabinetVM.imageAnalysis2 =
                 ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888).build().also {
                     it.setAnalyzer(Executors.newSingleThreadExecutor()) { proxy ->
                         Log.e("TestFace", "网络导入用户信息 setAnalyzer")
-                        cabinetVM.takePictures()
+//                        cabinetVM.takePictures()
                     }
                 }
         // 步骤2：快速绑定摄像头
@@ -150,12 +185,13 @@ import java.util.concurrent.Executors
         cameraProviderFuture.addListener({
             try {
                 Log.e("TestFace", "网络导入用户信息 FaceApplication.cameraProviderFuture addListener")
-                cabinetVM.cameraProvider1 = cameraProviderFuture.get()
-                cabinetVM.cameraSelector1 = findExternalCamera1(LENS_FACING_TYPE0)
-                cabinetVM.cameraProvider1?.unbindAll()
-                cabinetVM.cameraSelector1?.let {
-                    cabinetVM.cameraProvider1?.bindToLifecycle(viewLifecycleOwner, it, preview, cabinetVM.imageCapture1, cabinetVM.videoCapture1, cabinetVM.imageAnalysis1)
-                }
+                cabinetVM.cameraProvider2 = cameraProviderFuture.get()
+                cabinetVM.cameraSelector2 =
+                        CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build()
+                cabinetVM.cameraProvider2?.unbindAll()
+//                cabinetVM.cameraSelector2?.let {
+                cabinetVM.cameraProvider2?.bindToLifecycle(this@CameraX2Fragment.viewLifecycleOwner, createCustomCameraSelectorForUsb1(), preview, cabinetVM.imageCapture2, cabinetVM.videoCapture2, cabinetVM.imageAnalysis2)
+//                }
 
             } catch (e: Exception) {
                 Log.e("TestFace", "网络导入用户信息 Fast start failed: ${e.stackTraceToString()}")
@@ -164,7 +200,7 @@ import java.util.concurrent.Executors
     }
 
 
-    private fun takePicture1() {
+    private fun takePicture1(activeType: String = CmdValue.CMD_OPEN_DOOR) {
         // 创建时间戳名称和存储路径
         val name =
                 SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.getDefault()).format(System.currentTimeMillis())
@@ -181,7 +217,7 @@ import java.util.concurrent.Executors
                 ImageCapture.OutputFileOptions.Builder(requireContext().contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues).build()
 
         // 执行拍照
-        cabinetVM.imageCapture1?.takePicture(outputOptions, ContextCompat.getMainExecutor(requireContext()), object : ImageCapture.OnImageSavedCallback {
+        cabinetVM.imageCapture2?.takePicture(outputOptions, ContextCompat.getMainExecutor(requireContext()), object : ImageCapture.OnImageSavedCallback {
             override fun onError(exc: ImageCaptureException) {
                 Log.e("TestFace", "拍照失败: ${exc.message}", exc)
                 // 显示错误提示
@@ -197,14 +233,14 @@ import java.util.concurrent.Executors
                 // 可以在这里处理保存的照片
                 output.savedUri?.let { uri ->
                     // 例如: 显示预览或上传到服务器
-                    handleCapturedImage1(uri)
+                    handleCapturedImage1(uri, activeType)
                 }
             }
         })
     }
 
     // 处理捕获的图像（可选）
-    private fun handleCapturedImage1(uri: Uri) {
+    private fun handleCapturedImage1(uri: Uri, activeType: String) {
         // 这里可以添加图像处理逻辑
         // 例如: 显示预览、上传到服务器等
         Log.d("TestFace", "捕获的图像URI: $uri")
@@ -212,7 +248,7 @@ import java.util.concurrent.Executors
             // 获取目标目录
             val downloadsDir =
                     AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            val aitionDir = File(downloadsDir, "aition")
+            val aitionDir = File(downloadsDir, "action")
 
             // 确保目录存在
             if (!aitionDir.exists()) {
@@ -239,10 +275,9 @@ import java.util.concurrent.Executors
             Toast.makeText(requireContext(), "照片已保存到Aition目录", Toast.LENGTH_SHORT).show()
 
             // 可以在这里添加额外的处理逻辑，如上传到服务器等
-            Luban.with(requireContext()).load(destFile.absolutePath)
-                .ignoreBy(100)
-                .setTargetDir(aitionDir.absolutePath).filter { path ->
-                    !(TextUtils.isEmpty(path) || path.lowercase(Locale.getDefault()).endsWith(".gif")) }.setCompressListener(object : OnCompressListener {
+            Luban.with(requireContext()).load(destFile.absolutePath).ignoreBy(100).setTargetDir(aitionDir.absolutePath).filter { path ->
+                !(TextUtils.isEmpty(path) || path.lowercase(Locale.getDefault()).endsWith(".gif"))
+            }.setCompressListener(object : OnCompressListener {
                 override fun onStart() {
                     println("测试我来了 onStart")
 
@@ -253,10 +288,22 @@ import java.util.concurrent.Executors
                     Log.e("TestFace", "网络导入用户信息 保存成功")
                     val downloadsDir =
                             AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-                    val aitionDir = File(downloadsDir, "aition")
+                    val aitionDir = File(downloadsDir, "action")
                     val fileName = file.absolutePath.substringAfterLast('/')
                     FileMdUtil.renameFileInDir(aitionDir, "$fileName", "${cabinetVM.curTransId}--${AppUtils.getDateYMDHMS()}.jpeg")
                     cabinetVM.taskPicAdd(file.absolutePath)
+                    when (activeType) {
+                        CmdValue.CMD_OPEN_DOOR -> {
+                            cabinetVM.photoOpenIn = file.absolutePath
+                            cabinetVM.photoOpenOut = file.absolutePath
+                        }
+
+                        CmdValue.CMD_CLOSE_DOOR -> {
+                            cabinetVM.photoCloseIn = file.absolutePath
+                            cabinetVM.photoCloseOut = file.absolutePath
+                        }
+                    }
+                    cabinetVM.toGoInsertPhoto(activeType)
                     LiveBus.get(BusType.BUS_DELIVERY_PHOTO).post(file.absolutePath)
 
                 }
@@ -274,8 +321,8 @@ import java.util.concurrent.Executors
     }
 
 
-    private fun startRecording1() {
-        if (isRecording1) {
+    @SuppressLint("MissingPermission") private fun startRecording1() {
+        if (isRecording2) {
             Log.d("TestFace", "已经在录制中")
             return
         }
@@ -296,19 +343,19 @@ import java.util.concurrent.Executors
                 MediaStoreOutputOptions.Builder(requireContext().contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI).setContentValues(contentValues).build()
 
         // 开始录制
-        cabinetVM.recording1 =
-                cabinetVM.videoCapture1?.output?.prepareRecording(requireContext(), mediaStoreOutput)?.withAudioEnabled()  // 启用音频录制（需要麦克风权限）
+        cabinetVM.recording2 =
+                cabinetVM.videoCapture2?.output?.prepareRecording(requireContext(), mediaStoreOutput)?.withAudioEnabled()  // 启用音频录制（需要麦克风权限）
                     ?.start(ContextCompat.getMainExecutor(requireContext())) { recordEvent ->
                         when (recordEvent) {
                             is VideoRecordEvent.Start -> {
-                                isRecording1 = true
+                                isRecording2 = true
                                 Log.d("TestFace", "开始录制")
                                 Toast.makeText(requireContext(), "开始录制", Toast.LENGTH_SHORT).show()
                                 // 更新UI，例如显示录制中状态
                             }
 
                             is VideoRecordEvent.Finalize -> {
-                                isRecording1 = false
+                                isRecording2 = false
                                 if (!recordEvent.hasError()) {
                                     val msg = "视频已保存: ${recordEvent.outputResults.outputUri}"
                                     Log.d("TestFace", msg)
@@ -320,8 +367,8 @@ import java.util.concurrent.Executors
                                     }
                                 } else {
                                     Log.e("TestFace", "录制错误: ${recordEvent.error}")
-                                    cabinetVM.recording1?.close()
-                                    cabinetVM.recording1 = null
+                                    cabinetVM.recording2?.close()
+                                    cabinetVM.recording2 = null
                                     Toast.makeText(requireContext(), "录制失败", Toast.LENGTH_SHORT).show()
                                 }
                             }
@@ -330,14 +377,14 @@ import java.util.concurrent.Executors
     }
 
     private fun stopRecording1() {
-        if (!isRecording1) {
+        if (!isRecording2) {
             Log.d("TestFace", "当前没有在录制")
             return
         }
 
-        cabinetVM.recording1?.stop()
-        cabinetVM.recording1 = null
-        isRecording1 = false
+        cabinetVM.recording2?.stop()
+        cabinetVM.recording2 = null
+        isRecording2 = false
         Log.d("TestFace", "停止录制")
     }
 
@@ -350,7 +397,7 @@ import java.util.concurrent.Executors
             // 获取目标目录
             val downloadsDir =
                     AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            val aitionDir = File(downloadsDir, "aition")
+            val aitionDir = File(downloadsDir, "action")
 
             // 确保目录存在
             if (!aitionDir.exists()) {
@@ -387,40 +434,6 @@ import java.util.concurrent.Executors
     }
 
     /***
-     *  查找外接摄像头
-     * @param selector
-     *  0 前置摄像头头
-     *  1 后置摄像头头
-     *  2 外接摄像头头
-     *  -1 未知摄像头
-     */
-    @androidx.annotation.OptIn(ExperimentalLensFacing::class) @OptIn(ExperimentalLensFacing::class)
-    @SuppressLint("RestrictedApi")
-    private fun findExternalCamera1(selector: Int = CameraSelector.LENS_FACING_EXTERNAL): CameraSelector? {
-        Log.e("TestFace", "网络导入用户信息 findExternalCamera $selector")
-        return cabinetVM.cameraProvider1?.availableCameraInfos?.firstOrNull { info ->
-            val cameraSelector = when (selector) {
-                CameraSelector.LENS_FACING_FRONT -> {
-                    info.cameraSelector.lensFacing == CameraSelector.LENS_FACING_FRONT
-                }
-
-                CameraSelector.LENS_FACING_BACK -> {
-                    info.cameraSelector.lensFacing == CameraSelector.LENS_FACING_BACK
-                }
-
-                CameraSelector.LENS_FACING_EXTERNAL -> {   // 通过特性判断外接摄像头
-                    info.cameraSelector.lensFacing == CameraSelector.LENS_FACING_EXTERNAL
-                }
-
-                else -> {
-                    info.cameraSelector.lensFacing == CameraSelector.LENS_FACING_UNKNOWN
-                }
-            }
-            cameraSelector
-        }?.cameraSelector
-    }
-
-    /***
      * 启动打开
      */
     private fun startFaceUi() {
@@ -429,8 +442,6 @@ import java.util.concurrent.Executors
             Log.e("TestFace", "网络导入用户信息 startFaceUi if if")
             cabinetVM.mainScope.launch {
                 startLowLatencyPreview1()
-//                delay(3000)
-//                startLowLatencyPreview2()
             }
 
 

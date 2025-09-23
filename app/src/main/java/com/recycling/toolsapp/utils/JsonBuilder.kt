@@ -18,6 +18,13 @@ object JsonBuilder {
         GsonBuilder().setPrettyPrinting().create()
     }
 
+    /***
+     * obj 构建上传服务器json字符串
+     */
+    fun convertToJsonString(obj: Any): String {
+        return gson.toJson(obj)
+    }
+
     /**
      * 构建JSON对象
      * @param block 构建块的lambda表达式
