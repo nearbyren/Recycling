@@ -37,15 +37,19 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "msg", typeAffinity = TEXT, defaultValue = "") var msg: String? = null,
     /***
+     * 状态 0.未上传 1.已上传
+     */
+    @ColumnInfo(name = "status", typeAffinity = INTEGER) var status: Int = 0,
+    /***
      * 时间
      */
     @ColumnInfo(name = "time", typeAffinity = TEXT, defaultValue = "") var time: String? = null,
 
     ) {
-    @Ignore constructor() : this(0, null, null)
+    @Ignore constructor() : this(0, null, null,null,null,null,0,null,)
 
     override fun toString(): String {
-        return "id=$id,cmd=${cmd},transId=${transId},photoIn=${photoIn},photoOut=${photoOut},msg=${msg},time=${time}"
+        return "id=$id,cmd=${cmd},transId=${transId},photoIn=${photoIn},photoOut=${photoOut},msg=${msg},status=${status},time=${time}"
     }
 }
 

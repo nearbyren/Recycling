@@ -27,7 +27,7 @@ import com.recycling.toolsapp.model.WeightEntity
     WeightEntity::class,
     ResEntity::class,
     FileEntity::class,
-    LogEntity::class], version = 1, exportSchema = false)
+    LogEntity::class], version = 3, exportSchema = false)
 abstract class SQLDatabase : RoomDatabase() {
 
     ///日志操作

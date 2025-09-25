@@ -20,10 +20,16 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.recycling.toolsapp.databinding.ActivityHomeBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindActivity
+import com.recycling.toolsapp.http.TaskDelDateScheduler
+import com.recycling.toolsapp.http.TaskRestartScheduler
 import com.recycling.toolsapp.socket.DoorOpenBean
 import com.recycling.toolsapp.socket.ConfigBean
+import com.recycling.toolsapp.socket.OtaBean
+import com.recycling.toolsapp.socket.RestartBean
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
 import com.recycling.toolsapp.ui.Camera2Fragment
+import com.recycling.toolsapp.ui.ClearDoorFragment
+import com.recycling.toolsapp.ui.DeBugTypeFragment
 import com.recycling.toolsapp.ui.DeliveryFragment
 import com.recycling.toolsapp.ui.TouSingleFragment
 import com.recycling.toolsapp.ui.TouDoubleFragment
@@ -112,16 +118,24 @@ import java.io.File
      * 格口 打开 满溢 故障 正常
      */
     private fun initDoorStatus() {
-        //门口打开计重页
+        //格口打开 打开计重页
         lifecycleScope.launch {
             cabinetVM.isOpenDoor.collect {
-                Loge.d("调试socket 收到开仓指令 $it")
+                Loge.d("调试socket 收到格口指令 $it")
                 if (it) {
                     navigateTo(fragmentClass = DeliveryFragment::class.java)
                 }
             }
         }
-
+        //清运门打开 打开清运页
+        lifecycleScope.launch {
+            cabinetVM.isOpenDoorClear.collect {
+                Loge.d("调试socket 收到清运指令 $it")
+                if (it) {
+                    navigateTo(fragmentClass = ClearDoorFragment::class.java)
+                }
+            }
+        }
         //格口一状态提示
         lifecycleScope.launch {
             cabinetVM.isDoor1Value.collect { value ->
@@ -175,12 +189,20 @@ import java.io.File
                 Loge.d("调试socket 调试串口 UI 重量查询回来 $value")
                 when (value) {
                     //前
-                    0 -> {
+                    CmdCode.GE_WEIGHT_FRONT -> {
                         cabinetVM.queryBeforeWeight()
                     }
                     //后
-                    1 -> {
+                    CmdCode.GE_WEIGHT_BACK -> {
                         cabinetVM.toGoUpDoorClose()
+                    }
+                    //清运前
+                    CmdCode.GE_WEIGHT_CLEAR_FRONT -> {
+                        cabinetVM.queryBeforeWeightClear()
+                    }
+                    //清运后
+                    CmdCode.GE_WEIGHT_CLEAR_BACK -> {
+                        cabinetVM.toGoUpDoorCloseClear()
                     }
                 }
 
@@ -222,14 +244,15 @@ import java.io.File
         //接收启动相机
         lifecycleScope.launch {
             cabinetVM.getStartCamera.collect { cType ->
+                Loge.d("调试socket 调试串口 来处理相机了 $cType")
                 when (cType) {
                     0 -> {//移除
-                        Loge.d("调试socket 调试串口 添加预览相机 ")
+                        Loge.d("调试socket 调试串口 移除预览相机")
                         removeCamera()
                     }
 
                     1 -> {//添加
-                        Loge.d("调试socket 调试串口 移除预览相机")
+                        Loge.d("调试socket 调试串口 添加预览相机 ")
                         addCamera()
                     }
                 }
@@ -241,27 +264,49 @@ import java.io.File
     fun addCamera() {
         manager?.let {
             val beginTransaction = it.beginTransaction()
-            val f = Camera2Fragment()
-            f?.let { fragment ->
-                beginTransaction.add(R.id.fl_camera2, fragment, "camera2")
-                beginTransaction.commit()
+            val fragment = it.findFragmentByTag("camera2")
+            if (fragment != null && fragment.isAdded) {
+//                binding.flCamera2.isVisible = true
+                if (fragment is Camera2Fragment) {
+                    Loge.d("调试socket 调试串口 已添加预览相机 预览相机")
+                    fragment.startPreview(1)
+                    fragment.startPreview(2)
+                } else {
+                    Loge.d("调试socket 调试串口 不是 Camera2Fragment")
+                }
+            } else {
+                val f = Camera2Fragment()
+                f?.let { fragment ->
+                    Loge.d("调试socket 调试串口 未添加预览相机 预览相机")
+                    beginTransaction.add(R.id.fl_camera2, fragment, "camera2")
+                    beginTransaction.commit()
+                }
             }
         }
     }
 
     fun removeCamera() {
         manager?.let { mg ->
-            val fragment =   mg.findFragmentByTag("camera2")
-            fragment?.let {ft->
-                mg.beginTransaction().remove(ft).commit()
+            val fragment = mg.findFragmentByTag("camera2")
+            if (fragment != null && fragment.isAdded) {
+//                fragment?.let { ft ->
+//                    mg.beginTransaction().remove(ft).commit()
+//                }
+                if (fragment is Camera2Fragment) {
+//                    binding.flCamera2.isVisible = false
+                    Loge.d("调试socket 调试串口 移除预览相机 暂停相机")
+                    fragment.stopPreview(1)
+                    fragment.stopPreview(2)
+                }
             }
+
         }
     }
 
     /***
      * socket 连接 和 接收服务器下发
      */
-    private fun initSocket() {
+    @RequiresApi(Build.VERSION_CODES.O) private fun initSocket() {
         //socket 登录成功加载页面
         lifecycleScope.launch {
             cabinetVM.getLoginCmd.collect {
@@ -334,13 +379,29 @@ import java.io.File
                     }
 
                     CmdValue.CMD_RESTART -> {
-                        HexConverter.restartApp2(AppUtils.getContext(), 3 * 1000L)
+                        val restartModel = Gson().fromJson(json, RestartBean::class.java)
+                        when (restartModel.type) {
+                            1 -> {
+                                TaskRestartScheduler.triggerImmediately(AppUtils.getContext(), "restart")
+                            }
+
+                            2 -> {
+                                TaskDelDateScheduler.scheduleDaily(AppUtils.getContext(), "21:35", "restart")
+                            }
+                        }
                     }
 
                     CmdValue.CMD_UPLOAD_LOG -> {
+                        cabinetVM.toGoCmdUpLog()
+                    }
+
+                    CmdValue.CMD_DEBUG -> {
+                        navigateTo(fragmentClass = DeBugTypeFragment::class.java)
                     }
 
                     CmdValue.CMD_OTA -> {
+                        val otaModel = Gson().fromJson(json, OtaBean::class.java)
+                        cabinetVM.toGoCmdOtaApk(otaModel)
                     }
                 }
             }

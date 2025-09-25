@@ -48,13 +48,15 @@ import java.io.IOException
     val isAppForeground = MutableLiveData<Boolean>()
 
     companion object {
-        var BASE_URL = "https://dl.fmnet.vip:33/api"
+        var BASE_URL = "http://58.251.251.79:10068/api"
         lateinit var enjoySDK: EnjoySDKV2
         lateinit var networkMonitor: NetworkStateMonitor
         private lateinit var instance: FaceApplication
         lateinit var RESOURCE_DIR: String  //资源下载路径
         lateinit var AUDIO_DIR: String  //音频资源下载路径
         lateinit var DEFAULT_DIR: String  //默认下载路径
+        lateinit var APK_DIR: String  //apk升级
+        lateinit var BIN_DIR: String  //固件升级
         fun getInstance() = instance
     }
 
@@ -239,6 +241,14 @@ import java.io.IOException
         DEFAULT_DIR = filesDir.path + "/def"
         val def = File(DEFAULT_DIR)
         if (!def.exists()) def.mkdirs()
+        APK_DIR = filesDir.path + "/apk"
+        val apk = File(APK_DIR)
+        if (!apk.exists()) apk.mkdirs()
+        BIN_DIR = filesDir.path + "/bin"
+        val bin = File(BIN_DIR)
+        if (!bin.exists()) bin.mkdirs()
+
+
     }
 
     /**

@@ -84,7 +84,7 @@ class DailyDelDateWorker(
 
     // 判断是否该文件目录
     private fun shouldDeleteDir(fileName: String): Boolean {
-        return fileName.contains("socket_box", ignoreCase = true) || fileName.contains("crash_xy", ignoreCase = true)
+        return fileName.contains("socket_box_crash", ignoreCase = true) || fileName.contains("crash_xy", ignoreCase = true)
     }
 
 

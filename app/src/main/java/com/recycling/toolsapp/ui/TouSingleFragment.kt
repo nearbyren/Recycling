@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Environment
 import android.provider.ContactsContract.Data
 import android.text.Spannable
 import android.text.SpannableString
@@ -25,6 +26,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
+import java.io.File
 
 
 /**
@@ -75,7 +77,16 @@ import nearby.lib.signal.livebus.LiveBus
         cabinetVM.doorGeXType = CmdCode.GE1
         refresh()
         binding.tvClsoe.setOnClickListener {
-            cabinetVM.testclose()
+            cabinetVM.downloadRes("http://112.91.141.155:8999/apk/01a0a3e1bdc742088bbef7b57ae304d3",
+
+
+                File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "hhhh.apk").toString()
+
+
+                , callback = { a, b ->
+                println("网络请求 a = $a | b = $b")
+
+            })
         }
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
             when (msg) {

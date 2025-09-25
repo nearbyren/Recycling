@@ -313,7 +313,7 @@ import java.util.Locale
                 }
             }
 
-    private fun startPreview(cameraNum: Int) {
+    fun startPreview(cameraNum: Int) {
         if (ActivityCompat.checkSelfPermission(AppUtils.getContext(), CAMERA) != PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(AppUtils.getContext(), "需要相机权限", Toast.LENGTH_SHORT).show()
             return
@@ -348,7 +348,7 @@ import java.util.Locale
                         imageReaderIn?.setOnImageAvailableListener(imageAvailableListenerIn, backgroundHandler)
                         isPreviewActiveIn = true
 //                        updatePreviewUI(1, true)
-                        cameraDeviceIn?.let { createCameraPreviewSession1(it, previewSize) }
+                        cameraDeviceIn?.let { createCameraPreviewSessionIn(it, previewSize) }
                     } else {
                         cameraDeviceOut = camera
                         // 初始化 ImageReader（JPEG 格式）
@@ -358,7 +358,7 @@ import java.util.Locale
 
                         isPreviewActiveOut = true
 //                        updatePreviewUI(1, true)
-                        cameraDeviceOut?.let { createCameraPreviewSession2(it, previewSize) }
+                        cameraDeviceOut?.let { createCameraPreviewSessionOut(it, previewSize) }
                     }
                 }
 
@@ -397,7 +397,7 @@ import java.util.Locale
         }
     }
 
-    private fun createCameraPreviewSession1(cameraDevice: CameraDevice, previewSize: Size) {
+    private fun createCameraPreviewSessionIn(cameraDevice: CameraDevice, previewSize: Size) {
         try {
             val texture: SurfaceTexture? = binding.textureIn.surfaceTexture
             texture?.setDefaultBufferSize(previewSize.width, previewSize.height)
@@ -429,7 +429,7 @@ import java.util.Locale
         }
     }
 
-    private fun createCameraPreviewSession2(cameraDevice: CameraDevice?, previewSize: Size) {
+    private fun createCameraPreviewSessionOut(cameraDevice: CameraDevice?, previewSize: Size) {
         try {
             val texture: SurfaceTexture? = binding.textureOut.getSurfaceTexture()
             texture?.setDefaultBufferSize(previewSize.width, previewSize.height)
@@ -471,7 +471,7 @@ import java.util.Locale
             val activeType = cabinetVM.activeType
             if (!dir.exists()) dir.mkdirs()
             val fileName =
-                    "in_${activeType}_${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS()}.jpg"
+                    "yuan_in_${activeType}_${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS()}.jpg"
             val destFile = File(dir, fileName)
             val image = reader.acquireNextImage()
             val buffer = image.planes[0].buffer
@@ -499,7 +499,8 @@ import java.util.Locale
                 File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
         if (!dir.exists()) dir.mkdirs()
         val activeType = cabinetVM.activeType
-        val fileName = "out_${activeType}_${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS()}.jpg"
+        val fileName =
+                "yuan_out_${activeType}_${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS()}.jpg"
         val destFile = File(dir, fileName)
         val image = reader.acquireNextImage()
         val buffer = image.planes[0].buffer
@@ -555,37 +556,44 @@ import java.util.Locale
                     }
                 }
 
-                FileMdUtil.renameFileInDir(aitionDir, "$fileName", "${inOutValue}-${activeType}-${cabinetVM.curTransId}--${AppUtils.getDateYMDHMS()}.jpg")
-                cabinetVM.taskPicAdd(file.absolutePath)
-                when (activeType) {
-                    CmdValue.CMD_OPEN_DOOR -> {
-                        when (inOut) {
-                            0 -> {
-                                cabinetVM.photoOpenIn = file.absolutePath
+                val toFileName =
+                        "save-${inOutValue}-${activeType}-${cabinetVM.curTransId}--${AppUtils.getDateYMDHMS()}.jpg"
+                if (FileMdUtil.renameFileInDir(aitionDir, "$fileName", toFileName)) {
+                    val fileValue = FileMdUtil.matchDownloadsName("action", toFileName)
+                    when (activeType) {
+                        CmdValue.CMD_OPEN_DOOR -> {
+                            when (inOut) {
+                                0 -> {
+                                    cabinetVM.photoOpenIn = fileValue
+
+                                }
+
+                                1 -> {
+                                    cabinetVM.photoOpenOut = fileValue
+                                }
                             }
 
-                            1 -> {
-                                cabinetVM.photoOpenOut = file.absolutePath
-                            }
                         }
 
-                    }
+                        CmdValue.CMD_CLOSE_DOOR -> {
+                            when (inOut) {
+                                0 -> {
+                                    cabinetVM.photoCloseIn = fileValue
+                                }
 
-                    CmdValue.CMD_CLOSE_DOOR -> {
-                        when (inOut) {
-                            0 -> {
-                                cabinetVM.photoCloseIn = file.absolutePath
-                            }
-
-                            1 -> {
-                                cabinetVM.photoCloseOut = file.absolutePath
+                                1 -> {
+                                    cabinetVM.photoCloseOut = fileValue
+                                }
                             }
                         }
                     }
+                    println("调试socket toGoInsertPhoto 网络上传拍照 $toFileName")
+                    //上传到服务器
+//                    cabinetVM.uploadPhoto(cabinetVM.curSn, cabinetVM.curTransId, 1, toFileName)
+                    cabinetVM.taskPicAdd(fileValue)
+                    cabinetVM.toGoInsertPhoto(activeType, inOut)
+//                    LiveBus.get(BusType.BUS_DELIVERY_PHOTO).post(fileValue)
                 }
-
-                cabinetVM.toGoInsertPhoto(activeType)
-                LiveBus.get(BusType.BUS_DELIVERY_PHOTO).post(file.absolutePath)
             }
 
             override fun onError(e: Throwable) {
@@ -595,7 +603,8 @@ import java.util.Locale
         }).launch()
     }
 
-    private fun stopPreview(cameraNum: Int) {
+    fun stopPreview(cameraNum: Int) {
+
         if (cameraNum == 1 && cameraDeviceIn != null) {
             cameraDeviceIn?.close()
             cameraDeviceIn = null

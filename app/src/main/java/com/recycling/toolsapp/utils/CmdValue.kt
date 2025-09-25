@@ -67,6 +67,19 @@ object CmdValue {
      */
     const val CMD_OTA = "ota"
 
+
+    /***
+     *debug更新
+     * debug
+     */
+    const val CMD_DEBUG = "debug"
+
+    /***
+     *fault更新
+     * fault
+     */
+    const val CMD_FAULT = "fault"
+
     /***
      *上传日志
      * uploadLog

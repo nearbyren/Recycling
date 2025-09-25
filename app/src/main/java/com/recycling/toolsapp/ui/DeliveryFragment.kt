@@ -75,8 +75,25 @@ import kotlin.random.Random
 //        initBanner()
 //        initBanner2()
         upgradeAi()
-        initCameraX()
-
+        lifecycleScope.launch {
+            cabinetVM.getTakePic.collect {filepath->
+                println("调试socket 调试串口 接收图片")
+                if (isAdded && mActivity?.isDestroyed != true) {
+                    println("调试socket 调试串口 接收图片 更新显示")
+                    val iv = AppCompatImageView(requireActivity()).apply {
+                        layoutParams =
+                                LinearLayoutCompat.LayoutParams(0, LinearLayoutCompat.LayoutParams.MATCH_PARENT).apply {
+                                    weight = 1f
+                                    setMargins(20, 20, 20, 20)
+                                }
+                        scaleType = ImageView.ScaleType.MATRIX
+                    }
+                    Glide.with(requireActivity()).load(filepath).into(iv)
+                    binding.llPhoto.addView(iv)
+                    scrollToPosition(binding.llPhoto.size)
+                }
+            }
+        }
     }
 
     private fun initClick() {
@@ -171,35 +188,6 @@ import kotlin.random.Random
         val floatValue = cabinetVM.multiplyFloats(price, curWeightValue)
         //当前金额
         binding.tvMoneyValue.text = "$floatValue 元"
-    }
-
-    fun initCameraX() {
-        val manager = mActivity?.supportFragmentManager
-        manager?.let {
-            val beginTransaction = it.beginTransaction()
-            val f = Camera2Fragment()
-            f?.let { fragment ->
-                beginTransaction.add(R.id.frame0, fragment, "camera2")
-                beginTransaction.commit()
-            }
-        }
-
-//        val manager = mActivity?.supportFragmentManager
-//        manager?.let {
-//            val beginTransaction = it.beginTransaction()
-//            val f = CameraX1Fragment()
-//            f?.let { fragment ->
-//                beginTransaction.add(R.id.frame1, fragment, "station_ad1")
-//                beginTransaction.commit()
-//            }
-//
-//            val beginTransaction2 = it.beginTransaction()
-//            val f2 = CameraX2Fragment()
-//            f2?.let { fragment ->
-//                beginTransaction2.add(R.id.frame2, fragment, "station_ad2")
-//                beginTransaction2.commit()
-//            }
-//        }
     }
     /****************************************权限管理回调***************************************************/
     /****************************************权限管理回调***************************************************/

@@ -11,7 +11,19 @@ import androidx.room.PrimaryKey
  * 配置 图片资源 音频资源
  */
 @Entity(tableName = "ResEntity") class ResEntity(
-    @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "id", typeAffinity = INTEGER) val id: Long = 0,
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "id", typeAffinity = INTEGER) var id: Long = 0,
+    /***
+     * 指令
+     */
+    @ColumnInfo(name = "cmd", typeAffinity = TEXT, defaultValue = "") var cmd: String? = null,
+    /***
+     * 版本号
+     */
+    @ColumnInfo(name = "version", typeAffinity = TEXT, defaultValue = "") var version: String? = null,
+    /***
+     * 柜机sn
+     */
+    @ColumnInfo(name = "sn", typeAffinity = TEXT, defaultValue = "") var sn: String? = null,
     /***
      * 文件名称 类型
      */
@@ -26,15 +38,19 @@ import androidx.room.PrimaryKey
     @ColumnInfo(name = "md5", typeAffinity = TEXT, defaultValue = "") var md5: String? = null,
 
     /***
-     * 状态 -1. 1.需要刷新 0.不需要刷新
+     * 状态 -1. 1.需要刷新 0.不需要刷新 2.还未升级 3.升级 4.下载失败
      */
     @ColumnInfo(name = "status", typeAffinity = INTEGER) var status: Int = -1,
     /***
      * 创建时间
      */
-    @ColumnInfo(name = "time", typeAffinity = TEXT) var time: String? = null, ) {
+    @ColumnInfo(name = "time", typeAffinity = TEXT) var time: String? = null,
+) {
     @Ignore constructor() : this(
         0,
+        null,
+        null,
+        null,
         null,
         null,
         null,
@@ -43,12 +59,7 @@ import androidx.room.PrimaryKey
     )
 
     override fun toString(): String {
-        return "id=$id," +
-                "filename=${filename}," +
-                "url=${url}," +
-                "md5=${md5}" +
-                "status=${status}" +
-                "time=${time}"
+        return "id=$id," + "cmd=${cmd}," + "version=${version}," + "sn=${sn}," + "filename=${filename}," + "url=${url}," + "md5=${md5}" + "status=${status}" + "time=${time}"
     }
 }
 

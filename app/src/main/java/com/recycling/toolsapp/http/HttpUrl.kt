@@ -130,6 +130,16 @@ object HttpUrl {
     const val addFaceUser = "faces/faceUpdate"
 
     /***
+     * 上传照片
+     */
+    const val uploadPhoto = "device/upload/photo"
+
+    /***
+     * 上传日志
+     */
+    const val uploadLog = "device/upload/log"
+
+    /***
      * 获取mac地址
      */
     fun getMaxAddress(): String {

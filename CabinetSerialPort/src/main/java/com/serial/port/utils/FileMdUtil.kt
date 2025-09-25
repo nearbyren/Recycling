@@ -36,7 +36,7 @@ object FileMdUtil {
     }
 
     fun matchDownloadsName(path: String, fileName: String): String {
-        return File("${AppUtils.getContext().filesDir}/${path}/${fileName}").absolutePath
+        return File("${AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)}/${path}/${fileName}").absolutePath
     }
 
     /**

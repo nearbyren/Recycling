@@ -30,7 +30,7 @@ object BoxToolLogUtils {
             builder.append(time).append("\n").append(json).append('\n')
             val fileName = "socket-${type}--${AppUtils.getDateYMD()}.txt"
             val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box/"
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -71,7 +71,7 @@ object BoxToolLogUtils {
         try {
             val fileName = "tool--${AppUtils.getDateYMD()}.txt"
             val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box/"
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -97,7 +97,7 @@ object BoxToolLogUtils {
     fun listBoxInfoFiles(): List<String>? {
         return try {
             val dir =
-                    File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box")
+                    File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box_crash")
             if (dir.exists() && dir.isDirectory) {
                 dir.list()?.filter { File(dir, it).isFile }
             } else {
@@ -121,7 +121,7 @@ object BoxToolLogUtils {
         try {
             val fileName = "receive-lower-${typePort}--${AppUtils.getDateYMD()}.txt"
             val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box/"
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -153,7 +153,7 @@ object BoxToolLogUtils {
         try {
             val fileName = "send-lower-${typePort}--${AppUtils.getDateYMD()}.txt"
             val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box/"
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -185,7 +185,7 @@ object BoxToolLogUtils {
         try {
             val fileName = "send-lower-status-${typePort}--${AppUtils.getDateYMD()}.txt"
             val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box/"
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()

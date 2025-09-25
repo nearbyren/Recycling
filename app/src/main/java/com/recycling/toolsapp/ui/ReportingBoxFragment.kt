@@ -90,10 +90,10 @@ import java.util.Locale
         cabinetVM.ioScope.launch {
             // 目标文件夹路径
             val targetFolder =
-                    File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box")
+                    File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box_crash")
             // 压缩包输出路径
             val zipOutput =
-                    File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "${AppUtils.getDateYMDHMS()}socket_box.zip")
+                    File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "${AppUtils.getDateYMDHMS()}socket_box_crash.zip")
 
             // 执行压缩
             val success = FileCleaner.zipFolder(targetFolder.absolutePath, zipOutput.absolutePath)
@@ -156,7 +156,7 @@ import java.util.Locale
         mItemReportingBoxAdapter?.addItemReportingBoxClickListener(object : ItemReportingBoxClickListener {
             override fun itemClick(fileName: String) {
                 val file =
-                        File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box/${fileName}")
+                        File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box_crash/${fileName}")
                 Loge.d("点击进来了 ${file.absolutePath}")
                 cabinetVM.ioScope.launch {
                     val mailConfig = MailConfig.Builder().apply {

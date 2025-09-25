@@ -2,7 +2,11 @@ package com.serial.port
 
 data class PortDeviceInfo(
     /***
-     * 烟雾警报
+     * 当前重量
+     */
+    var weigh: String? = null,
+    /***
+     * 烟雾警报 0.无烟雾报警 1.有烟雾报警
      */
     var smoke: Int? = null,
     /***
@@ -15,33 +19,31 @@ data class PortDeviceInfo(
      */
     var capacity: Int? = null,
     /***
-     * 红外状态
+     * 红外状态 0.无溢出 1.有溢出
      */
     var irState: Int? = null,
     /***
-     * 当前重量
+     * 关门感器状态
      */
-    var weigh: String? = null,
+    var touGMStatus: Int? = null,
     /***
-     * 投传感器状态
+     * 防夹手传感器。 0.无夹手 1.有夹手
      */
-    var touCGStatus: Int? = null,
+    var touJSStatus: Int? = null,
     /***
-     * 投递门
+     * 投递门 0.关 1.开 2.开/关门中 3.故障
      */
     var doorStatus: Int? = null,
     /***
-     * 清运门
+     * 清运门 0.关 1.开
      */
     var lockStatus: Int? = null,
-
     /***
-     * 校准
+     * 程序运行状态 校准 0.运行状态 1.校准状态 2.故障状态
      */
     var xzStatus: Int? = null,
     /***
      * 格口ID
      */
     var cabinId: String? = null,
-
     )

@@ -9,6 +9,7 @@ object BusType {
      * 网络接口提示语
      */
     const val BUS_NET_MSG = "netMsg"
+
     /***
      * 倒计时
      */
@@ -25,17 +26,26 @@ object BusType {
     const val BUS_DELIVERY_CLOSE = "deliveryClose"
 
     /***
+     * 清运页
+     */
+    const val BUS_CLEAR_STATUS = "clearStatus"
+
+
+    /***
      * 计重页格口异常
      */
     const val BUS_DELIVERY_ABNORMAL = "deliveryAbnormal"
+
     /***
      * 关闭手机页面
      */
     const val BUS_MOBILE_CLOS = "mobileClose"
+
     /***
      * 图片
      */
     const val BUS_DELIVERY_PHOTO = "deliveryPhoto"
+
     /***
      * 投口1状态类型
      */

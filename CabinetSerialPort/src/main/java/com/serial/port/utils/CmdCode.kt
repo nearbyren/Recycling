@@ -33,6 +33,16 @@ object CmdCode {
     const val GE_WEIGHT_BACK = 1
 
     /***
+     * 查询重量后 30
+     */
+    const val GE_WEIGHT_CLEAR_FRONT = 30
+
+    /***
+     * 查询重量后 31
+     */
+    const val GE_WEIGHT_CLEAR_BACK = 31
+
+    /***
      * 开 1
      */
     const val GE_OPEN = 1

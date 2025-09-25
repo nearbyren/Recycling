@@ -303,7 +303,7 @@ import java.util.concurrent.Executors
                             cabinetVM.photoCloseOut = file.absolutePath
                         }
                     }
-                    cabinetVM.toGoInsertPhoto(activeType)
+//                    cabinetVM.toGoInsertPhoto(activeType)
                     LiveBus.get(BusType.BUS_DELIVERY_PHOTO).post(file.absolutePath)
 
                 }

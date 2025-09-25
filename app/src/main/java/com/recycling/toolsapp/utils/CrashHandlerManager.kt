@@ -223,7 +223,7 @@ class CrashHandlerManager(private val mContext: Context) : Thread.UncaughtExcept
             val fileName = "crash-${AppUtils.getDateYMDHMS()}--${AppUtils.getDateYMD()}.txt"
             // /sdcard/android/data/packmage/file/download/crash-time-timestamp.log
             val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/crash_xy/"
+                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()

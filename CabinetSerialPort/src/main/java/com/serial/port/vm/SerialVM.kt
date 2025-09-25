@@ -2,9 +2,6 @@ package com.serial.port.vm
 
 import androidx.lifecycle.ViewModel
 import com.serial.port.BoxInternal
-import com.serial.port.EnumBoxType
-import com.serial.port.EnumDoorStatus
-import com.serial.port.EnumTextBoxInfo
 import com.serial.port.EnumToolsStatus
 import com.serial.port.EnumTxStatus
 import com.serial.port.PortDeviceInfo
@@ -976,41 +973,45 @@ class SerialVM : ViewModel() {
                 Loge.i("串口232", "接232 5.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
                 val list = mutableListOf<PortDeviceInfo>()
 
-                val tg1 = data.copyOfRange(0, 11)
+                val tg1 = data.copyOfRange(0, 12)
                 Loge.i("串口232", "接232 测试 1 ${ByteUtils.toHexString(tg1)}")
                 val weight1 = tg1.copyOfRange(1,5)
                 Loge.i("串口232", "接232 5.toByte 取1重量：${HexConverter.byteArrayToInt(weight1)}")
-                val status1 = tg1.copyOfRange(5, 11)
+                val status1 = tg1.copyOfRange(5, 12)
                 //烟雾传感器
                 var smokeValue1 = 1
                 //红外传感器
                 var irStateValue1 = -1
                 //关门传感器
                 var touCGStatusValue1 = 0
+                //防夹传感器
+                var touJSStatusValue1 = 0
                 //投口门状态
                 var doorStatusValue1: Int = -1
                 //清运门状态
                 var lockStatusValue1: Int = -1
                 //校准状态
                 var xzStatusValue1: Int = -1
-                for (i in status1.indices step 6) {
-                    val end = (i + 6).coerceAtMost(status1.size)
+                for (i in status1.indices step 7) {
+                    val end = (i + 7).coerceAtMost(status1.size)
                     val group = status1.copyOfRange(i, end)
                     val size = group.size
                     Loge.i("串口232", "接232 5.toByte 取1数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
                     smokeValue1 = group[0].toUByte().toInt()
                     irStateValue1= group[1].toUByte().toInt()
                     touCGStatusValue1 = group[2].toUByte().toInt()
-                    doorStatusValue1 = group[3].toUByte().toInt()
-                    lockStatusValue1 = group[4].toUByte().toInt()
-                    xzStatusValue1 = group[5].toUByte().toInt()
+                    touJSStatusValue1 = group[3].toUByte().toInt()
+                    doorStatusValue1 = group[4].toUByte().toInt()
+                    lockStatusValue1 = group[5].toUByte().toInt()
+                    xzStatusValue1 = group[6].toUByte().toInt()
                 }
                 val weighValue1 = HexConverter.byteArrayToInt(weight1)
                 list.add(PortDeviceInfo().apply {
                     weigh = HexConverter.getWeight(weighValue1)
                     smoke = smokeValue1
                     irState = irStateValue1
-                    touCGStatus = touCGStatusValue1
+                    touGMStatus = touCGStatusValue1
+                    touJSStatus = touJSStatusValue1
                     doorStatus = doorStatusValue1
                     lockStatus = lockStatusValue1
                     xzStatus = xzStatusValue1
@@ -1018,11 +1019,11 @@ class SerialVM : ViewModel() {
 
 
 //
-                val tg2 = data.copyOfRange(11, 22)
+                val tg2 = data.copyOfRange(12, 24)
                 Loge.i("串口232", "接232 测试 2 ${ByteUtils.toHexString(tg2)}")
                 val weight2 = tg2.copyOfRange(1, 5)
                 Loge.i("串口232", "接232 5.toByte 取2重量：${HexConverter.byteArrayToInt(weight2)}")
-                val status2 = tg2.copyOfRange(5, 11)
+                val status2 = tg2.copyOfRange(5, 12)
                 Loge.i("串口232", "接232 测试 2 ${ByteUtils.toHexString(status2)}")
                 //烟雾传感器
                 var smokeValue2 = 1
@@ -1030,30 +1031,34 @@ class SerialVM : ViewModel() {
                 var irStateValue2 = -1
                 //关门传感器
                 var touCGStatusValue2 = 0
+                //防夹传感器
+                var touJSStatusValue2 = 0
                 //投口门状态
                 var doorStatusValue2: Int = -1
                 //清运门状态
                 var lockStatusValue2: Int = -1
                 //校准状态
                 var xzStatusValue2: Int = -1
-                for (i in status2.indices step 6) {
-                    val end = (i + 6).coerceAtMost(status2.size)
+                for (i in status2.indices step 7) {
+                    val end = (i + 7).coerceAtMost(status2.size)
                     val group = status2.copyOfRange(i, end)
                     val size = group.size
                     Loge.i("串口232", "接232 5.toByte 取2数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
                     smokeValue2 = group[0].toUByte().toInt()
                     irStateValue2= group[1].toUByte().toInt()
                     touCGStatusValue2 = group[2].toUByte().toInt()
-                    doorStatusValue2 = group[3].toUByte().toInt()
-                    lockStatusValue2 = group[4].toUByte().toInt()
-                    xzStatusValue2 = group[5].toUByte().toInt()
+                    touJSStatusValue2 = group[3].toUByte().toInt()
+                    doorStatusValue2 = group[4].toUByte().toInt()
+                    lockStatusValue2 = group[5].toUByte().toInt()
+                    xzStatusValue2 = group[6].toUByte().toInt()
                 }
                 val weighValue2 = HexConverter.byteArrayToInt(weight2)
                 list.add(PortDeviceInfo().apply {
                     weigh = HexConverter.getWeight(weighValue2)
                     smoke = smokeValue2
                     irState = irStateValue2
-                    touCGStatus = touCGStatusValue2
+                    touGMStatus = touCGStatusValue2
+                    touJSStatus = touJSStatusValue2
                     doorStatus = doorStatusValue2
                     lockStatus = lockStatusValue2
                     xzStatus = xzStatusValue2

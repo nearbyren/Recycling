@@ -43,6 +43,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 
+private const val s = "TABLE"
+
 object DatabaseManager {
 
     private const val DATABASE_NAME = "recycling_database"
@@ -56,23 +58,30 @@ object DatabaseManager {
             val MIGRATION_1_2 = object : Migration(1, 2) {
                 override fun migrate(database: SupportSQLiteDatabase) {
                     // 执行 ALTER TABLE 添加新字段
-                    database.execSQL("ALTER TABLE BoxDevice ADD COLUMN boxUTime TEXT DEFAULT ''")
-                    //        database.execSQL("ALTER TABLE your_table ADD COLUMN new_int_column INTEGER DEFAULT 0")
+//                    database.execSQL("ALTER TABLE BoxDevice ADD COLUMN boxUTime TEXT DEFAULT ''")
+//                    database.execSQL("ALTER TABLE ResEntity ADD COLUMN sn TEXT DEFAULT NULL")
+//                    database.execSQL("ALTER TABLE FileEntity ADD COLUMN status INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+            val MIGRATION_2_3 = object : Migration(2, 3) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    // 执行 ALTER TABLE 添加新字段
+                    database.execSQL("ALTER TABLE ResEntity ADD COLUMN cmd TEXT DEFAULT ''")
+                    database.execSQL("ALTER TABLE ResEntity ADD COLUMN version TEXT DEFAULT ''")
+                    database.execSQL("ALTER TABLE ResEntity ADD COLUMN sn TEXT DEFAULT ''")
                 }
             }
             // 数据库名称
             val newInstance =
-                    Room.databaseBuilder(context.applicationContext, SQLDatabase::class.java, DATABASE_NAME)
-//                        .addMigrations(MIGRATION_1_2)
-                        .addCallback(object : RoomDatabase.Callback() {
-                            override fun onCreate(db: SupportSQLiteDatabase) {
-                                super.onCreate(db)
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    //初始化信息
+                    Room.databaseBuilder(context.applicationContext, SQLDatabase::class.java, DATABASE_NAME).addMigrations(MIGRATION_2_3).addCallback(object : RoomDatabase.Callback() {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            super.onCreate(db)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                //初始化信息
 //                                    initState()
-                                }
                             }
-                        }).build()
+                        }
+                    }).build()
             instance = newInstance
             newInstance
         }
@@ -469,8 +478,19 @@ object DatabaseManager {
      * @param filename
      * @return
      */
-    fun queryRes(context: Context, filename: String): ResEntity {
-        return getResFlowDao(context).queryRes(filename)
+    fun queryResName(context: Context, filename: String): ResEntity {
+        return getResFlowDao(context).queryResName(filename)
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param sn
+     * @param cmd
+     * @return
+     */
+    fun queryResCmd(context: Context, version: String, sn: String, cmd: String): ResEntity {
+        return getResFlowDao(context).queryResCmd(version, sn, cmd)
     }
 
     /**
@@ -481,6 +501,17 @@ object DatabaseManager {
      */
     fun upResEntity(context: Context, resourceEntity: ResEntity): Int {
         return getResFlowDao(context).upResEntity(resourceEntity)
+    }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param id
+     * @param status
+     * @return
+     */
+    fun upResStatus(context: Context, id: Long, status: Int) {
+        getResFlowDao(context).upResStatus(id, status)
     }
 
     /***************************************获取 资源*************************************************/
