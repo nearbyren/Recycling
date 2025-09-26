@@ -35,6 +35,7 @@ import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentCamera2Binding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.utils.CmdValue
+import com.recycling.toolsapp.utils.FualtType
 import com.recycling.toolsapp.utils.PermissionRequest
 import com.recycling.toolsapp.utils.PermissionsRequester
 import com.recycling.toolsapp.vm.CabinetVM
@@ -43,8 +44,6 @@ import com.serial.port.utils.FileMdUtil
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import nearby.lib.signal.livebus.BusType
-import nearby.lib.signal.livebus.LiveBus
 import top.zibin.luban.Luban
 import top.zibin.luban.OnCompressListener
 import java.io.File
@@ -135,28 +134,29 @@ import java.util.Locale
         return false
     }
 
+    override fun doneCountdown() {
+    }
 
     override fun initialize(savedInstanceState: Bundle?) {
-        setCountdown(900)
         initPermissions()
         binding.atvPictureIn.setOnClickListener {
-            capturePhoto1()
+            capturePhotoIn()
         }
         binding.atvRecordingIn.setOnClickListener {
-            startRecording1()
+            startRecordingIn()
         }
         binding.atvStopRecordingIn.setOnClickListener {
-            stopRecording1()
+            stopRecordingIn()
         }
 
         binding.atvPictureOut.setOnClickListener {
-            capturePhoto2()
+            capturePhotoOut()
         }
         binding.atvRecordingOut.setOnClickListener {
-            startRecording2()
+            startRecordingOut()
         }
         binding.atvStopRecordingOut.setOnClickListener {
-            stopRecording2()
+            stopRecordingOut()
         }
         initCamera2()
         setupCameras()
@@ -170,14 +170,18 @@ import java.util.Locale
             cabinetVM.getActive.collect { activeType ->
                 println("调试socket 调试串口 进行拍照 $activeType")
                 cabinetVM.activeType = activeType
-                capturePhoto1()
-                capturePhoto2()
+                capturePhotoIn()
+                capturePhotoOut()
             }
         }
     }
 
     private fun startBackgroundThread() {
 
+    }
+
+    private fun toGoFaultDesc(desc: String) {
+        cabinetVM.toGoCmdUpFault(FualtType.TYPE5, 0, desc)
     }
 
     private fun setupCameras() {
@@ -226,6 +230,7 @@ import java.util.Locale
         } catch (e: CameraAccessException) {
             e.printStackTrace()
             Toast.makeText(AppUtils.getContext(), "摄像头访问错误", Toast.LENGTH_SHORT).show()
+            toGoFaultDesc("摄像头访问异常")
         }
     }
 
@@ -268,6 +273,7 @@ import java.util.Locale
             }
         } catch (e: CameraAccessException) {
             e.printStackTrace()
+            toGoFaultDesc("摄像获取尺寸异常")
         }
     }
 
@@ -382,10 +388,14 @@ import java.util.Locale
                     if (cameraNum == 1) {
                         cameraDeviceIn = null
                         isPreviewActiveIn = false
+                        toGoFaultDesc("摄像头打开失败内")
+
 //                        updatePreviewUI(1, false)
                     } else {
                         cameraDeviceOut = null
                         isPreviewActiveOut = false
+                        toGoFaultDesc("摄像头打开失败外")
+
 //                        updatePreviewUI(2, false)
                     }
                     Toast.makeText(AppUtils.getContext(), "摄像头打开失败", Toast.LENGTH_SHORT).show()
@@ -394,6 +404,7 @@ import java.util.Locale
         } catch (e: CameraAccessException) {
             e.printStackTrace()
             Toast.makeText(AppUtils.getContext(), "摄像头访问错误", Toast.LENGTH_SHORT).show()
+            toGoFaultDesc("摄像头访问错误")
         }
     }
 
@@ -417,15 +428,19 @@ import java.util.Locale
                         captureSessionIn?.setRepeatingRequest(previewRequestBuilder1.build(), null, backgroundHandler)
                     } catch (e: CameraAccessException) {
                         e.printStackTrace()
+                        toGoFaultDesc("摄像头访问错误内")
+
                     }
                 }
 
                 override fun onConfigureFailed(session: CameraCaptureSession) {
                     Toast.makeText(AppUtils.getContext(), "预览配置失败", Toast.LENGTH_SHORT).show()
+                    toGoFaultDesc("预览配置失败内")
                 }
             }, backgroundHandler)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
+            toGoFaultDesc("预览配置失败内")
         }
     }
 
@@ -449,15 +464,20 @@ import java.util.Locale
                         captureSessionOut?.setRepeatingRequest(previewRequestBuilder1!!.build(), null, backgroundHandler)
                     } catch (e: CameraAccessException) {
                         e.printStackTrace()
+                        toGoFaultDesc("预览配置失败外")
                     }
                 }
 
                 override fun onConfigureFailed(session: CameraCaptureSession) {
                     Toast.makeText(AppUtils.getContext(), "预览配置失败", Toast.LENGTH_SHORT).show()
+                    toGoFaultDesc("预览配置失败外")
+
                 }
             }, backgroundHandler)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
+            toGoFaultDesc("预览配置失败外")
+
         }
     }
 
@@ -484,6 +504,7 @@ import java.util.Locale
                 }
             } catch (e: IOException) {
                 e.printStackTrace()
+                toGoFaultDesc("在图像上设置可用监听器失败内")
             } finally {
                 image.close()
                 compression(destFile.absolutePath, dir.absolutePath, activeType, 0)
@@ -513,6 +534,7 @@ import java.util.Locale
             }
         } catch (e: IOException) {
             e.printStackTrace()
+            toGoFaultDesc("在图像上设置可用监听器失败外")
         } finally {
             image.close()
             compression(destFile.absolutePath, dir.absolutePath, activeType, 1)
@@ -598,7 +620,7 @@ import java.util.Locale
 
             override fun onError(e: Throwable) {
                 println("测试我来了 onError")
-
+                toGoFaultDesc("拍摄压缩图片异常")
             }
         }).launch()
     }
@@ -629,7 +651,7 @@ import java.util.Locale
         backgroundHandler = backgroundThread?.looper?.let { Handler(it) }
     }
 
-    fun capturePhoto1() {
+    fun capturePhotoIn() {
         if (cameraDeviceIn == null || captureSessionIn == null) return
 
         try {
@@ -656,7 +678,7 @@ import java.util.Locale
         }
     }
 
-    fun startRecording1() {
+    fun startRecordingIn() {
         if (cameraDeviceIn == null) {
             Toast.makeText(AppUtils.getContext(), "相机未打开", Toast.LENGTH_SHORT).show()
             return
@@ -664,7 +686,7 @@ import java.util.Locale
 
         try {
             // 1. 配置 MediaRecorder
-            setUpMediaRecorder1()
+            setUpMediaRecorderIn()
 
             val texture: SurfaceTexture? = binding.textureIn.surfaceTexture
             texture?.setDefaultBufferSize(previewSizeIn!!.width, previewSizeIn!!.height)
@@ -707,7 +729,7 @@ import java.util.Locale
         }
     }
 
-    @Throws(IOException::class) private fun setUpMediaRecorder1() {
+    @Throws(IOException::class) private fun setUpMediaRecorderIn() {
         mediaRecorderIn = MediaRecorder()
         mediaRecorderIn?.setAudioSource(MediaRecorder.AudioSource.MIC)
         mediaRecorderIn?.setVideoSource(MediaRecorder.VideoSource.SURFACE)
@@ -725,7 +747,7 @@ import java.util.Locale
         mediaRecorderIn?.prepare()
     }
 
-    fun stopRecording1() {
+    fun stopRecordingIn() {
         if (isRecordingIn) {
             try {
                 mediaRecorderIn?.stop()
@@ -742,7 +764,7 @@ import java.util.Locale
     }
 
 
-    fun capturePhoto2() {
+    fun capturePhotoOut() {
         if (cameraDeviceOut == null || captureSessionOut == null) return
 
         try {
@@ -769,7 +791,7 @@ import java.util.Locale
         }
     }
 
-    fun startRecording2() {
+    fun startRecordingOut() {
         if (cameraDeviceOut == null) {
             Toast.makeText(AppUtils.getContext(), "相机未打开", Toast.LENGTH_SHORT).show()
             return
@@ -777,7 +799,7 @@ import java.util.Locale
 
         try {
             // 1. 配置 MediaRecorder
-            setUpMediaRecorder2()
+            setUpMediaRecorderOut()
 
             val texture: SurfaceTexture? = binding.textureOut.surfaceTexture
             texture?.setDefaultBufferSize(previewSizeOut!!.width, previewSizeOut!!.height)
@@ -820,7 +842,7 @@ import java.util.Locale
         }
     }
 
-    @Throws(IOException::class) private fun setUpMediaRecorder2() {
+    @Throws(IOException::class) private fun setUpMediaRecorderOut() {
         mediaRecorderOut = MediaRecorder()
         mediaRecorderOut?.setAudioSource(MediaRecorder.AudioSource.MIC)
         mediaRecorderOut?.setVideoSource(MediaRecorder.VideoSource.SURFACE)
@@ -838,7 +860,7 @@ import java.util.Locale
         mediaRecorderOut?.prepare()
     }
 
-    fun stopRecording2() {
+    fun stopRecordingOut() {
         if (isRecordingOut) {
             try {
                 mediaRecorderOut?.stop()

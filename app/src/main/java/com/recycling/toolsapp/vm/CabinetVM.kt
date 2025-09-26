@@ -48,6 +48,7 @@ import com.recycling.toolsapp.utils.HexConverter
 import com.recycling.toolsapp.utils.JsonBuilder
 import com.recycling.toolsapp.utils.MediaPlayerHelper
 import com.recycling.toolsapp.utils.ResultType
+import com.recycling.toolsapp.utils.TelephonyUtils
 import com.serial.port.CabinetSdk
 import com.serial.port.PortDeviceInfo
 import com.serial.port.utils.AppUtils
@@ -77,6 +78,7 @@ import nearby.lib.netwrok.response.CorHttp
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
+import org.apache.commons.lang3.StringUtils.substringBeforeLast
 import java.io.File
 import java.io.FileInputStream
 import java.math.BigDecimal
@@ -382,6 +384,8 @@ import kotlin.random.Random
                 md5 = otaModel.md5
                 time = AppUtils.getDateYMDHMS()
             }
+            val netVersion = otaModel.version?.replace(".", "")?.toInt() ?: 0
+            testQueryVersion(netVersion)
             val queryResource =
                     DatabaseManager.queryResCmd(AppUtils.getContext(), otaModel.version ?: "", otaModel.sn ?: "", otaModel.cmd ?: "")
             if (queryResource == null) {
@@ -561,23 +565,40 @@ import kotlin.random.Random
 
     /***
      * 上传异常
+     * @param toType
+     * @param toCabinIndex
+     * @param toDesc
      */
-    fun toGoCmdUpFault() {
+    fun toGoCmdUpFault(toType: Int, toCabinIndex: Int, toDesc: String) {
         ioScope.launch {
+            val cabinld = when (doorGeX) {
+                CmdCode.GE1 -> {
+                    cur1Cabinld
+                }
+
+                CmdCode.GE2 -> {
+                    cur2Cabinld
+                }
+
+                else -> {
+                    ""
+                }
+            }
             val doorOpen = FaultBean().apply {
                 cmd = CmdValue.CMD_FAULT//回应服务器
-                imei = ""
+                imei = TelephonyUtils.getImei(AppUtils.getContext())
                 sn = curSn
                 data = FaultInfo().apply {
-                    type = 1
-                    cabinIndex = 0
-                    cabinId = cur1Cabinld
-                    desc = ""
+                    type = toType
+                    cabinIndex = toCabinIndex
+                    cabinId = cabinld
+                    desc = toDesc
                 }
-                timestamp = AppUtils.getDateYMDHMS()
+                timestamp = System.currentTimeMillis().toString()
             }
             val json = JsonBuilder.convertToJsonString(doorOpen)
-            vmClient?.sendText(json)
+            println("调试socket 上传 Fault $json")
+//            vmClient?.sendText(json)
         }
     }
 
@@ -615,6 +636,11 @@ import kotlin.random.Random
      * 标记当前格口
      */
     var doorGeX = CmdCode.GE
+
+    /**
+     * 内外灯
+     */
+    var inOutLights = -1
 
     //当前价格
     var curGePrice: String? = null
@@ -666,6 +692,9 @@ import kotlin.random.Random
 
     //当前监听的格口数据
     var stateMap = mutableMapOf<Int, StateEntity>()
+
+    //读取配置信息
+    var configEntity: ConfigEntity? = null
 
     //当前sn
     var curSn = ""
@@ -919,6 +948,13 @@ import kotlin.random.Random
                     CmdType.CMD5 -> {
                         CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
                     }
+                    //灯光
+                    CmdType.CMD6 -> {
+                        CabinetSdk.startLights(doorGeX, lightsCallback = { boxCode, status ->
+                            println("调试socket 调试串口 发送查询灯光 接收回调 $boxCode, $status")
+                            doorReturnLights(boxCode, status)
+                        }, sendCallback)
+                    }
                 }
 
                 //处理添加发送
@@ -1058,9 +1094,11 @@ import kotlin.random.Random
                 //开清运门失败
                 0 -> {
                     tipMessage("清运门打开失败")
+                    maptDoorFault[3] = true
                 }
                 //开清运门成功
                 1 -> {
+                    maptDoorFault[3] = false
                     flowIsOpenDoorClear.emit(true)
                     if (!getCmd04.value) {
                         flowCmd04.emit(true)
@@ -1070,6 +1108,9 @@ import kotlin.random.Random
         }
     }
 
+    /***
+     * @param weight 查询的体重
+     */
     private fun doorReturnWeight(weight: Int) {
         ioScope.launch {
             println("调试socket 调试串口 doorReturnWeight doorGeX $doorGeX | ${getCmd04.value} | frontBackState = $frontBackState")
@@ -1187,6 +1228,25 @@ import kotlin.random.Random
 //                    if (weight > curG2Total) {
 //                        flowDoor2Value.emit(BusType.BUS_OVERFLOW)
 //                    }
+                }
+            }
+        }
+    }
+
+    /***
+     * @param
+     */
+    private fun doorReturnLights(boxCode: Int, status: Int) {
+        ioScope.launch {
+            when (status) {
+                //打开灯光失败
+                0 -> {
+                    tipMessage("灯光打开失败")
+                    maptDoorFault[7] = true
+                }
+                //打开灯光成功
+                1 -> {
+                    maptDoorFault[8] = false
                 }
             }
         }
@@ -1858,14 +1918,167 @@ import kotlin.random.Random
     /***************************************** 发送 测试 ******************************************/
 
     /***
-     * 灯光操作
+     * 软件版本
+     * @param
      */
-    fun testLightsCmd() {
-        val code = Random.nextInt(1, 2)
-        println("调试socket 调试串口 testLightsCmd code $code")
-        CabinetSdk.startLights(code, lightsCallback = { lockerNo, status ->
+    fun testQueryVersion(netVersion: Int) {
+        //接收网络版本固件
+        println("调试socket 调试串口 testQueryVersion")
+        executeVersion232(true, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
+            if (netVersion > version) {
+                //执行更新、显示提示图
+                upgradeChip()
+            }
+        })
+    }
+
+    /***
+     * 灯光操作
+     * @param inOut
+     */
+    fun testLightsCmd(inOut: Int) {
+        inOutLights = inOut
+//        val inOutLights = Random.nextInt(1, 2)
+        println("调试socket 调试串口 testLightsCmd code $inOutLights")
+        CabinetSdk.startLights(inOutLights, lightsCallback = { lockerNo, status ->
             println("调试socket 调试串口 testClearCmd 接收到回调 灯光：$lockerNo ,$status")
         }, sendCallback)
+    }
+
+    //校准前
+    private val flowTestClearDoor = MutableSharedFlow<Boolean>(replay = 0)
+    val getTestClearDoor: SharedFlow<Boolean> = flowTestClearDoor.asSharedFlow()
+
+    /***
+     * 清运门锁
+     * @param inOut
+     */
+    fun testClearDoor(doorGeX: Int) {
+        ioScope.launch {
+            CabinetSdk.openClear(doorGeX, onOpenStatus = { boxCode, status ->
+                println("调试socket 调试串口 发送开启清运门 接收回调 $boxCode $status")
+                ioScope.launch {
+                    if (status == 1) {
+                        flowTestClearDoor.emit(true)
+                    } else {
+                        flowTestClearDoor.emit(false)
+                    }
+                }
+            }, sendCallback)
+        }
+
+    }
+
+    /***
+     * @param type
+     */
+    fun testTurnDoor(doorGeX: Int, type: Int) {
+        ioScope.launch {
+            val code = when (doorGeX) {
+                CmdCode.GE1 -> {
+                    if (type == CmdCode.GE_OPEN) {
+                        CmdCode.GE11
+                    } else {
+                        CmdCode.GE10
+                    }
+                }
+
+                CmdCode.GE2 -> {
+                    if (type == CmdCode.GE_OPEN) {
+                        CmdCode.GE21
+                    } else {
+                        CmdCode.GE20
+                    }
+                }
+
+                else -> {
+                    -1
+                }
+            }
+            CabinetSdk.turnDoor(code, turnDoorCallback = { lockerNo, status ->
+                println("调试socket 调试串口 发送扭动门状态 接收回调 $lockerNo $status")
+            }, sendCallback)
+        }
+    }
+
+    //校准前
+    private val caliBefore2 = MutableSharedFlow<Boolean>(replay = 0)
+    val getCaliBefore2: SharedFlow<Boolean> = caliBefore2.asSharedFlow()
+
+    //校准结果
+    private val caliResult = MutableSharedFlow<Boolean>(replay = 0)
+    val getCaliResult: SharedFlow<Boolean> = caliResult.asSharedFlow()
+
+    /***
+     * @param code
+     * 去零清皮
+     */
+    fun testWeightCali2(code: Int) {
+        ioScope.launch {
+            CabinetSdk.startCalibrationQP(code, calibrationCallback = { lockerNo, status ->
+                println("调试socket 调试串口 发送扭动门状态 接收回调 $lockerNo $status")
+                if (status == 1) {
+                    tipMessage("去零清皮成功")
+                } else {
+                    tipMessage("去零清皮失败")
+                }
+            }, sendCallback)
+        }
+    }
+
+    /***
+     * @param 校准
+     */
+    fun testWeightCali(code: Int) {
+        ioScope.launch {
+            CabinetSdk.startCalibration(code, calibrationCallback = { lockerNo, status ->
+                println("调试socket 调试串口 发送扭动门状态 接收回调 $lockerNo $status")
+                ioScope.launch {
+                    when (code) {
+                        //零点校准
+                        CmdCode.CALIBRATION_1 -> {
+                            if (status == 1) {
+                                caliBefore2.emit(true)
+                            } else {
+                                caliBefore2.emit(false)
+                            }
+                        }
+                        //校准2KG
+                        CmdCode.CALIBRATION_2 -> {
+                            if (status == 1) {
+                                caliResult.emit(true)
+                            } else {
+                                caliResult.emit(false)
+                            }
+                        }
+                        //校准25KG
+                        CmdCode.CALIBRATION_3 -> {
+                            if (status == 1) {
+                                caliResult.emit(true)
+                            } else {
+                                caliResult.emit(false)
+                            }
+                        }
+                        //校准100KG
+                        CmdCode.CALIBRATION_4 -> {
+                            if (status == 1) {
+                                caliResult.emit(true)
+                            } else {
+                                caliResult.emit(false)
+                            }
+                        }
+                        //校准100KG
+                        CmdCode.CALIBRATION_5 -> {
+                            if (status == 1) {
+                                caliResult.emit(true)
+                            } else {
+                                caliResult.emit(false)
+                            }
+                        }
+                    }
+                }
+            }, sendCallback)
+        }
     }
 
     fun testclose() {
@@ -1956,6 +2169,8 @@ import kotlin.random.Random
 
     /**
      * 初始化保存网络数据
+     * @param loginModel
+     * @param oneInit 是否初始化
      */
     fun saveInitNet(loginModel: ConfigBean, oneInit: Boolean) {
         println("调试socket saveInitNet ${Thread.currentThread().name}")
@@ -1990,6 +2205,7 @@ import kotlin.random.Random
                 val queryConfig = DatabaseManager.queryInitConfig(AppUtils.getContext(), snCode)
                 if (queryConfig == null) {
                     val row = DatabaseManager.insertConfig(AppUtils.getContext(), saveConfig)
+                    configEntity = saveConfig
                     println("调试socket saveInitNet 添加配置 $row")
                 } else {
                     queryConfig.heartBeatInterval = config.heartBeatInterval
@@ -2007,19 +2223,26 @@ import kotlin.random.Random
                     queryConfig.weightSensorMode = config.weightSensorMode
                     val row = DatabaseManager.upConfigEntity(AppUtils.getContext(), saveConfig)
                     println("调试socket saveInitNet 更新配置 $row")
+                    configEntity = queryConfig
                 }
             }
-
-            println("测试我来了 ${FileMdUtil.checkResFileExists("qrCode.png")}")
-
-            if (oneInit) {
+            println("调试socket saveInitNet ${FileMdUtil.checkResFileExists("qrCode.png")}")
+            val baseurl = config.uploadPhotoURL?.substringBeforeLast("/api") + "/api"
+            println("调试socket saveInitNet 重设置http url $baseurl")
+            if (baseurl != null && !TextUtils.isEmpty(baseurl)) {
+                CorHttp.getInstance().updateBaseUrl(baseurl)
+            }
+            //是否构建二维码成功
+            val isQrCode = SPreUtil.get(AppUtils.getContext(), "isQrCode", false) as Boolean
+            if (oneInit) {//初始化重新构建二维码
                 config.qrCode?.let { initQRCode(it) }
-            } else if (!FileMdUtil.checkResFileExists("qrCode.png")) {
+            } else if (!FileMdUtil.checkResFileExists("qrCode.png") || !isQrCode) {//不是初始化不存在则构建 或者 未构建成功
                 config.qrCode?.let { initQRCode(it) }
             } else {
                 Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/qrCode.png")).into(object : CustomTarget<Bitmap?>() {
                     override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap?>?) {
                         mQrCode = resource
+
                     }
 
                     override fun onLoadCleared(placeholder: Drawable?) {
@@ -2240,12 +2463,14 @@ import kotlin.random.Random
             .renderAsync(object : AwesomeQRCode.Callback {
                 override fun onError(renderer: AwesomeQRCode.Renderer, e: Exception) {
                     println("调试socket saveInitNet 创建二维码失败")
+                    SPreUtil.put(AppUtils.getContext(), "isQrCode", false)
                     e.printStackTrace()
                 }
 
                 override fun onRendered(renderer: AwesomeQRCode.Renderer, bitmap: Bitmap) {
                     mQrCode = bitmap
                     println("调试socket saveInitNet 创建二维码成功 保存开始")
+                    SPreUtil.put(AppUtils.getContext(), "isQrCode", true)
                     FileMdUtil.saveBitmapToInternalStorage(bitmap, "qrCode.png")
 
                 }
@@ -2307,6 +2532,77 @@ import kotlin.random.Random
         }
     }
 
+    /***
+     * 1.投送门开门异常
+     * 2.投递门关门异常
+     * 3.清运门开门异常
+     * 4.清运门关门异常
+     * 5.摄像头异常
+     * 6.电磁锁异常
+     * 7:内灯异常
+     * 8:外灯异常
+     * 9:推杆异常
+     */
+    var maptDoorFault = mutableMapOf<Int, Boolean>()
+
+    /***
+     * 定时轮询查询异常
+     */
+    fun pollingFault() {
+        ioScope.launch {
+            while (isActive) {
+                maptDoorFault.forEach { (key, value) ->
+                    val postValue = when (key) {
+                        1 -> {
+                            if (value) "投送门开门异常" else null
+                        }
+
+                        2 -> {
+                            if (value) "投递门关门异常" else null
+                        }
+
+                        3 -> {
+                            if (value) "清运门开门异常" else null
+                        }
+
+                        4 -> {
+                            if (value) "清运门关门异常" else null
+                        }
+
+                        5 -> {
+                            if (value) "摄像头异常" else null
+                        }
+
+                        6 -> {
+                            if (value) "电磁锁异常" else null
+                        }
+
+                        7 -> {
+                            if (value) "内灯异常" else null
+                        }
+
+                        8 -> {
+                            if (value) "外灯异常" else null
+                        }
+
+                        9 -> {
+                            if (value) "推杆异常" else null
+                        }
+
+                        else -> {
+                            null
+                        }
+                    }
+                    postValue?.let { pValue ->
+                        println("调试socket 定时器 执行")
+                        toGoCmdUpFault(key, 0, pValue)
+                    }
+
+                }
+                delay(8000L)
+            }
+        }
+    }
 
     private val lockerListStatusCallback: (MutableList<PortDeviceInfo>) -> Unit = { lowerMachines ->
         //更新心跳数据
@@ -2326,6 +2622,7 @@ import kotlin.random.Random
                         state.time = AppUtils.getDateYMDHMS()
                         println("调试socket 调试串口 下位机上报更新格口一心跳 $state | $lower")
                         synStateHeart(state, 0)
+                        maptDoorFault[9] = lower.doorStatus == 3
                         //此处处理清运门状态上报数据
                         if (frontBackState == CmdCode.GE_WEIGHT_FRONT && isClearStatus && lower.lockStatus == 1) {
                             println("调试socket 调试串口 格口一 清运门开 ")
@@ -2348,6 +2645,7 @@ import kotlin.random.Random
                             state.time = AppUtils.getDateYMDHMS()
                             println("调试socket 调试串口 下位机上报更新格口二心跳 $state | $lower")
                             synStateHeart(state, 1)
+                            maptDoorFault[9] = lower.doorStatus == 3
                             //此处处理清运门状态上报数据
                             if (frontBackState == CmdCode.GE_WEIGHT_FRONT && isClearStatus && lower.lockStatus == 1) {
                                 println("调试socket 调试串口 格口二 清运门开 ")
@@ -2472,6 +2770,9 @@ import kotlin.random.Random
         } else null
     }
 
+    //1.固件升级失败  2.固件升级完成
+    var currentUpgrade = -1
+
     /**
      * 定时检测主从芯片是否升级完成 重启app
      */
@@ -2521,7 +2822,6 @@ import kotlin.random.Random
                 tipMessage("主芯片已经升级完成")
             }
         }
-
     }
 
     /***

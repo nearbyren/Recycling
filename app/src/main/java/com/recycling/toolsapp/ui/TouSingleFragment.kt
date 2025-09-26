@@ -1,11 +1,7 @@
 package com.recycling.toolsapp.ui
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
-import android.os.Environment
-import android.provider.ContactsContract.Data
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
@@ -13,20 +9,19 @@ import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
-import com.github.sumimakito.awesomeqr.AwesomeQRCode
+import com.blankj.utilcode.util.Utils.Consumer
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentTouSingleBinding
-import com.recycling.toolsapp.db.DatabaseManager
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
-import com.recycling.toolsapp.utils.HexConverter
 import com.recycling.toolsapp.vm.CabinetVM
-import com.serial.port.utils.AppUtils
 import com.serial.port.utils.CmdCode
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
+import io.microshow.rxffmpeg.RxFFmpegInvoke
+import io.microshow.rxffmpeg.RxFFmpegSubscriber
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
-import java.io.File
+import org.reactivestreams.Subscriber
+import java.lang.ref.WeakReference
 
 
 /**
@@ -77,16 +72,9 @@ import java.io.File
         cabinetVM.doorGeXType = CmdCode.GE1
         refresh()
         binding.tvClsoe.setOnClickListener {
-            cabinetVM.downloadRes("http://112.91.141.155:8999/apk/01a0a3e1bdc742088bbef7b57ae304d3",
-
-
-                File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "hhhh.apk").toString()
-
-
-                , callback = { a, b ->
-                println("网络请求 a = $a | b = $b")
-
-            })
+//            runFFmpegRxjava()
+            mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
+//            mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
         }
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
             when (msg) {
@@ -113,8 +101,8 @@ import java.io.File
 
 
         binding.tvSinglePrice.setOnClickListener {
-//            mActivity?.navigateTo(fragmentClass = TestSocketFragment::class.java)
-            mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
+            mActivity?.navigateTo(fragmentClass = TestSocketFragment::class.java)
+
 
         }
         binding.clMobile.setOnClickListener {
@@ -151,6 +139,55 @@ import java.io.File
             binding.acivCode.setImageBitmap(bitmap)
         }
 
+    }
+
+    val s = object : RxFFmpegSubscriber() {
+        override fun onFinish() {
+            println("FFmpeg 处理成功")
+
+        }
+
+        override fun onProgress(progress: Int, progressTime: Long) {
+            println("FFmpeg onProgress $progress $progressTime")
+        }
+
+        override fun onCancel() {
+            println("FFmpeg 处理取消")
+        }
+
+        override fun onError(message: String?) {
+            println("FFmpeg 处理异常 $message")
+        }
+
+    }
+
+    private fun runFFmpegRxjava() {
+        val text =
+                "ffmpeg -y -i /storage/emulated/0/VID_20250915_185430.mp4 -vf boxblur=25:5 -preset superfast /storage/emulated/0/result.mp4"
+        val commands = text.split(" ").toTypedArray()
+        RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe {
+            println("视频FFmpeg ${it.progress} | ${it.progressTime} | ${it.state}")
+
+        }
+
+//        RxFFmpegInvoke.getInstance().runCommand(commands, object : RxFFmpegInvoke.IFFmpegListener {
+//            override fun onFinish() {
+//                println("视频FFmpeg 处理成功")
+//            }
+//
+//            override fun onProgress(progress: Int, progressTime: Long) {
+//                println("视频FFmpeg onProgress $progress $progressTime")
+//            }
+//
+//            override fun onCancel() {
+//                println("视频FFmpeg 处理取消")
+//            }
+//
+//            override fun onError(message: String?) {
+//                println("视频FFmpeg 处理异常 $message")
+//            }
+//
+//        })
     }
 
 

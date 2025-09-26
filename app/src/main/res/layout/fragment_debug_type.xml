@@ -65,6 +65,7 @@
                     app:layout_constraintTop_toTopOf="parent" />
             </androidx.constraintlayout.widget.ConstraintLayout>
 
+            <!--推杆 内外灯 电磁锁-->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/cl_content1"
                 android:layout_width="match_parent"
@@ -246,7 +247,7 @@
                             android:layout_marginRight="@dimen/dp_23"
                             android:layout_weight="1"
                             android:button="@null"
-                            android:checked="true"
+
                             android:drawableLeft="@drawable/radio_selector"
                             android:drawablePadding="@dimen/dp_5"
                             android:text="开"
@@ -260,6 +261,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:button="@null"
+                            android:checked="true"
                             android:drawableLeft="@drawable/radio_selector"
                             android:drawablePadding="@dimen/dp_5"
                             android:text="关"
@@ -377,7 +379,6 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
-
             <!--校准-->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/cl_content2"
@@ -407,7 +408,7 @@
 
                 <RadioGroup
                     android:id="@+id/rg_kg"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="@dimen/dp_12"
                     android:layout_marginTop="@dimen/dp_15"
@@ -417,43 +418,56 @@
 
                     <com.google.android.material.radiobutton.MaterialRadioButton
                         android:id="@+id/mrb_kg1"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginRight="@dimen/dp_23"
+                        android:layout_marginRight="@dimen/dp_5"
                         android:layout_weight="1"
                         android:button="@null"
-                        android:checked="true"
                         android:drawableLeft="@drawable/radio_selector"
-                        android:drawablePadding="@dimen/dp_5"
+                        android:drawablePadding="@dimen/dp_2"
                         android:text="2kg校准"
                         android:textColor="@color/white"
-                        android:textSize="@dimen/sp_13" />
+                        android:textSize="@dimen/sp_12" />
 
 
                     <com.google.android.material.radiobutton.MaterialRadioButton
                         android:id="@+id/mrb_kg2"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginRight="@dimen/dp_23"
+                        android:layout_marginRight="@dimen/dp_5"
                         android:layout_weight="1"
                         android:button="@null"
                         android:drawableLeft="@drawable/radio_selector"
-                        android:drawablePadding="@dimen/dp_5"
+                        android:drawablePadding="@dimen/dp_2"
                         android:text="25kg校准"
                         android:textColor="@color/white"
-                        android:textSize="@dimen/sp_13" />
+                        android:textSize="@dimen/sp_12" />
 
                     <com.google.android.material.radiobutton.MaterialRadioButton
                         android:id="@+id/mrb_kg3"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginRight="@dimen/dp_5"
+                        android:layout_weight="1"
+                        android:button="@null"
+                        android:drawableLeft="@drawable/radio_selector"
+                        android:drawablePadding="@dimen/dp_2"
+                        android:text="100kg校准"
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/sp_12" />
+
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/mrb_kg4"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:button="@null"
                         android:drawableLeft="@drawable/radio_selector"
-                        android:drawablePadding="@dimen/dp_5"
-                        android:text="100kg校准"
+                        android:drawablePadding="@dimen/dp_2"
+                        android:text="板框校准"
                         android:textColor="@color/white"
-                        android:textSize="@dimen/sp_13" />
+                        android:textSize="@dimen/sp_12" />
 
                 </RadioGroup>
 
@@ -467,7 +481,7 @@
                     android:layout_marginBottom="@dimen/dp_16"
                     android:background="@drawable/ic_btn_bug"
                     android:gravity="center"
-                    android:text="称重"
+                    android:text="称重前校准"
                     android:textColor="@color/white"
                     android:textSize="@dimen/sp_12"
                     android:textStyle="bold"
@@ -488,7 +502,7 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
-
+            <!-- 返回-->
             <androidx.appcompat.widget.AppCompatTextView
                 android:id="@+id/actv_return"
                 android:layout_width="wrap_content"
@@ -505,6 +519,7 @@
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/cl_content2" />
 
+            <!--广告图-->
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/aciv_logo"
                 android:layout_width="wrap_content"
@@ -513,10 +528,53 @@
                 android:src="@drawable/ic_home_logo"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent"
-                app:layout_constraintRight_toRightOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/cl_left_right" />
-        </androidx.constraintlayout.widget.ConstraintLayout>
+                app:layout_constraintRight_toRightOf="parent" />
 
+
+            <!--分割线-->
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/gl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintGuide_percent="0.60" />
+
+            <!--称重提示语-->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_weight"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/dp_100"
+                android:layout_marginLeft="@dimen/dp_8"
+                android:layout_marginTop="@dimen/dp_7"
+                android:layout_marginRight="@dimen/dp_8"
+                android:background="@color/red"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:ignore="MissingConstraints"
+                tools:layout_marginBottom="800dp"
+                tools:visibility="visible">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_prompt"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/ic_btn_bug"
+                    android:gravity="center"
+                    android:text="正在进行称重校准前处理，请勿操作其他"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/sp_12"
+                    android:textStyle="bold"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

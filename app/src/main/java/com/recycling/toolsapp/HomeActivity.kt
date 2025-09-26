@@ -1,5 +1,6 @@
 package com.recycling.toolsapp
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -83,8 +84,8 @@ import java.io.File
         }
     }
 
-
-    @RequiresApi(Build.VERSION_CODES.M) override fun initialize(savedInstanceState: Bundle?) {
+    @SuppressLint("NewApi") @RequiresApi(Build.VERSION_CODES.M)
+    override fun initialize(savedInstanceState: Bundle?) {
         initNetworkState()
         initDoorStatus()
         initPort()
@@ -105,11 +106,13 @@ import java.io.File
 
 //        lifeUpgradeChip()
 //        netUpdateChip()
+        countdownUI()
     }
 
     private fun initPort() {
         cabinetVM.startPollingDoor()
         cabinetVM.addDoorQueue(CmdType.CMD5)
+        cabinetVM.pollingFault()
 //        cabinetVM.requestStatusQuery()
 //        cabinetVM.startNewDoor()
     }
@@ -622,23 +625,22 @@ import java.io.File
                 cabinetVM.countdownState.collect { state ->
                     when (state) {
                         is CountdownTimer.CountdownState.Starting -> {
-//                            binding.clFirmwareUpgrade.isVisible = true
-//                            binding.tvFirmwareTitle.text =
-//                                    if (cabinetVM.currentUpgrade == 1) "固件升级失败" else "固件升级完成"
+                            binding.clPrompt.isVisible = true
+                            binding.actvPrompt.text = "固件升级完成"
                         }
 
                         is CountdownTimer.CountdownState.Running -> {
                             // 更新 UI
-//                            binding.tvFirmwareDes.text =
-//                                    if (cabinetVM.currentUpgrade == 1) "本次升级固件失败，请尝试重新升级" else "升级已经完成，计时${state.secondsRemaining}秒，即将重APP。"
+                            binding.actvPrompt.text =
+                                    if (cabinetVM.currentUpgrade == 1) "本次升级固件失败，请尝试重新升级" else "升级已经完成，计时${state.secondsRemaining}秒，即将重APP。"
                         }
 
                         CountdownTimer.CountdownState.Finished -> {
-//                            if (cabinetVM.currentUpgrade == 1) {
-//                                binding.clFirmwareUpgrade.isVisible = false
-//                            } else {
-                            HexConverter.restartApp2(AppUtils.getContext(), 2 * 1000L)
-//                            }
+                            if (cabinetVM.currentUpgrade == 1) {
+                                binding.clPrompt.isVisible = false
+                            } else {
+                                HexConverter.restartApp2(AppUtils.getContext(), 2 * 1000L)
+                            }
                         }
 
                         is CountdownTimer.CountdownState.Error -> {

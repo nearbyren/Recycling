@@ -11,7 +11,6 @@ object CmdCode {
      */
     const val GE_WEIGHT_RESULT = 1
 
-
     /***
      * 查询重量前 0
      */
@@ -103,11 +102,53 @@ object CmdCode {
     const val GE21 = 21
 
     /***
-     *
+     *内灯光 开
      */
-    const val IN_LIGHTS_OPEN = 1
-    const val IN_LIGHTS_CLOSE = 2
+    const val IN_LIGHTS_OPEN = 11
 
-    const val OUT_LIGHTS_OPEN = 1
-    const val OUT_LIGHTS_CLOSE = 2
+    /***
+     *内灯光 关
+     */
+    const val IN_LIGHTS_CLOSE = 12
+
+    /***
+     *外灯光 开
+     */
+    const val OUT_LIGHTS_OPEN = 21
+
+    /***
+     *外灯光 关
+     */
+    const val OUT_LIGHTS_CLOSE = 22
+
+    /***
+     * 校准0
+     */
+    const val CALIBRATION_0 = 0
+
+    /***
+     * 校准1
+     */
+    const val CALIBRATION_1 = 1
+
+    /***
+     * 校准2
+     */
+    const val CALIBRATION_2 = 2
+
+    /***
+     * 校准3
+     */
+    const val CALIBRATION_3 = 3
+
+
+    /***
+     * 校准4
+     */
+    const val CALIBRATION_4 = 4
+
+    /***
+     * 校准5
+     */
+    const val CALIBRATION_5 = 5
 }

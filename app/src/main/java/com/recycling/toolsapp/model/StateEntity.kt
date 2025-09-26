@@ -14,7 +14,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "StateEntity") class StateEntity(
     @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "id", typeAffinity = INTEGER) val id: Long = 0,
     /***
-     * 烟雾警报状态
+     * 烟雾警报状态 0.无烟雾报警 1.有烟雾报警
      */
     @ColumnInfo(name = "smoke", typeAffinity = INTEGER) var smoke: Int = 0,
     /***
@@ -27,7 +27,7 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "capacity", typeAffinity = INTEGER) var capacity: Int = 0,
     /***
-     * 红外状态
+     * 红外状态  0.无溢出 1.有溢出
      */
     @ColumnInfo(name = "irState", typeAffinity = INTEGER) var irState: Int = 0,
     /***
@@ -35,11 +35,11 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "weigh", typeAffinity = REAL) var weigh: Float = 0f,
     /**
-     * 投口门
+     * 投口门 0.关 1.开 2.开/关门中 3.故障
      */
     @ColumnInfo(name = "doorStatus", typeAffinity = INTEGER) var doorStatus: Int = 0,
     /**
-     * 清运锁
+     * 清运锁 清运门 0.关 1.开
      */
     @ColumnInfo(name = "lockStatus", typeAffinity = INTEGER) var lockStatus: Int = 0,
     /***

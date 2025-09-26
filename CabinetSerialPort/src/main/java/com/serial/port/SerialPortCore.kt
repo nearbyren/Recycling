@@ -69,25 +69,29 @@ class SerialPortCore {
         //内部灯打开
         CmdCode.IN_LIGHTS_OPEN to byteArrayOf(0x01, 0x01),
         //内部灯关闭
-        CmdCode.IN_LIGHTS_CLOSE to byteArrayOf(0x01, 0x02),
+        CmdCode.IN_LIGHTS_CLOSE to byteArrayOf(0x01, 0x00),
         //外部灯打开
         CmdCode.OUT_LIGHTS_OPEN to byteArrayOf(0x02, 0x01),
         //外部灯关闭
-        CmdCode.OUT_LIGHTS_CLOSE to byteArrayOf(0x02, 0x02),
+        CmdCode.OUT_LIGHTS_CLOSE to byteArrayOf(0x02, 0x00),
     )
 
     /***
      * 校准
      */
     private val calibration: MutableMap<Int, ByteArray> = mutableMapOf(
-        //内部灯打开
-        CmdCode.IN_LIGHTS_OPEN to byteArrayOf(0x01, 0x01),
-        //内部灯关闭
-        CmdCode.IN_LIGHTS_CLOSE to byteArrayOf(0x01, 0x02),
-        //外部灯打开
-        CmdCode.OUT_LIGHTS_OPEN to byteArrayOf(0x02, 0x01),
-        //外部灯关闭
-        CmdCode.OUT_LIGHTS_CLOSE to byteArrayOf(0x02, 0x02),
+        //清皮去零
+        CmdCode.CALIBRATION_0 to byteArrayOf(0x01, 0x01),
+        //零点校准
+        CmdCode.CALIBRATION_1 to byteArrayOf(0x01, 0x01),
+        //校准2KG
+        CmdCode.CALIBRATION_2 to byteArrayOf(0x02, 0x01),
+        //校准25KG
+        CmdCode.CALIBRATION_3 to byteArrayOf(0x03, 0x01),
+        //校准100KG
+        CmdCode.CALIBRATION_4 to byteArrayOf(0x04, 0x01),
+        //校准板框重量
+        CmdCode.CALIBRATION_5 to byteArrayOf(0x05, 0x01),
     )
 
     /***
@@ -221,7 +225,27 @@ class SerialPortCore {
 
         }
     }
+    /***
+     * 去皮清零
+     */
+    @Synchronized
+    fun startCalibrationQP(code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+        SerialPortManager.instance.serialVM?.addCommandCalibrationResultListener { number, status ->
+            calibrationCallback(number, status)
+        }
 
+        SerialPortManager.instance.serialVM?.addSendCommandStatusListener { msg ->
+            sendCallback(msg)
+        }
+
+        calibration[code]?.let {
+            val command = 0x10.toByte()
+            val data = it
+            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            SerialPortManager.instance.issuedStatus(byte)
+
+        }
+    }
     /***
      * 校准操作
      */
@@ -236,7 +260,7 @@ class SerialPortCore {
         }
 
         calibration[code]?.let {
-            val command = 0x10.toByte()
+            val command = 0x11.toByte()
             val data = it
             val byte = SendByteData.createSendNotCheckSumByte(command, data)
             SerialPortManager.instance.issuedStatus(byte)

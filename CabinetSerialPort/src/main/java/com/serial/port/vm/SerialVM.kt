@@ -840,7 +840,7 @@ class SerialVM : ViewModel() {
         val command = packet[seek]
         var dataLength = -1
         when (command) {
-            0.toByte(), 1.toByte(), 2.toByte(), 3.toByte(), 4.toByte(), 5.toByte(), 7.toByte(), 8.toByte(), 9.toByte(), 10.toByte(), 11.toByte() -> {
+            0.toByte(), 1.toByte(), 2.toByte(), 3.toByte(), 4.toByte(), 5.toByte(), 7.toByte(), 8.toByte(), 9.toByte(), 10.toByte(), 11.toByte(), 16.toByte(), 17.toByte() -> {
                 // 提取数据长度，并将其转换为无符号整数
                 dataLength = packet[length].toUByte().toInt()  // 将有符号字节转换为无符号整数
             }
@@ -1230,15 +1230,55 @@ class SerialVM : ViewModel() {
             }
 
             //去零清皮
-            16.toByte() -> {}
-            //校准零点
-            17.toByte() -> {}
-            //校准2KG
-            18.toByte() -> {}
-            //校准25KG
-            19.toByte() -> {}
-            //校准60KG
-            20.toByte() -> {}
+            16.toByte() -> {
+                //取出完整数据
+                val toIndex = 4 + dataLength
+                if (before != toIndex) {
+                    Loge.i("串口232", "接232 16.toByte 数据长度与数据域不匹配")
+                    commandCalibrationResultListener?.caliResult(-1, DoorStatus.FAIL)
+                    return
+                }
+                val data = packet.copyOfRange(4, 4 + dataLength)
+                Loge.i("串口232", "接232 16.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
+                for (i in data.indices step 2) {
+                    val end = (i + 2).coerceAtMost(data.size)
+                    val group = data.copyOfRange(i, end)
+                    val size = group.size
+                    Loge.i("串口232", "接232 16.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
+                    val locker = group[0].toInt()
+                    val status = group[1].toInt()
+                    if (status == 1) {
+                        commandCalibrationResultListener?.caliResult(locker, DoorStatus.SUCCEED)
+                    } else {
+                        commandCalibrationResultListener?.caliResult(locker, DoorStatus.FAIL)
+                    }
+                }
+            }
+            //校准零点 三种kg校准
+            17.toByte() -> {
+                //取出完整数据
+                val toIndex = 4 + dataLength
+                if (before != toIndex) {
+                    Loge.i("串口232", "接232 17.toByte 数据长度与数据域不匹配")
+                    commandCalibrationResultListener?.caliResult(-1, DoorStatus.FAIL)
+                    return
+                }
+                val data = packet.copyOfRange(4, 4 + dataLength)
+                Loge.i("串口232", "接232 17.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
+                for (i in data.indices step 2) {
+                    val end = (i + 2).coerceAtMost(data.size)
+                    val group = data.copyOfRange(i, end)
+                    val size = group.size
+                    Loge.i("串口232", "接232 17.toByte 数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
+                    val locker = group[0].toInt()
+                    val status = group[1].toInt()
+                    if (status == 1) {
+                        commandCalibrationResultListener?.caliResult(locker, DoorStatus.SUCCEED)
+                    } else {
+                        commandCalibrationResultListener?.caliResult(locker, DoorStatus.FAIL)
+                    }
+                }
+            }
         }
     }
 

@@ -95,9 +95,31 @@ class CabinetSdk private constructor() {
          * @param sendCallback 发送是否成功
          */
         @Synchronized
-        fun startLights(boxCode: Int, lightsCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.startLights(boxCode, lightsCallback, sendCallback)
+        fun startLights(inOut: Int, lightsCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.startLights(inOut, lightsCallback, sendCallback)
         }
+        /***
+         *  去皮清零
+         * @param calibrationCallback
+         * @param sendCallback 发送是否成功 校准
+         */
+        @Synchronized
+        fun startCalibrationQP(code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.startCalibrationQP(code, calibrationCallback, sendCallback)
+        }
+
+
+        /***
+         *  校准操作
+         * @param calibrationCallback
+         * @param sendCallback 发送是否成功 校准
+         */
+        @Synchronized
+        fun startCalibration(code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.startCalibration(code, calibrationCallback, sendCallback)
+        }
+
+
 
         /***
          * 固件升级前动作
