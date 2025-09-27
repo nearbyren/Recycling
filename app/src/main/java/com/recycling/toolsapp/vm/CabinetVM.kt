@@ -73,6 +73,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import nearby.lib.netwrok.download.SingleDownloader
 import nearby.lib.netwrok.response.CorHttp
 import nearby.lib.netwrok.response.SPreUtil
@@ -82,6 +84,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.util.Collections
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.random.Random
@@ -862,6 +865,338 @@ import kotlin.random.Random
         } ?: "0.00"
     }
 
+    /*******************************************新方案调试******************************************************/
+
+    // 定义指令优先级
+    enum class CommandPriority {
+        /***
+         *紧急指令：开关门、状态查询
+         */
+        HIGH,
+
+        /***
+         * 重要指令：重量查询
+         */
+        MEDIUM,
+
+        /***
+         * 普通指令：清运、状态查询
+         */
+        LOW
+    }
+
+    // 指令数据类
+    private data class DoorCommand(
+        val type: Int,
+        val priority: CommandPriority,
+        val timestamp: Long = System.currentTimeMillis(),
+    )
+
+    // 使用优先级队列
+    private val doorQueueNew = Channel<DoorCommand>(capacity = 50)
+    private val pendingCommands = mutableSetOf<Int>() // 跟踪已排队指令
+    private val commandMutex = Mutex()
+
+    // 指令处理器映射
+    private val commandHandlers: Map<Int, suspend () -> Unit> =
+            mapOf(CmdType.CMD1 to ::handleDoorOperation, CmdType.CMD2 to ::handleDoorStatusQuery, CmdType.CMD3 to ::handleClearOperation, CmdType.CMD4 to ::handleWeightQuery, CmdType.CMD5 to ::handleCabinetStatusQuery, CmdType.CMD6 to ::handleLightsQuery, CmdType.CMD7 to ::handleCustomCommand)
+
+    // 指令优先级映射
+    private val commandPriorities: Map<Int, CommandPriority> = mapOf(
+        /***
+         * 开关门
+         */
+        CmdType.CMD1 to CommandPriority.HIGH,
+        /***
+         * 状态查询
+         */
+        CmdType.CMD2 to CommandPriority.HIGH,
+        /***
+         * 清运
+         */
+        CmdType.CMD3 to CommandPriority.LOW,
+        /***
+         * 重量查询
+         */
+        CmdType.CMD4 to CommandPriority.MEDIUM,
+        /***
+         * 机柜状态
+         */
+        CmdType.CMD5 to CommandPriority.LOW,
+        /***
+         * 灯光
+         */
+        CmdType.CMD6 to CommandPriority.LOW,
+        /***
+         * 自定义
+         */
+        CmdType.CMD7 to CommandPriority.LOW)
+
+    var doorJob2: Job? = null
+
+    /***
+     * @param cmdDoorType 指令类型
+     * 1.启动格口开门
+     * 3.查询投口门状态
+     * 4.查询格口重量
+     */
+    fun addDoorQueue(cmdDoorType: Int, priority: CommandPriority? = null) {
+        if (doorJob2?.isActive != true) {
+            println("调试socket 新方式 门控制任务未启动，忽略指令: $cmdDoorType")
+            return
+        }
+
+        val commandPriority = priority ?: commandPriorities[cmdDoorType] ?: CommandPriority.LOW
+
+        // 检查指令是否已在队列中
+        if (pendingCommands.contains(cmdDoorType)) {
+            println("调试socket 新方式 指令已在队列中，忽略: $cmdDoorType")
+            return
+        }
+
+        ioScope.launch {
+            commandMutex.withLock {
+                val command = DoorCommand(cmdDoorType, commandPriority)
+                if (doorQueueNew.trySend(command).isSuccess) {
+                    pendingCommands.add(cmdDoorType)
+                    println("调试socket 新方式 指令已添加到队列: $cmdDoorType, 优先级: $commandPriority")
+                } else {
+                    println("调试socket 新方式 队列已满，丢弃指令: $cmdDoorType")
+                }
+            }
+        }
+    }
+
+    /**
+     * 发送格口开关门
+     * 实时格口门状态
+     * 查询格口重量
+     */
+    fun startPollingDoor2() {
+        println("调试socket 新方式 启动检测门状态轮询")
+
+        if (doorJob2?.isActive == true) {
+            println("调试socket 新方式 门控制任务已在运行")
+            return
+        }
+
+        println("调试socket 新方式 启动检测门状态轮询发起")
+        doorJob2 = ioScope.launch {
+            while (isActive) {
+                try {
+                    val command = doorQueueNew.receive()
+
+                    // 从pending中移除
+                    commandMutex.withLock {
+                        pendingCommands.remove(command.type)
+                    }
+
+                    println("调试socket 新方式 处理指令: ${command.type}, 优先级: ${command.priority}")
+
+                    // 执行指令处理
+                    commandHandlers[command.type]?.invoke() ?: run {
+                        println("调试socket 新方式 未知指令类型: ${command.type}")
+                    }
+
+                    // 智能延迟控制
+                    val delayTime = calculateDelayTime(command.type)
+                    delay(delayTime)
+
+                } catch (e: Exception) {
+                    println("调试socket 新方式 处理指令异常: ${e.message}")
+                    delay(1000) // 异常时延长等待时间
+                }
+            }
+        }
+    }
+
+    // 智能延迟计算
+    private fun calculateDelayTime(cmdType: Int): Long {
+        return when (cmdType) {
+            CmdType.CMD1 -> 800L  // 开关门操作后等待
+            CmdType.CMD2 -> 300L  // 状态查询后等待
+            CmdType.CMD4 -> 400L  // 重量查询后等待
+            CmdType.CMD5 -> 1000L  // 状态查询延迟较短
+            else -> 500L
+        }
+    }
+
+    // 处理格口开关门操作
+    private suspend fun handleDoorOperation() {
+        println("调试socket 新方式 handleDoorOperation 1 ")
+        val code = when (doorGeX) {
+            CmdCode.GE1 -> if (geStartDoorType == CmdCode.GE_OPEN) CmdCode.GE11 else CmdCode.GE10
+            CmdCode.GE2 -> if (geStartDoorType == CmdCode.GE_OPEN) CmdCode.GE21 else CmdCode.GE20
+            else -> -1
+        }
+
+        if (code == -1) return
+        CabinetSdk.turnDoor(code, turnDoorCallback = { lockerNo, status ->
+            println("调试socket 新方式 调试串口 发送扭动门状态 接收回调 $lockerNo $status")
+        }, sendCallback)
+        // 更新状态流
+        flowCmd01.emit(false)
+        flowCmd02.emit(true)
+    }
+
+    // 查询门状态
+    private suspend fun handleDoorStatusQuery() {
+        println("调试socket 新方式 handleDoorStatusQuery 2 发送查询门状态 接收回调 |$geStartDoorType")
+        CabinetSdk.turnDoorStatus(doorGeX, onDoorStatus = { status ->
+            println("调试socket 新方式 调试串口 发送查询门状态 接收回调 $status |$geStartDoorType")
+            doorReturnDoor(status)
+        }, sendCallback)
+    }
+
+    // 处理清运门操作
+    private suspend fun handleClearOperation() {
+        println("调试socket 新方式 handleClearOperation 3")
+        flowCmd03.emit(false)
+        CabinetSdk.openClear(doorGeX, onOpenStatus = { boxCode, status ->
+            println("调试socket 新方式 调试串口 发送开启清运门 接收回调 $boxCode $status")
+            doorReturnClear(boxCode, status)
+        }, sendCallback)
+    }
+
+    // 查询重量
+    private suspend fun handleWeightQuery() {
+        println("调试socket 新方式 handleWeightQuery 4")
+        CabinetSdk.queryWeight(doorGeX, weightCallback = { weight ->
+            println("调试socket 新方式 调试串口 发送查询重量 次数：${flowWeightCount.value} 接收回调 $weight | ${curG1TotalWeight}|${curG2TotalWeight}")
+            doorReturnWeight(weight)
+        }, sendCallback)
+    }
+
+    // 查询机柜状态
+    private suspend fun handleCabinetStatusQuery() {
+        println("调试socket 新方式 handleCabinetStatusQuery 5 ")
+        CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
+    }
+
+    // 查询灯光
+    private suspend fun handleLightsQuery() {
+        println("调试socket 新方式 handleCabinetStatusQuery 5 ")
+        CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
+    }
+
+    // 处理自定义命令
+    private suspend fun handleCustomCommand() {
+        println("调试socket 新方式 handleCustomCommand 6")
+        // 实现自定义命令逻辑
+    }
+
+    // 智能指令调度器
+    private val commandScheduler = ioScope.launch {
+        while (isActive) {
+            try {
+                // 根据当前状态智能调度指令
+                println("调试socket 新方式 commandScheduler scheduleCommandsBasedOnState")
+                scheduleCommandsBasedOnState()
+                delay(300) // 每300ms调度一次
+
+            } catch (e: Exception) {
+                println("调试socket 新方式 commandScheduler 指令调度器异常: ${e.message}")
+                delay(1000)
+            }
+        }
+    }
+    // 基于状态的指令调度
+    private fun scheduleCommandsBasedOnState() {
+        val commandsToAdd = mutableListOf<Pair<Int, CommandPriority>>()
+
+        // 根据各指令标志决定是否添加
+        if (getCmd01.value && !pendingCommands.contains(CmdType.CMD1)) {
+            commandsToAdd.add(CmdType.CMD1 to CommandPriority.HIGH)
+        }
+
+        if (getCmd02.value && !pendingCommands.contains(CmdType.CMD2)) {
+            commandsToAdd.add(CmdType.CMD2 to CommandPriority.HIGH)
+        }
+
+        if (getCmd03.value && !pendingCommands.contains(CmdType.CMD3)) {
+            commandsToAdd.add(CmdType.CMD3 to CommandPriority.LOW)
+        }
+
+        if (getCmd04.value && !pendingCommands.contains(CmdType.CMD4)) {
+            commandsToAdd.add(CmdType.CMD4 to CommandPriority.MEDIUM)
+        }
+
+        if (getCmd05.value && !pendingCommands.contains(CmdType.CMD5)) {
+            commandsToAdd.add(CmdType.CMD5 to CommandPriority.LOW)
+        }
+
+        if (getCmd06.value && !pendingCommands.contains(CmdType.CMD6)) {
+            commandsToAdd.add(CmdType.CMD6 to CommandPriority.LOW)
+        }
+
+        // 添加指令到队列
+        commandsToAdd.forEach { (cmdType, priority) ->
+            addDoorQueue(cmdType, priority)
+        }
+    }
+    // 安全停止门控制任务
+    fun stopDoorControl() {
+        doorJob?.cancel()
+        commandScheduler?.cancel()
+
+        // 清空队列和状态
+        ioScope.launch {
+            commandMutex.withLock {
+                pendingCommands.clear()
+                while (doorQueue.tryReceive().isSuccess) {
+                    // 清空队列
+                }
+            }
+        }
+
+        // 重置所有指令标志
+        resetAllCommandFlags()
+
+        println("调试socket 门控制任务已停止")
+    }
+
+    // 重置所有指令标志
+    private fun resetAllCommandFlags() {
+        getCmd01.value = false
+        getCmd02.value = false
+        getCmd03.value = false
+        getCmd04.value = false
+        getCmd05.value = false
+        getCmd06.value = false
+    }
+
+    // 批量添加指令
+    fun addBatchCommands(vararg cmdTypes: Int) {
+        cmdTypes.forEach { cmdType ->
+            addDoorQueue(cmdType)
+        }
+    }
+
+    // 紧急指令添加
+    fun addEmergencyCommand(cmdType: Int) {
+        addDoorQueue(cmdType, CommandPriority.HIGH)
+    }
+
+    // 获取队列状态
+    fun getQueueStatus(): String {
+        return "待处理指令: ${pendingCommands.size}, 队列容量: ${doorQueueNew}"
+    }
+
+    // 启动门控制系统
+    fun startDoorControlSystem() {
+        startPollingDoor2()
+
+        // 启动指令调度器
+        if (commandScheduler.isActive) {
+            commandScheduler.start()
+        }
+
+        // 初始添加必要的监控指令
+        addBatchCommands(CmdType.CMD5) // 初始状态查询
+    }
+
+    /*******************************************新方案调试******************************************************/
+
     /***
      * @param cmdDoorType
      * 1.启动格口开门
@@ -1288,7 +1623,7 @@ import kotlin.random.Random
                             if (frontBackState == CmdCode.GE_WEIGHT_FRONT && isClearStatus && lower.lockStatus == 1) {
                                 println("调试socket 调试串口 清运门 格口一 清运门开 ${flowCmd04.value} ")
                                 frontBackState = CmdCode.GE_WEIGHT_ING
-                                addDoorQueue(CmdType.CMD4)
+//                                addDoorQueue(CmdType.CMD4)
                             } else if (isClearStatus && frontBackState == CmdCode.GE_WEIGHT_ING && lower.lockStatus == 0) {
                                 println("调试socket 调试串口 清运门 格口一 清运门关 ")
                                 frontBackState = CmdCode.GE_WEIGHT_BACK

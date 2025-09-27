@@ -34,4 +34,9 @@ object CmdType {
      * 灯光控制查询
      */
     const val CMD6 = 6
+
+    /**
+     *
+     */
+    const val CMD7 = 7
 }

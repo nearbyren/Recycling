@@ -58,6 +58,7 @@ import java.io.File
 @AndroidEntryPoint class HomeActivity : BaseBindActivity<ActivityHomeBinding>() {
     private val cabinetVM: CabinetVM by viewModels()
     private var isNetworkStatusFirst = true
+    private var manager: FragmentManager? = null
     override fun layoutRes(): Int {
         return R.layout.activity_home
     }
@@ -110,9 +111,12 @@ import java.io.File
     }
 
     private fun initPort() {
-        cabinetVM.startPollingDoor()
-        cabinetVM.addDoorQueue(CmdType.CMD5)
-        cabinetVM.pollingFault()
+        // 启动门控制系统
+        cabinetVM.startDoorControlSystem()
+
+//        cabinetVM.startPollingDoor()
+//        cabinetVM.addDoorQueue(CmdType.CMD5)
+//        cabinetVM.pollingFault()
 //        cabinetVM.requestStatusQuery()
 //        cabinetVM.startNewDoor()
     }
@@ -244,6 +248,7 @@ import java.io.File
             }
         }
         manager = supportFragmentManager
+//        addCamera()//测试显示
         //接收启动相机
         lifecycleScope.launch {
             cabinetVM.getStartCamera.collect { cType ->
@@ -263,13 +268,13 @@ import java.io.File
         }
     }
 
-    var manager: FragmentManager? = null
+
     fun addCamera() {
         manager?.let {
             val beginTransaction = it.beginTransaction()
             val fragment = it.findFragmentByTag("camera2")
+            binding.flCamera2.isVisible = true
             if (fragment != null && fragment.isAdded) {
-//                binding.flCamera2.isVisible = true
                 if (fragment is Camera2Fragment) {
                     Loge.d("调试socket 调试串口 已添加预览相机 预览相机")
                     fragment.startPreview(1)
@@ -296,7 +301,7 @@ import java.io.File
 //                    mg.beginTransaction().remove(ft).commit()
 //                }
                 if (fragment is Camera2Fragment) {
-//                    binding.flCamera2.isVisible = false
+                    binding.flCamera2.isVisible = false
                     Loge.d("调试socket 调试串口 移除预览相机 暂停相机")
                     fragment.stopPreview(1)
                     fragment.stopPreview(2)

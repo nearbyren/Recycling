@@ -411,7 +411,11 @@ import java.util.Locale
     private fun createCameraPreviewSessionIn(cameraDevice: CameraDevice, previewSize: Size) {
         try {
             val texture: SurfaceTexture? = binding.textureIn.surfaceTexture
-            texture?.setDefaultBufferSize(previewSize.width, previewSize.height)
+            if (texture == null) {
+                cabinetVM.tipMessage("SurfaceTexture内摄像未初始化")
+                return
+            }
+            texture.setDefaultBufferSize(previewSize.width, previewSize.height)
 
             val previewSurface = Surface(texture)
 
@@ -446,8 +450,12 @@ import java.util.Locale
 
     private fun createCameraPreviewSessionOut(cameraDevice: CameraDevice?, previewSize: Size) {
         try {
-            val texture: SurfaceTexture? = binding.textureOut.getSurfaceTexture()
-            texture?.setDefaultBufferSize(previewSize.width, previewSize.height)
+            val texture: SurfaceTexture? = binding.textureOut.surfaceTexture
+            if (texture == null) {
+                cabinetVM.tipMessage("SurfaceTexture外摄像未初始化")
+                return
+            }
+            texture.setDefaultBufferSize(previewSize.width, previewSize.height)
 
             val previewSurface = Surface(texture)
 
