@@ -74,6 +74,7 @@ import java.lang.ref.WeakReference
         binding.tvClsoe.setOnClickListener {
 //            runFFmpegRxjava()
             mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
+//            cabinetVM.testQueryVersion(20250729)
 //            mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
         }
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
@@ -102,7 +103,6 @@ import java.lang.ref.WeakReference
 
         binding.tvSinglePrice.setOnClickListener {
             mActivity?.navigateTo(fragmentClass = TestSocketFragment::class.java)
-
 
         }
         binding.clMobile.setOnClickListener {

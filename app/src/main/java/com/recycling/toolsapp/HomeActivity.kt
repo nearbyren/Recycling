@@ -89,12 +89,12 @@ import java.io.File
         initNetworkState()
         initDoorStatus()
         initPort()
-        cabinetVM.ioScope.launch {
-            // 预热相机Provider 快速启动相机能从6秒到2秒
-            cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
-            cabinetVM.cameraProviderFuture2 =
-                    ProcessCameraProvider.getInstance(this@HomeActivity).get()
-        }
+//        cabinetVM.ioScope.launch {
+//            // 预热相机Provider 快速启动相机能从6秒到2秒
+//            cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
+//            cabinetVM.cameraProviderFuture2 =
+//                    ProcessCameraProvider.getInstance(this@HomeActivity).get()
+//        }
         val initSocket = SPreUtil.get(AppUtils.getContext(), "initSocket", false) as Boolean
         if (initSocket) {
             initSocket()
@@ -106,7 +106,7 @@ import java.io.File
 
 //        lifeUpgradeChip()
 //        netUpdateChip()
-        countdownUI()
+//        countdownUI()
     }
 
     private fun initPort() {
@@ -133,7 +133,7 @@ import java.io.File
         //清运门打开 打开清运页
         lifecycleScope.launch {
             cabinetVM.isOpenDoorClear.collect {
-                Loge.d("调试socket 收到清运指令 $it")
+                Loge.d("调试socket 收到清运指令 回调 打开 UI$it")
                 if (it) {
                     navigateTo(fragmentClass = ClearDoorFragment::class.java)
                 }
@@ -443,7 +443,7 @@ import java.io.File
     }
 
     private fun getMasterVersion(isUpgrade: Boolean = false) {
-        cabinetVM.executeVersion232(isUpgrade, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
+        cabinetVM.executeVersion(isUpgrade, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
             cabinetVM.mainScope.launch {
 //                binding.tvUpgradeMasterCode.text = "主芯片版本：$version"
                 cabinetVM.chipMasterVC = version

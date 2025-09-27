@@ -78,7 +78,6 @@ import nearby.lib.netwrok.response.CorHttp
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
-import org.apache.commons.lang3.StringUtils.substringBeforeLast
 import java.io.File
 import java.io.FileInputStream
 import java.math.BigDecimal
@@ -385,7 +384,7 @@ import kotlin.random.Random
                 time = AppUtils.getDateYMDHMS()
             }
             val netVersion = otaModel.version?.replace(".", "")?.toInt() ?: 0
-            testQueryVersion(netVersion)
+//            testQueryVersion(netVersion)
             val queryResource =
                     DatabaseManager.queryResCmd(AppUtils.getContext(), otaModel.version ?: "", otaModel.sn ?: "", otaModel.cmd ?: "")
             if (queryResource == null) {
@@ -623,7 +622,7 @@ import kotlin.random.Random
     var isClearStatus = false
 
     /***
-     * 标记查询重量前后状态
+     * 标记查询重量前后状态 0.前  10.进行 1.后
      */
     var frontBackState = CmdCode.GE
 
@@ -1031,7 +1030,7 @@ import kotlin.random.Random
             }
             val traRow = DatabaseManager.insertWeight(AppUtils.getContext(), weightEntity)
             refreshViewUIClear()//门开前 刷新重量和事务
-            println("调试socket 调试串口 开格口前插入前后重量数据 $traRow")
+            println("调试socket 调试串口 清运门 开格口前插入前后重量数据 $traRow")
         }
     }
 
@@ -1088,17 +1087,41 @@ import kotlin.random.Random
         }
     }
 
+    /***
+     * 清运门
+     * @param boxCode
+     * @param status
+     */
     private fun doorReturnClear(boxCode: Int, status: Int) {
         ioScope.launch {
+            //提取清运门类型
+            val key = when (boxCode) {
+                1 -> {
+                    311
+                }
+
+                2 -> {
+                    321
+                }
+
+                3 -> {
+                    331
+                }
+
+                else -> {
+                    0
+                }
+            }
+
             when (status) {
                 //开清运门失败
                 0 -> {
                     tipMessage("清运门打开失败")
-                    maptDoorFault[3] = true
+                    maptDoorFault[key] = true
                 }
                 //开清运门成功
                 1 -> {
-                    maptDoorFault[3] = false
+                    maptDoorFault[key] = false
                     flowIsOpenDoorClear.emit(true)
                     if (!getCmd04.value) {
                         flowCmd04.emit(true)
@@ -1162,6 +1185,7 @@ import kotlin.random.Random
                                 weightClearAfter = curG1Weight//接收到重量后 清运
                                 isClearStatus = false
                                 flowCurWeightType.emit(CmdCode.GE_WEIGHT_CLEAR_BACK)
+                                refreshViewUIClear()//门开中 刷新重量和事务
                             }
                         }
                     }
@@ -1220,6 +1244,7 @@ import kotlin.random.Random
                                 weightClearAfter = curG2Weight//接收到重量后 清运
                                 isClearStatus = false
                                 flowCurWeightType.emit(CmdCode.GE_WEIGHT_CLEAR_BACK)
+                                refreshViewUIClear()//门开中 刷新重量和事务
                             }
                         }
                     }
@@ -1234,7 +1259,77 @@ import kotlin.random.Random
     }
 
     /***
-     * @param
+     * @param 状态查询
+     */
+    private val lockerListStatusCallback: (MutableList<PortDeviceInfo>) -> Unit = { lowerMachines ->
+        ioScope.launch {
+            //更新心跳数据
+            val upperMachines = DatabaseManager.queryStateList(AppUtils.getContext())
+            val size = upperMachines.size
+            println("调试socket 调试串口 下位机上报更新 size $size ${Thread.currentThread().name}")
+            if (upperMachines.isNotEmpty()) {
+                lowerMachines.withIndex().forEach { (index, lower) ->
+                    when (index) {
+                        0 -> {
+                            val state = upperMachines[0]
+                            state.smoke = lower.smoke ?: 0
+                            state.weigh = lower.weigh?.toFloat() ?: 0.0f
+                            state.irState = lower.irState ?: 0
+                            state.doorStatus = lower.doorStatus ?: 0
+                            state.lockStatus = lower.lockStatus ?: 0
+                            state.time = AppUtils.getDateYMDHMS()
+                            println("调试socket 调试串口 下位机上报更新格口一心跳 $state | $lower")
+
+                            maptDoorFault[9] = lower.doorStatus == 3
+                            maptDoorFault[11] = lower.irState == 1
+                            maptDoorFault[91] = lower.doorStatus == 3
+                            println("调试socket 调试串口 清运门 $frontBackState | $isClearStatus | ${lower.lockStatus} | ${getCmd04.value}")
+                            //此处处理清运门状态上报数据
+                            if (frontBackState == CmdCode.GE_WEIGHT_FRONT && isClearStatus && lower.lockStatus == 1) {
+                                println("调试socket 调试串口 清运门 格口一 清运门开 ${flowCmd04.value} ")
+                                frontBackState = CmdCode.GE_WEIGHT_ING
+                                addDoorQueue(CmdType.CMD4)
+                            } else if (isClearStatus && frontBackState == CmdCode.GE_WEIGHT_ING && lower.lockStatus == 0) {
+                                println("调试socket 调试串口 清运门 格口一 清运门关 ")
+                                frontBackState = CmdCode.GE_WEIGHT_BACK
+                            }
+                            synStateHeart(state, 0)
+                        }
+
+                        1 -> {
+                            if (size > 1) {
+                                val state = upperMachines[1]
+                                state.smoke = lower.smoke ?: 0
+                                state.weigh = lower.weigh?.toFloat() ?: 0.0f
+                                state.irState = lower.irState ?: 0
+                                state.doorStatus = lower.doorStatus ?: 0
+                                state.lockStatus = lower.lockStatus ?: 0
+                                state.time = AppUtils.getDateYMDHMS()
+                                println("调试socket 调试串口 下位机上报更新格口二心跳 $state | $lower")
+                                maptDoorFault[9] = lower.doorStatus == 3
+                                maptDoorFault[12] = lower.irState == 1
+                                maptDoorFault[92] = lower.doorStatus == 3
+                                //此处处理清运门状态上报数据
+                                if (frontBackState == CmdCode.GE_WEIGHT_FRONT && isClearStatus && lower.lockStatus == 1) {
+                                    println("调试socket 调试串口 清运门 格口二 清运门开 ")
+                                    frontBackState = CmdCode.GE_WEIGHT_ING
+                                } else if (isClearStatus && frontBackState == CmdCode.GE_WEIGHT_ING && lower.lockStatus == 0) {
+                                    println("调试socket 调试串口 清运门 格口二 清运门开 ")
+                                    frontBackState = CmdCode.GE_WEIGHT_BACK
+                                }
+                                synStateHeart(state, 1)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /***
+     * 灯光控制
+     * @param boxCode
+     * @param status
      */
     private fun doorReturnLights(boxCode: Int, status: Int) {
         ioScope.launch {
@@ -1254,6 +1349,7 @@ import kotlin.random.Random
 
     /***
      * 打开关闭语音
+     * @param type 1.播报打开 2.播报关闭
      */
     fun toGoOpenCloseAudio(type: Int) {
         ioScope.launch {
@@ -1284,6 +1380,7 @@ import kotlin.random.Random
 
     /***
      * 接收服务器 扫码方式
+     * @param model 开门数据
      */
     fun toGoSweepCodeCode(model: DoorOpenBean) {
         ioScope.launch {
@@ -1700,7 +1797,7 @@ import kotlin.random.Random
             val cid = trans.cabinId
             tid?.let { tidid ->
                 DatabaseManager.upTransCloseStatus(AppUtils.getContext(), 1, tidid)
-                println("调试socket 调试串口 更新本地交易状态未关闭 ")
+                println("调试socket 调试串口 清运门 更新本地交易状态未关闭 ")
             }
             //查询当前格口获取重量
             val lattice = DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cid ?: "")
@@ -1732,11 +1829,11 @@ import kotlin.random.Random
                     timestamp = AppUtils.getDateYMDHMS()
                 }
                 val json = JsonBuilder.convertToJsonString(doorClose)
-                println("调试socket 调试串口 发送关门成功 $json")
+                println("调试socket 调试串口 清运门 发送关门成功 $json")
                 vmClient?.sendText(json)
                 lattice.weightMonitor = "${lattice.weight},${weightClearAfter},${weightClearBefore}"
                 val rowCabin = DatabaseManager.upLatticeEntity(AppUtils.getContext(), lattice)
-                println("调试socket 调试串口 关闭格口 更新格口重量 $rowCabin")
+                println("调试socket 调试串口 清运门 关闭格口 更新格口重量 $rowCabin")
                 val index = when (doorGeX) {
                     CmdCode.GE1 -> {
                         0
@@ -1767,7 +1864,7 @@ import kotlin.random.Random
                         DatabaseManager.queryStateEntity(AppUtils.getContext(), cabinId = cabinld)
                 stateEntity.weigh = weightClearAfter?.toFloat() ?: 0.00f
                 synStateHeart(stateEntity, index)
-                println("调试socket 调试串口 关闭格口 更新心跳状态")
+                println("调试socket 调试串口 清运门 关闭格口 更新心跳状态")
             }
         }
     }
@@ -1845,7 +1942,7 @@ import kotlin.random.Random
      * 刷新当前重量 清运页
      */
     fun refreshViewUIClear() {
-        println("调试socket 调试串口 刷新Ui")
+        println("调试socket 调试串口 清运门 刷新Ui")
         LiveBus.get(BusType.BUS_CLEAR_STATUS).post(BusType.BUS_REFRESH_DATA)
         refreshWeightClear()
     }
@@ -1856,7 +1953,7 @@ import kotlin.random.Random
     fun refreshWeightClear() {
         val transId = SPreUtil[AppUtils.getContext(), "transId", curTransId] as String
         val weight = DatabaseManager.queryWeightId(AppUtils.getContext(), transId)
-        println("调试socket 调试串口 刷新 refreshWeight $doorGeX")
+        println("调试socket 调试串口 清运门 刷新 refreshWeightClear refreshWeight $doorGeX")
         if (weight != null) {
             val clearValue = subtractFloats(weightClearBefore ?: "0.00", weightClearAfter ?: "0.00")
 
@@ -1875,10 +1972,12 @@ import kotlin.random.Random
             weight.beforeDownWeight = weightClearAfter
             weight.afterDownWeight = weightClearAfter
 
+            println("调试socket 调试串口 清运门 刷新上报数据 refreshWeightClear $weight")
+
             val s = DatabaseManager.upWeightEntity(AppUtils.getContext(), weight)
-            println("调试socket 调试串口 刷新上报数据 $s")
+            println("调试socket 调试串口 清运门 刷新上报数据 refreshWeightClear $s")
         } else {
-            println("调试socket 调试串口 未刷新上报数据")
+            println("调试socket 调试串口 清运门 refreshWeightClear 未刷新上报数据")
         }
 
     }
@@ -1888,18 +1987,18 @@ import kotlin.random.Random
      */
     fun refreshWeightStatus() {
         ioScope.launch {
-            println("调试socket 调试串口 刷新 refreshWeightStatus")
+            println("调试socket 调试串口 清运门 刷新 refreshWeightStatus")
             val weight = DatabaseManager.queryWeightMax(AppUtils.getContext())
             if (weight != null) {
                 weight.transId?.let { transId ->
-                    println("调试socket 调试串口 刷新本地关闭仓门数据")
+                    println("调试socket 调试串口 清运门 刷新本地关闭仓门数据")
                     DatabaseManager.upWeightStatus(AppUtils.getContext(), 1, transId)
                 }
             }
             val trans = DatabaseManager.queryTransMax(AppUtils.getContext())
             if (trans != null) {
                 trans.transId?.let { transId ->
-                    println("调试socket 调试串口 刷新本地事务数据 ")
+                    println("调试socket 调试串口 清运门 刷新本地事务数据 ")
                     DatabaseManager.upTransOpenStatus(AppUtils.getContext(), 1, transId)
                 }
             }
@@ -1924,7 +2023,9 @@ import kotlin.random.Random
     fun testQueryVersion(netVersion: Int) {
         //接收网络版本固件
         println("调试socket 调试串口 testQueryVersion")
-        executeVersion232(true, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
+        executeVersion(true, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
+            println("芯片升级 调试串口 testQueryVersion $netVersion - $version")
+            chipMasterV = netVersion
             if (netVersion > version) {
                 //执行更新、显示提示图
                 upgradeChip()
@@ -2013,9 +2114,9 @@ import kotlin.random.Random
      * @param code
      * 去零清皮
      */
-    fun testWeightCali2(code: Int) {
+    fun testWeightCali2(currentGe: Int, code: Int) {
         ioScope.launch {
-            CabinetSdk.startCalibrationQP(code, calibrationCallback = { lockerNo, status ->
+            CabinetSdk.startCalibrationQP(currentGe, code, calibrationCallback = { lockerNo, status ->
                 println("调试socket 调试串口 发送扭动门状态 接收回调 $lockerNo $status")
                 if (status == 1) {
                     tipMessage("去零清皮成功")
@@ -2029,9 +2130,9 @@ import kotlin.random.Random
     /***
      * @param 校准
      */
-    fun testWeightCali(code: Int) {
+    fun testWeightCali(currentGe: Int, code: Int) {
         ioScope.launch {
-            CabinetSdk.startCalibration(code, calibrationCallback = { lockerNo, status ->
+            CabinetSdk.startCalibration(doorGeX, code, calibrationCallback = { lockerNo, status ->
                 println("调试socket 调试串口 发送扭动门状态 接收回调 $lockerNo $status")
                 ioScope.launch {
                     when (code) {
@@ -2533,15 +2634,17 @@ import kotlin.random.Random
     }
 
     /***
-     * 1.投送门开门异常
-     * 2.投递门关门异常
-     * 3.清运门开门异常
-     * 4.清运门关门异常
+     * 1.投送门开门异常 111 121
+     * 2.投递门关门异常 110 120
+     * 3.清运门开门异常 311 321 331
+     * 4.清运门关门异常 410 420 430
      * 5.摄像头异常
      * 6.电磁锁异常
      * 7:内灯异常
      * 8:外灯异常
-     * 9:推杆异常
+     * 9:推杆异常 91 92
+     * 11:1满溢
+     * 12:2满溢
      */
     var maptDoorFault = mutableMapOf<Int, Boolean>()
 
@@ -2557,16 +2660,56 @@ import kotlin.random.Random
                             if (value) "投送门开门异常" else null
                         }
 
+                        111 -> {
+                            if (value) "投送门一开门异常" else null
+                        }
+
+                        121 -> {
+                            if (value) "投送门二开门异常" else null
+                        }
+
                         2 -> {
                             if (value) "投递门关门异常" else null
+                        }
+
+                        110 -> {
+                            if (value) "投递门一关门异常" else null
+                        }
+
+                        120 -> {
+                            if (value) "投递门二关门异常" else null
                         }
 
                         3 -> {
                             if (value) "清运门开门异常" else null
                         }
 
+                        311 -> {
+                            if (value) "清运门一开门异常" else null
+                        }
+
+                        321 -> {
+                            if (value) "清运门二开门异常" else null
+                        }
+
+                        331 -> {
+                            if (value) "清运门三开门异常" else null
+                        }
+
                         4 -> {
                             if (value) "清运门关门异常" else null
+                        }
+
+                        310 -> {
+                            if (value) "清运门一关门异常" else null
+                        }
+
+                        320 -> {
+                            if (value) "清运门二关门异常" else null
+                        }
+
+                        330 -> {
+                            if (value) "清运门三关门异常" else null
                         }
 
                         5 -> {
@@ -2585,8 +2728,20 @@ import kotlin.random.Random
                             if (value) "外灯异常" else null
                         }
 
-                        9 -> {
-                            if (value) "推杆异常" else null
+                        91 -> {
+                            if (value) "推杆1异常" else null
+                        }
+
+                        92 -> {
+                            if (value) "推杆2异常" else null
+                        }
+
+                        11 -> {
+                            if (value) "格口一满溢" else null
+                        }
+
+                        12 -> {
+                            if (value) "格口二满溢" else null
                         }
 
                         else -> {
@@ -2604,63 +2759,6 @@ import kotlin.random.Random
         }
     }
 
-    private val lockerListStatusCallback: (MutableList<PortDeviceInfo>) -> Unit = { lowerMachines ->
-        //更新心跳数据
-        val upperMachines = DatabaseManager.queryStateList(AppUtils.getContext())
-        val size = upperMachines.size
-        println("调试socket 调试串口 下位机上报更新 size $size ${Thread.currentThread().name}")
-        if (upperMachines.isNotEmpty()) {
-            lowerMachines.withIndex().forEach { (index, lower) ->
-                when (index) {
-                    0 -> {
-                        val state = upperMachines[0]
-                        state.smoke = lower.smoke ?: 0
-                        state.weigh = lower.weigh?.toFloat() ?: 0.0f
-                        state.irState = lower.irState ?: 0
-                        state.doorStatus = lower.doorStatus ?: 0
-                        state.lockStatus = lower.lockStatus ?: 0
-                        state.time = AppUtils.getDateYMDHMS()
-                        println("调试socket 调试串口 下位机上报更新格口一心跳 $state | $lower")
-                        synStateHeart(state, 0)
-                        maptDoorFault[9] = lower.doorStatus == 3
-                        //此处处理清运门状态上报数据
-                        if (frontBackState == CmdCode.GE_WEIGHT_FRONT && isClearStatus && lower.lockStatus == 1) {
-                            println("调试socket 调试串口 格口一 清运门开 ")
-                            frontBackState = CmdCode.GE_WEIGHT_ING
-                        } else if (isClearStatus && lower.lockStatus == 0) {
-                            println("调试socket 调试串口 格口一 清运门关 ")
-                            frontBackState = CmdCode.GE_WEIGHT_BACK
-                        }
-
-                    }
-
-                    1 -> {
-                        if (size > 1) {
-                            val state = upperMachines[1]
-                            state.smoke = lower.smoke ?: 0
-                            state.weigh = lower.weigh?.toFloat() ?: 0.0f
-                            state.irState = lower.irState ?: 0
-                            state.doorStatus = lower.doorStatus ?: 0
-                            state.lockStatus = lower.lockStatus ?: 0
-                            state.time = AppUtils.getDateYMDHMS()
-                            println("调试socket 调试串口 下位机上报更新格口二心跳 $state | $lower")
-                            synStateHeart(state, 1)
-                            maptDoorFault[9] = lower.doorStatus == 3
-                            //此处处理清运门状态上报数据
-                            if (frontBackState == CmdCode.GE_WEIGHT_FRONT && isClearStatus && lower.lockStatus == 1) {
-                                println("调试socket 调试串口 格口二 清运门开 ")
-                                frontBackState = CmdCode.GE_WEIGHT_ING
-                            } else if (isClearStatus && lower.lockStatus == 0) {
-                                println("调试socket 调试串口 格口二 清运门开 ")
-                                frontBackState = CmdCode.GE_WEIGHT_BACK
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     /***
      * 同步心跳重量
      * 刷新满溢状态
@@ -2670,7 +2768,11 @@ import kotlin.random.Random
             val row = DatabaseManager.upStateEntity(AppUtils.getContext(), state)
             println("调试socket 同步更新心跳上传重量 $row")
             stateMap[index] = state
-            refreshViewUI()//心跳 刷新重量和事务
+            if (isClearStatus) {
+                refreshViewUIClear()//心跳 刷新重量和事务
+            } else {
+                refreshViewUI()//心跳 刷新重量和事务
+            }
 
             //当处于未在投递中则进行提示
             //刷新满溢状态
@@ -2743,7 +2845,7 @@ import kotlin.random.Random
     /***
      * 下载主芯片版本名称
      */
-    var chipMasterName = ""
+    var chipMasterName = "f1-20250729.bin"
 
     /***
      * 下载主芯片版本大小
@@ -2827,13 +2929,17 @@ import kotlin.random.Random
     /***
      * 查询主芯片版本
      */
-    fun executeVersion232(isUpgrade: Boolean = false, data: ByteArray, onUpgrade232: (status: Int) -> Unit) {
+    fun executeVersion(isUpgrade: Boolean = false, data: ByteArray, onUpgrade232: (status: Int) -> Unit) {
         Loge.i("串口232", "发232 执行指令: executePower")
-        CabinetSdk.queryVersion232(11, data, onUpgrade = { status ->
-            Loge.d("芯片升级 主芯片升级 接收指令回调 queryVersion232 = $status")
-            //usb文件版本大于查询版本
-            onUpgrade232(status)
-        }, sendCallback)
+        ioScope.launch {
+            flowCmd05.emit(false)
+            CabinetSdk.queryVersion(11, data, onUpgrade = { status ->
+                Loge.d("芯片升级 主芯片升级 接收指令回调 queryVersion232 = $status")
+                //usb文件版本大于查询版本
+                onUpgrade232(status)
+            }, sendCallback)
+        }
+
 
     }
 
@@ -2852,7 +2958,7 @@ import kotlin.random.Random
     fun chipSet7() {
         isLoweUpgrade232 = true
         val head = byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte())
-        CabinetSdk.firmwareUpgrade2322(7, head, onUpgrade = { status ->
+        CabinetSdk.firmwareUpgrade78910(7, head, onUpgrade = { status ->
             ioScope.launch {
                 Loge.d("芯片升级 主芯片升级 接收指令回调 status7 = $status")
                 if (status == 1) {
@@ -2883,7 +2989,7 @@ import kotlin.random.Random
             Loge.d("芯片升级 主芯片升级 crcByte = ${ByteUtils.toHexString(crcByte)}")
             val sendByte =
                     com.serial.port.utils.HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
-            CabinetSdk.firmwareUpgrade2322(8, sendByte, onUpgrade = { status ->
+            CabinetSdk.firmwareUpgrade78910(8, sendByte, onUpgrade = { status ->
                 ioScope.launch {
                     Loge.d("芯片升级 主芯片升级 接收指令回调 status8 = $status")
                     if (status == 1) {
@@ -2904,7 +3010,7 @@ import kotlin.random.Random
                 sendByteList232.clear()
                 try {
                     FileInputStream(file).use { fis ->
-                        val buffer = ByteArray(256)
+                        val buffer = ByteArray(8)
                         var bytesRead: Int
                         var blockIndex = 0
                         // 循环读取直到文件结束
@@ -2952,12 +3058,14 @@ import kotlin.random.Random
                     val sendByte = sendFileByte232.receive()  // 从Channel中接收指令
                     Loge.i("串口232", "发232 主芯片升级 发送第$send8fCount232 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
                     if (sendByte.isNotEmpty()) {
-                        CabinetSdk.firmwareUpgrade232(sendByte, onUpgrade = { status ->
+                        CabinetSdk.firmwareUpgradeFile(sendByte, onUpgrade = { bytes ->
                             ioScope.launch {
-                                if (status == 1) {
+                                val sendByteArray = sendByteList232[send8fCount232]
+                                Loge.i("串口232", "发232 主芯片升级 发：${ByteUtils.toHexString(sendByteArray)} | 接：${ByteUtils.toHexString(bytes)}")
+                                if (sendByteArray.contentEquals(bytes)) {
                                     send8fCount232++
                                     if (send8fCount232 <= sendByteList232.size - 1) {
-                                        Loge.d("芯片升级 主芯片升级 sendByteList = ${sendByteList232.size} | send8fCount = $send8fCount232 | status = $status ")
+                                        Loge.d("芯片升级 主芯片升级 sendByteList = ${sendByteList232.size} | send8fCount = $send8fCount232 |  bytes = $${ByteUtils.toHexString(bytes)} ")
                                         addFileByteQueue232(sendByteList232[send8fCount232])
                                     } else {
                                         flowSteps9.emit(true)
@@ -2979,7 +3087,7 @@ import kotlin.random.Random
 
     fun chipSet9() {
         val end = byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte())
-        CabinetSdk.firmwareUpgrade2322(9, end, onUpgrade = { status ->
+        CabinetSdk.firmwareUpgrade78910(9, end, onUpgrade = { status ->
             Loge.d("芯片升级 主芯片升级 接收指令回调 status9 = $status")
             ioScope.launch {
                 if (status == 1) {
@@ -2993,7 +3101,7 @@ import kotlin.random.Random
 
     fun chipSet10() {
         val cmd7 = byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte())
-        CabinetSdk.firmwareUpgrade2322(10, cmd7, onUpgrade = { status ->
+        CabinetSdk.firmwareUpgrade78910(10, cmd7, onUpgrade = { status ->
             ioScope.launch {
                 Loge.d("芯片升级 主芯片升级 接收指令回调 status10 = $status")
                 if (status == 1) {

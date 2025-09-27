@@ -8,6 +8,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentDebugTypeBinding
+import com.recycling.toolsapp.databinding.FragmentSelfDebugTypeBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.CmdCode
@@ -17,23 +18,20 @@ import kotlinx.coroutines.launch
 
 
 /***
- * 称重页
+ * 自验称重
  */
-@AndroidEntryPoint class DeBugTypeFragment : BaseBindFragment<FragmentDebugTypeBinding>() {
+@AndroidEntryPoint class SelfDeBugTypeFragment : BaseBindFragment<FragmentSelfDebugTypeBinding>() {
     // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
     private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
 
     //当前格口
     var currentGe = CmdCode.GE1
 
-    //标记校准前
-    var isBefore: Boolean = false
-
     var weightKg = -1
 
     // 创建任务队列
     override fun layoutRes(): Int {
-        return R.layout.fragment_debug_type
+        return R.layout.fragment_self_debug_type
     }
 
     override fun isShowActionBar(): Boolean {

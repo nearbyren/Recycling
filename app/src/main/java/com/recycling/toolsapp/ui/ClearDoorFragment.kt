@@ -63,14 +63,19 @@ import kotlin.random.Random
     }
 
     private fun initClick() {
+        binding.tvClearBeforeText.setOnClickListener {
+            mActivity?.fragmentCoordinator?.navigateBack()
+        }
+    }
 
+    override fun doneCountdown() {
     }
 
     private fun initCountdown() {
-        setCountdown(30)
+        setCountdown(500)
         //倒计时
-        binding.cpvView.setMaxProgress(30)
-        cabinetVM.startTimer(30)
+        binding.cpvView.setMaxProgress(500)
+        cabinetVM.startTimer(500)
     }
 
     private fun refresh() {
@@ -93,8 +98,7 @@ import kotlin.random.Random
                 cabinetVM.countdownState.collect { state ->
                     when (state) {
                         is CountdownTimer.CountdownState.Starting -> {
-                            binding.cpvView.setMaxProgress(30)
-
+                            binding.cpvView.setMaxProgress(500)
                         }
 
                         is CountdownTimer.CountdownState.Running -> {

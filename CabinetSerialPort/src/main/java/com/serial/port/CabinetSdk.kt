@@ -98,37 +98,62 @@ class CabinetSdk private constructor() {
         fun startLights(inOut: Int, lightsCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
             serialPortCore?.startLights(inOut, lightsCallback, sendCallback)
         }
+
         /***
          *  去皮清零
          * @param calibrationCallback
+         * @param doorGeX 格口x
+         * @param code 指令
          * @param sendCallback 发送是否成功 校准
          */
         @Synchronized
-        fun startCalibrationQP(code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.startCalibrationQP(code, calibrationCallback, sendCallback)
+        fun startCalibrationQP(doorGeX: Int, code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.startCalibrationQP(doorGeX, code, calibrationCallback, sendCallback)
         }
-
 
         /***
          *  校准操作
          * @param calibrationCallback
+         * @param doorGeX 格口x
+         * @param code 指令
          * @param sendCallback 发送是否成功 校准
          */
         @Synchronized
-        fun startCalibration(code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.startCalibration(code, calibrationCallback, sendCallback)
+        fun startCalibration(doorGeX: Int, code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.startCalibration(doorGeX, code, calibrationCallback, sendCallback)
         }
 
-
+        /***
+         * 0x07.升级指令
+         * 0x08.查询当前是否进入升级状态
+         * 0x9.查询当前是否进入升级状态
+         * 0x0A.重启指令
+         * @param byte
+         * @param onUpgrade 返回固件是否执行下一步
+         * @param sendCallback 发送是否成功
+         */
+        fun firmwareUpgrade78910(commandType: Int, byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.firmwareUpgrade78910(commandType, byte, onUpgrade, sendCallback)
+        }
 
         /***
-         * 固件升级前动作
+         * 发送文件来回效验
          * @param byte
          * @param onUpgrade 返回开仓是否成功
          * @param sendCallback 发送是否成功
          */
-        fun firmwareUpgrade2322(commandType: Int, byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.firmwareUpgrade2322(commandType, byte, onUpgrade, sendCallback)
+        fun firmwareUpgradeFile(byte: ByteArray, onUpgrade: (bytes: ByteArray) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.firmwareUpgradeFile(byte, onUpgrade, sendCallback)
+        }
+
+        /***
+         * 芯片版本查询
+         * @param byte
+         * @param onUpgrade 返回开仓是否成功
+         * @param sendCallback 发送是否成功
+         */
+        fun queryVersion(commandType: Int, byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
+            serialPortCore?.firmwareUpgrade78910(commandType, byte, onUpgrade, sendCallback)
         }
 
         /***
@@ -139,16 +164,6 @@ class CabinetSdk private constructor() {
          */
         fun firmwareUpgrade232(byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
             serialPortCore?.firmwareUpgrade232(byte, onUpgrade, sendCallback)
-        }
-
-        /***
-         * 芯片版本查询
-         * @param byte
-         * @param onUpgrade 返回开仓是否成功
-         * @param sendCallback 发送是否成功
-         */
-        fun queryVersion232(commandType: Int, byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.firmwareUpgrade2322(commandType, byte, onUpgrade, sendCallback)
         }
 
     }

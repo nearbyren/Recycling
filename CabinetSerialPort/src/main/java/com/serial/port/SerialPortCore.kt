@@ -81,17 +81,17 @@ class SerialPortCore {
      */
     private val calibration: MutableMap<Int, ByteArray> = mutableMapOf(
         //清皮去零
-        CmdCode.CALIBRATION_0 to byteArrayOf(0x01, 0x01),
+        CmdCode.CALIBRATION_0 to byteArrayOf(0x01),
         //零点校准
-        CmdCode.CALIBRATION_1 to byteArrayOf(0x01, 0x01),
+        CmdCode.CALIBRATION_1 to byteArrayOf(0x01),
         //校准2KG
-        CmdCode.CALIBRATION_2 to byteArrayOf(0x02, 0x01),
+        CmdCode.CALIBRATION_2 to byteArrayOf(0x02),
         //校准25KG
-        CmdCode.CALIBRATION_3 to byteArrayOf(0x03, 0x01),
+        CmdCode.CALIBRATION_3 to byteArrayOf(0x03),
         //校准100KG
-        CmdCode.CALIBRATION_4 to byteArrayOf(0x04, 0x01),
+        CmdCode.CALIBRATION_4 to byteArrayOf(0x04),
         //校准板框重量
-        CmdCode.CALIBRATION_5 to byteArrayOf(0x05, 0x01),
+        CmdCode.CALIBRATION_5 to byteArrayOf(0x05),
     )
 
     /***
@@ -225,11 +225,12 @@ class SerialPortCore {
 
         }
     }
+
     /***
      * 去皮清零
      */
     @Synchronized
-    fun startCalibrationQP(code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+    fun startCalibrationQP(doorGeX: Int, code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
         SerialPortManager.instance.serialVM?.addCommandCalibrationResultListener { number, status ->
             calibrationCallback(number, status)
         }
@@ -241,16 +242,31 @@ class SerialPortCore {
         calibration[code]?.let {
             val command = 0x10.toByte()
             val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            val data2 = when (doorGeX) {
+                1 -> {
+                    byteArrayOf(0x01.toByte())
+                }
+
+                2 -> {
+                    byteArrayOf(0x02.toByte())
+                }
+
+                else -> {
+                    byteArrayOf(0x01.toByte())
+                }
+            }
+            val sendByte = HexConverter.combineByteArrays(data2, data)
+            val byte = SendByteData.createSendNotCheckSumByte(command, sendByte)
             SerialPortManager.instance.issuedStatus(byte)
 
         }
     }
+
     /***
      * 校准操作
      */
     @Synchronized
-    fun startCalibration(code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
+    fun startCalibration(doorGeX: Int, code: Int, calibrationCallback: (Int, Int) -> Unit, sendCallback: (String) -> Unit) {
         SerialPortManager.instance.serialVM?.addCommandCalibrationResultListener { number, status ->
             calibrationCallback(number, status)
         }
@@ -262,20 +278,37 @@ class SerialPortCore {
         calibration[code]?.let {
             val command = 0x11.toByte()
             val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            val data2 = when (doorGeX) {
+                1 -> {
+                    byteArrayOf(0x01.toByte())
+                }
+
+                2 -> {
+                    byteArrayOf(0x02.toByte())
+                }
+
+                else -> {
+                    byteArrayOf(0x01.toByte())
+                }
+            }
+            val sendByte = HexConverter.combineByteArrays(data2, data)
+            val byte = SendByteData.createSendNotCheckSumByte(command, sendByte)
             SerialPortManager.instance.issuedStatus(byte)
 
         }
     }
 
     /***
-     * 固件升级前动作
+     * 0x07.升级指令
+     * 0x08.查询当前是否进入升级状态
+     * 0x9.查询当前是否进入升级状态
+     * 0x0A.重启指令
      * @param commandType 指令类型
-     * @param onUpgrade 下发指令接收反馈信息
+     * @param onUpgrade 返回固件是否执行下一步
      * @param sendCallback 下发指令是否成功回调
      */
     @Synchronized
-    fun firmwareUpgrade2322(commandType: Int, data: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
+    fun firmwareUpgrade78910(commandType: Int, data: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
         SerialPortManager.instance.serialVM?.addCommandUpgrade232ResultListener { status ->
             onUpgrade(status)
         }
@@ -337,6 +370,25 @@ class SerialPortCore {
         val command = 0x0b.toByte()
         val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
         SerialPortManager.instance.upgrade232(sendByte)
+    }
+
+    /***
+     * 发送文件来回效验
+     * @param onUpgrade 下发指令接收反馈信息
+     * @param sendCallback 下发指令是否成功回调
+     */
+    @Synchronized
+    fun firmwareUpgradeFile(byte: ByteArray, onUpgrade: (bytes: ByteArray) -> Unit, sendCallback: (String) -> Unit) {
+        SerialPortManager.instance.serialVM?.addCommandUpgradeXYResultListener { status ->
+            onUpgrade(status)
+        }
+
+        SerialPortManager.instance.serialVM?.addSendCommandStatusListener { msg ->
+            sendCallback(msg)
+        }
+        val command = 0x12.toByte()
+        val byte = SendByteData.createSendNotCheckSumByte(command, byte)
+        SerialPortManager.instance.upgrade232(byte)
     }
 
     /***

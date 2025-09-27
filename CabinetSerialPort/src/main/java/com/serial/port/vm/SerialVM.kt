@@ -19,6 +19,7 @@ import com.serial.port.call.CommandStatus
 import com.serial.port.call.CommandTurnResultListener
 import com.serial.port.call.CommandUpgrade232ResultListener
 import com.serial.port.call.CommandUpgrade485ResultListener
+import com.serial.port.call.CommandUpgradeXYResultListener
 import com.serial.port.call.CommandWeightResultListener
 import com.serial.port.call.DoorStatus
 import com.serial.port.utils.BoxToolLogUtils
@@ -127,7 +128,7 @@ class SerialVM : ViewModel() {
     /**
      * 重试次数
      */
-    private val maxRetryCount = 3
+    private val maxRetryCount = 30
 
     /**
      * 重试次数
@@ -245,6 +246,20 @@ class SerialVM : ViewModel() {
     fun addCommandUpgrade232ResultListener(callback: (Int) -> Unit) {
         // 使用 lambda 表达式作为回调
         this.commandUpgrade232ResultListener = CommandUpgrade232ResultListener { status ->
+            // 调用传递的回调
+            callback(status)
+        }
+    }
+
+    /***
+     *
+     *
+     * 固件文件效验
+     */
+    private var commandUpgradeXYResultListener: CommandUpgradeXYResultListener? = null
+    fun addCommandUpgradeXYResultListener(callback: (bytes: ByteArray) -> Unit) {
+        // 使用 lambda 表达式作为回调
+        this.commandUpgradeXYResultListener = CommandUpgradeXYResultListener { status ->
             // 调用传递的回调
             callback(status)
         }
@@ -840,7 +855,7 @@ class SerialVM : ViewModel() {
         val command = packet[seek]
         var dataLength = -1
         when (command) {
-            0.toByte(), 1.toByte(), 2.toByte(), 3.toByte(), 4.toByte(), 5.toByte(), 7.toByte(), 8.toByte(), 9.toByte(), 10.toByte(), 11.toByte(), 16.toByte(), 17.toByte() -> {
+            0.toByte(), 1.toByte(), 2.toByte(), 3.toByte(), 4.toByte(), 5.toByte(), 7.toByte(), 8.toByte(), 9.toByte(), 10.toByte(), 11.toByte(), 16.toByte(), 17.toByte(), 18.toByte() -> {
                 // 提取数据长度，并将其转换为无符号整数
                 dataLength = packet[length].toUByte().toInt()  // 将有符号字节转换为无符号整数
             }
@@ -975,7 +990,7 @@ class SerialVM : ViewModel() {
 
                 val tg1 = data.copyOfRange(0, 12)
                 Loge.i("串口232", "接232 测试 1 ${ByteUtils.toHexString(tg1)}")
-                val weight1 = tg1.copyOfRange(1,5)
+                val weight1 = tg1.copyOfRange(1, 5)
                 Loge.i("串口232", "接232 5.toByte 取1重量：${HexConverter.byteArrayToInt(weight1)}")
                 val status1 = tg1.copyOfRange(5, 12)
                 //烟雾传感器
@@ -998,7 +1013,7 @@ class SerialVM : ViewModel() {
                     val size = group.size
                     Loge.i("串口232", "接232 5.toByte 取1数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
                     smokeValue1 = group[0].toUByte().toInt()
-                    irStateValue1= group[1].toUByte().toInt()
+                    irStateValue1 = group[1].toUByte().toInt()
                     touCGStatusValue1 = group[2].toUByte().toInt()
                     touJSStatusValue1 = group[3].toUByte().toInt()
                     doorStatusValue1 = group[4].toUByte().toInt()
@@ -1016,7 +1031,6 @@ class SerialVM : ViewModel() {
                     lockStatus = lockStatusValue1
                     xzStatus = xzStatusValue1
                 })
-
 
 //
                 val tg2 = data.copyOfRange(12, 24)
@@ -1045,7 +1059,7 @@ class SerialVM : ViewModel() {
                     val size = group.size
                     Loge.i("串口232", "接232 5.toByte 取2数据拆分：i = $i end $end | size $size | group ${ByteUtils.toHexString(group)}")
                     smokeValue2 = group[0].toUByte().toInt()
-                    irStateValue2= group[1].toUByte().toInt()
+                    irStateValue2 = group[1].toUByte().toInt()
                     touCGStatusValue2 = group[2].toUByte().toInt()
                     touJSStatusValue2 = group[3].toUByte().toInt()
                     doorStatusValue2 = group[4].toUByte().toInt()
@@ -1091,18 +1105,17 @@ class SerialVM : ViewModel() {
                     }
                 }
             }
-
             //进入升级状态 查询状态 升级完成重启
             7.toByte(), 8.toByte(), 10.toByte() -> {
                 //取出完整数据
                 val toIndex = 4 + dataLength
                 if (before != toIndex) {
-                    Loge.i("串口232", "接232 78910.toByte 数据长度与数据域不匹配")
+                    Loge.i("串口232", "接232 7910.toByte 数据长度与数据域不匹配")
                     commandUpgrade232ResultListener?.upgradeResult(CommandStatus.FAIL)
                     return
                 }
                 val data = packet.copyOfRange(4, 4 + dataLength)
-                Loge.i("串口232", "接232 78910.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
+                Loge.i("串口232", "接232 7910.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
                 if (data.size == 3) {
                     commandUpgrade232ResultListener?.upgradeResult(CommandStatus.SUCCEED)
                 } else {
@@ -1114,7 +1127,7 @@ class SerialVM : ViewModel() {
                 //取出完整数据
                 val toIndex = 4 + dataLength
                 if (before != toIndex) {
-                    Loge.i("串口232", "接232 78910.toByte 数据长度与数据域不匹配")
+                    Loge.i("串口232", "接232 9.toByte 数据长度与数据域不匹配")
                     commandUpgrade232ResultListener?.upgradeResult(CommandStatus.FAIL)
                     return
                 }
@@ -1277,6 +1290,23 @@ class SerialVM : ViewModel() {
                     } else {
                         commandCalibrationResultListener?.caliResult(locker, DoorStatus.FAIL)
                     }
+                }
+            }
+            //文件发送效验
+            18.toByte() -> {
+                //取出完整数据
+                val toIndex = 4 + dataLength
+                if (before != toIndex) {
+                    Loge.i("串口232", "接232 18.toByte 数据长度与数据域不匹配")
+                    commandUpgradeXYResultListener?.upgradeResult(byteArrayOf())
+                    return
+                }
+                val data = packet.copyOfRange(4, 4 + dataLength)
+                Loge.i("串口232", "接232 18.toByte 取数据源：${data.joinToString(" ") { "%02X".format(it) }}")
+                if (data.size == 8) {
+                    commandUpgradeXYResultListener?.upgradeResult(data)
+                } else {
+                    commandUpgradeXYResultListener?.upgradeResult(byteArrayOf())
                 }
             }
         }
