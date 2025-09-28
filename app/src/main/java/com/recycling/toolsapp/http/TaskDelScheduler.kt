@@ -24,8 +24,8 @@ import java.util.concurrent.TimeUnit
 object TaskDelScheduler {
 
     // 任务标识前缀
-    private const val DAILY_TASK_PREFIX = "daily_task_"
-    private const val IMMEDIATE_TASK_PREFIX = "immediate_task_"
+    private const val DAILY_TASK_PREFIX = "del_daily_task_"
+    private const val IMMEDIATE_TASK_PREFIX = "del_immediate_task_"
 
     /**
      * 调度每日任务
@@ -92,14 +92,14 @@ object TaskDelScheduler {
     private fun buildDailyRequest(time: String): PeriodicWorkRequest {
         return PeriodicWorkRequestBuilder<DailyDelWorker>(24, TimeUnit.HOURS)
             .setInitialDelay(calculateInitialDelay(time)) // 初始延迟到指定时间
-            .addTag("daily_task")
+            .addTag("del_daily_task")
             .build()
     }
 
     // 构建立即请求
     private fun buildImmediateRequest(): OneTimeWorkRequest {
         return OneTimeWorkRequestBuilder<DailyDelWorker>()
-            .addTag("immediate_task")
+            .addTag("del_immediate_task")
             .build()
     }
 

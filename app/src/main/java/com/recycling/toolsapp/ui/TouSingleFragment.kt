@@ -81,7 +81,7 @@ import java.lang.ref.WeakReference
             when (msg) {
                 BusType.BUS_OVERFLOW -> {
                     binding.acivStatus.isVisible = true
-                    binding.acivStatus.setBackgroundResource(R.drawable.ic_gzda)
+                    binding.acivStatus.setBackgroundResource(R.drawable.ic_myda)
                 }
 
                 BusType.BUS_FAULT -> {

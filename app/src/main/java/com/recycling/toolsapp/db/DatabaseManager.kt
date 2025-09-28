@@ -393,8 +393,8 @@ object DatabaseManager {
     /***
      * 提供外部 API 方法
      * @param context 上下文
-     * @param status
-     * @param transId
+     * @param status  10.进行中 1.完成
+     * @param transId 事务id
      */
     fun upWeightStatus(context: Context, status: Int, transId: String) {
         getWeightFlowDao(context).upWeightStatus(status, transId)

@@ -51,7 +51,7 @@ import androidx.room.PrimaryKey
 
     /***
      * 标记是否完成状态
-     * 0. 10.进行中 1.完成
+     * 10.进行中 1.完成
      */
     @ColumnInfo(name = "status", typeAffinity = INTEGER) var status: Int = -1,
     /***

@@ -44,6 +44,7 @@ import com.recycling.toolsapp.socket.OtaBean
 import com.recycling.toolsapp.socket.SocketClient
 import com.recycling.toolsapp.utils.CmdType
 import com.recycling.toolsapp.utils.CmdValue
+import com.recycling.toolsapp.utils.EntityType
 import com.recycling.toolsapp.utils.HexConverter
 import com.recycling.toolsapp.utils.JsonBuilder
 import com.recycling.toolsapp.utils.MediaPlayerHelper
@@ -84,7 +85,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.util.Collections
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.random.Random
@@ -212,7 +212,7 @@ import kotlin.random.Random
         ioScope.launch {
             val fileEntity = FileEntity().apply {
                 cmd = mcmd
-                transId = curTransId
+                transId = curTransId//
                 time = AppUtils.getDateYMDHMS()
             }
             var cmdValue = ""
@@ -575,11 +575,11 @@ import kotlin.random.Random
         ioScope.launch {
             val cabinld = when (doorGeX) {
                 CmdCode.GE1 -> {
-                    cur1Cabinld
+                    cur1Cabinld//根据格口编码上报故障
                 }
 
                 CmdCode.GE2 -> {
-                    cur2Cabinld
+                    cur2Cabinld//根据格口编码上报故障
                 }
 
                 else -> {
@@ -932,7 +932,7 @@ import kotlin.random.Random
          */
         CmdType.CMD7 to CommandPriority.LOW)
 
-    var doorJob2: Job? = null
+    var doorJobNew: Job? = null
 
     /***
      * @param cmdDoorType 指令类型
@@ -940,8 +940,8 @@ import kotlin.random.Random
      * 3.查询投口门状态
      * 4.查询格口重量
      */
-    fun addDoorQueue(cmdDoorType: Int, priority: CommandPriority? = null) {
-        if (doorJob2?.isActive != true) {
+    fun addDoorQueueNew(cmdDoorType: Int, priority: CommandPriority? = null) {
+        if (doorJobNew?.isActive != true) {
             println("调试socket 新方式 门控制任务未启动，忽略指令: $cmdDoorType")
             return
         }
@@ -972,16 +972,16 @@ import kotlin.random.Random
      * 实时格口门状态
      * 查询格口重量
      */
-    fun startPollingDoor2() {
+    fun startNewPollingDoor() {
         println("调试socket 新方式 启动检测门状态轮询")
 
-        if (doorJob2?.isActive == true) {
+        if (doorJobNew?.isActive == true) {
             println("调试socket 新方式 门控制任务已在运行")
             return
         }
 
         println("调试socket 新方式 启动检测门状态轮询发起")
-        doorJob2 = ioScope.launch {
+        doorJobNew = ioScope.launch {
             while (isActive) {
                 try {
                     val command = doorQueueNew.receive()
@@ -1070,13 +1070,18 @@ import kotlin.random.Random
     // 查询机柜状态
     private suspend fun handleCabinetStatusQuery() {
         println("调试socket 新方式 handleCabinetStatusQuery 5 ")
-        CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
+        CabinetSdk.queryStatus(onBoxStatus = { lowerMachines ->
+            doorReturnStatus(lowerMachines)
+        }, sendCallback)
     }
 
     // 查询灯光
     private suspend fun handleLightsQuery() {
         println("调试socket 新方式 handleCabinetStatusQuery 5 ")
-        CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
+        CabinetSdk.startLights(doorGeX, lightsCallback = { boxCode, status ->
+            println("调试socket 调试串口 发送查询灯光 接收回调 $boxCode, $status")
+            doorReturnLights(boxCode, status)
+        }, sendCallback)
     }
 
     // 处理自定义命令
@@ -1090,7 +1095,7 @@ import kotlin.random.Random
         while (isActive) {
             try {
                 // 根据当前状态智能调度指令
-                println("调试socket 新方式 commandScheduler scheduleCommandsBasedOnState")
+
                 scheduleCommandsBasedOnState()
                 delay(300) // 每300ms调度一次
 
@@ -1100,10 +1105,11 @@ import kotlin.random.Random
             }
         }
     }
+
     // 基于状态的指令调度
     private fun scheduleCommandsBasedOnState() {
         val commandsToAdd = mutableListOf<Pair<Int, CommandPriority>>()
-
+        println("调试socket 新方式 commandScheduler scheduleCommandsBasedOnState ${getCmd01.value}|${getCmd02.value}|${getCmd03.value}|${getCmd04.value}|${getCmd05.value}|${getCmd06.value}|")
         // 根据各指令标志决定是否添加
         if (getCmd01.value && !pendingCommands.contains(CmdType.CMD1)) {
             commandsToAdd.add(CmdType.CMD1 to CommandPriority.HIGH)
@@ -1131,19 +1137,20 @@ import kotlin.random.Random
 
         // 添加指令到队列
         commandsToAdd.forEach { (cmdType, priority) ->
-            addDoorQueue(cmdType, priority)
+            addDoorQueueNew(cmdType, priority)
         }
     }
+
     // 安全停止门控制任务
     fun stopDoorControl() {
-        doorJob?.cancel()
-        commandScheduler?.cancel()
+        doorJobNew?.cancel()
+        commandScheduler.cancel()
 
         // 清空队列和状态
         ioScope.launch {
             commandMutex.withLock {
                 pendingCommands.clear()
-                while (doorQueue.tryReceive().isSuccess) {
+                while (doorQueueNew.tryReceive().isSuccess) {
                     // 清空队列
                 }
             }
@@ -1168,13 +1175,13 @@ import kotlin.random.Random
     // 批量添加指令
     fun addBatchCommands(vararg cmdTypes: Int) {
         cmdTypes.forEach { cmdType ->
-            addDoorQueue(cmdType)
+            addDoorQueueNew(cmdType)
         }
     }
 
     // 紧急指令添加
     fun addEmergencyCommand(cmdType: Int) {
-        addDoorQueue(cmdType, CommandPriority.HIGH)
+        addDoorQueueNew(cmdType, CommandPriority.HIGH)
     }
 
     // 获取队列状态
@@ -1184,15 +1191,15 @@ import kotlin.random.Random
 
     // 启动门控制系统
     fun startDoorControlSystem() {
-        startPollingDoor2()
-
+        startNewPollingDoor()
+        println("调试socket 新方式 startDoorControlSystem ")
         // 启动指令调度器
         if (commandScheduler.isActive) {
             commandScheduler.start()
         }
 
         // 初始添加必要的监控指令
-        addBatchCommands(CmdType.CMD5) // 初始状态查询
+//        addBatchCommands(CmdType.CMD5) // 初始状态查询
     }
 
     /*******************************************新方案调试******************************************************/
@@ -1280,7 +1287,10 @@ import kotlin.random.Random
                     }
                     //查询状态
                     CmdType.CMD5 -> {
-                        CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
+                        CabinetSdk.queryStatus(onBoxStatus = { lowerMachines ->
+                            println("调试socket 调试串口 发送查询状态 接收回调 ${lowerMachines.size}")
+                            doorReturnStatus(lowerMachines)
+                        }, sendCallback)
                     }
                     //灯光
                     CmdType.CMD6 -> {
@@ -1344,6 +1354,7 @@ import kotlin.random.Random
                 transId = curTransId
                 curWeight = curWeightValue
                 time = AppUtils.getDateYMDHMS()
+                status = EntityType.WEIGHT_TYPE_10//插入重量状态 开格口前
             }
             val traRow = DatabaseManager.insertWeight(AppUtils.getContext(), weightEntity)
             refreshViewUI()//门开前 刷新重量和事务
@@ -1362,6 +1373,7 @@ import kotlin.random.Random
                 transId = curTransId
                 curWeight = weightClearBefore
                 time = AppUtils.getDateYMDHMS()
+                status = EntityType.WEIGHT_TYPE_10//插入重量状态进行中 清运前
             }
             val traRow = DatabaseManager.insertWeight(AppUtils.getContext(), weightEntity)
             refreshViewUIClear()//门开前 刷新重量和事务
@@ -1377,6 +1389,15 @@ import kotlin.random.Random
         ioScope.launch {
             println("调试socket 调试串口 doorReturnDoor statusDoor $statusDoor frontBackState $frontBackState geStartDoorType $geStartDoorType doorGeX $doorGeX ${getCmd02.value}")
             if (geStartDoorType == CmdCode.GE_OPEN && statusDoor == CmdCode.GE_OPEN) {
+                when (doorGeX) {
+                    CmdCode.GE1 -> {
+                        flowDoor1Value.emit(BusType.BUS_NORMAL)
+                    }
+
+                    CmdCode.GE2 -> {
+                        flowDoor2Value.emit(BusType.BUS_NORMAL)
+                    }
+                }
                 flowCmd02.emit(false)
                 //开门成功
                 if (frontBackState == CmdCode.GE_WEIGHT_FRONT) {
@@ -1384,6 +1405,15 @@ import kotlin.random.Random
                 }
                 flowDeliveryTypeEnd.emit(ResultType.RESULT310)
             } else if (geStartDoorType == CmdCode.GE_CLOSE && statusDoor == CmdCode.GE_CLOSE) {
+                when (doorGeX) {
+                    CmdCode.GE1 -> {
+                        flowDoor1Value.emit(BusType.BUS_NORMAL)
+                    }
+
+                    CmdCode.GE2 -> {
+                        flowDoor2Value.emit(BusType.BUS_NORMAL)
+                    }
+                }
                 flowCmd02.emit(false)
                 LiveBus.get(BusType.BUS_DELIVERY_STATUS).post(BusType.BUS_DELIVERY_CLOSE)
                 //关门成功
@@ -1405,7 +1435,7 @@ import kotlin.random.Random
                     }
 
                     CmdCode.GE2 -> {
-                        flowDoor1Value.emit(BusType.BUS_FAULT)
+                        flowDoor2Value.emit(BusType.BUS_FAULT)
                     }
                 }
             } else {
@@ -1518,7 +1548,7 @@ import kotlin.random.Random
                                 flowCurWeightType.emit(CmdCode.GE_WEIGHT_BACK)
                             } else {
                                 weightClearAfter = curG1Weight//接收到重量后 清运
-                                isClearStatus = false
+                                isClearStatus = false//清完完毕
                                 flowCurWeightType.emit(CmdCode.GE_WEIGHT_CLEAR_BACK)
                                 refreshViewUIClear()//门开中 刷新重量和事务
                             }
@@ -1577,7 +1607,7 @@ import kotlin.random.Random
                                 flowCurWeightType.emit(CmdCode.GE_WEIGHT_BACK)
                             } else {
                                 weightClearAfter = curG2Weight//接收到重量后 清运
-                                isClearStatus = false
+                                isClearStatus = false//清运完毕
                                 flowCurWeightType.emit(CmdCode.GE_WEIGHT_CLEAR_BACK)
                                 refreshViewUIClear()//门开中 刷新重量和事务
                             }
@@ -1596,7 +1626,7 @@ import kotlin.random.Random
     /***
      * @param 状态查询
      */
-    private val lockerListStatusCallback: (MutableList<PortDeviceInfo>) -> Unit = { lowerMachines ->
+    private fun doorReturnStatus(lowerMachines: MutableList<PortDeviceInfo>) {
         ioScope.launch {
             //更新心跳数据
             val upperMachines = DatabaseManager.queryStateList(AppUtils.getContext())
@@ -1608,14 +1638,15 @@ import kotlin.random.Random
                         0 -> {
                             val state = upperMachines[0]
                             state.smoke = lower.smoke ?: 0
+                            val irStateValue = lower.irState ?: 0
+                            state.irState = irStateValue
+                            val irDoorStatusValue = lower.doorStatus ?: 0
+                            state.doorStatus = irDoorStatusValue
                             state.weigh = lower.weigh?.toFloat() ?: 0.0f
-                            state.irState = lower.irState ?: 0
-                            state.doorStatus = lower.doorStatus ?: 0
                             state.lockStatus = lower.lockStatus ?: 0
                             state.time = AppUtils.getDateYMDHMS()
                             println("调试socket 调试串口 下位机上报更新格口一心跳 $state | $lower")
-
-                            maptDoorFault[9] = lower.doorStatus == 3
+//                            maptDoorFault[9] = lower.doorStatus == 3
                             maptDoorFault[11] = lower.irState == 1
                             maptDoorFault[91] = lower.doorStatus == 3
                             println("调试socket 调试串口 清运门 $frontBackState | $isClearStatus | ${lower.lockStatus} | ${getCmd04.value}")
@@ -1635,13 +1666,15 @@ import kotlin.random.Random
                             if (size > 1) {
                                 val state = upperMachines[1]
                                 state.smoke = lower.smoke ?: 0
+                                val irStateValue = lower.irState ?: 0
+                                state.irState = irStateValue
+                                val irDoorStatusValue = lower.doorStatus ?: 0
+                                state.doorStatus = irDoorStatusValue
                                 state.weigh = lower.weigh?.toFloat() ?: 0.0f
-                                state.irState = lower.irState ?: 0
-                                state.doorStatus = lower.doorStatus ?: 0
                                 state.lockStatus = lower.lockStatus ?: 0
                                 state.time = AppUtils.getDateYMDHMS()
                                 println("调试socket 调试串口 下位机上报更新格口二心跳 $state | $lower")
-                                maptDoorFault[9] = lower.doorStatus == 3
+//                                maptDoorFault[9] = lower.doorStatus == 3
                                 maptDoorFault[12] = lower.irState == 1
                                 maptDoorFault[92] = lower.doorStatus == 3
                                 //此处处理清运门状态上报数据
@@ -1722,7 +1755,7 @@ import kotlin.random.Random
             when (model.openType) {
                 //启动格口开启
                 1 -> {
-                    isClearStatus = false
+                    isClearStatus = false//更新模式
                     val trensEntity = TransEntity().apply {
                         cmd = CmdValue.CMD_OPEN_DOOR//插入db数据
                         transId = model.transId
@@ -1733,7 +1766,7 @@ import kotlin.random.Random
                         openStatus = -1
                         time = AppUtils.getDateYMDHMS()
                     }
-                    curTransId = model.transId ?: ""
+                    curTransId = model.transId ?: ""//匹配下发格口开门事务id
                     SPreUtil.put(AppUtils.getContext(), "transId", curTransId)
                     SPreUtil.put(AppUtils.getContext(), "userId", curUserId)
                     LiveBus.get(BusType.BUS_MOBILE_CLOS).post(BusType.BUS_MOBILE_CLOS)
@@ -1820,7 +1853,7 @@ import kotlin.random.Random
                 }
                 //打开清运门 Clear door
                 2 -> {
-                    isClearStatus = true
+                    isClearStatus = true//标记清运状态
                     val trensEntity = TransEntity().apply {
                         cmd = CmdValue.CMD_OPEN_DOOR//插入db
                         transId = model.transId
@@ -1830,7 +1863,7 @@ import kotlin.random.Random
                         openStatus = -1
                         time = AppUtils.getDateYMDHMS()
                     }
-                    curTransId = model.transId ?: ""
+                    curTransId = model.transId ?: ""//匹配下发清运门开门事务id
                     SPreUtil.put(AppUtils.getContext(), "transId", curTransId)
                     SPreUtil.put(AppUtils.getContext(), "userId", curUserId)
                     //记录事务数据
@@ -1952,6 +1985,7 @@ import kotlin.random.Random
                             transId = tid
                             curWeight = curWeightValue
                             time = AppUtils.getDateYMDHMS()
+                            status = EntityType.WEIGHT_TYPE_10//插入重量状态 门开后
                         }
                         val doorOpen = DoorOpenBean().apply {
                             cmd = CmdValue.CMD_OPEN_DOOR//回应服务器
@@ -2099,11 +2133,11 @@ import kotlin.random.Random
                 }
                 val cabinld = when (doorGeX) {
                     CmdCode.GE1 -> {
-                        cur1Cabinld
+                        cur1Cabinld//根据格口编码查询stateEntity
                     }
 
                     CmdCode.GE2 -> {
-                        cur2Cabinld
+                        cur2Cabinld//根据格口编码查询stateEntity
                     }
 
                     else -> {
@@ -2116,90 +2150,6 @@ import kotlin.random.Random
                 synStateHeart(stateEntity, index)
                 flowStartCamera.emit(0)
                 println("调试socket 调试串口 关闭格口 更新心跳状态")
-            }
-        }
-    }
-
-    /***
-     * 清运关闭上报数据
-     */
-    fun toGoUpDoorCloseClear() {
-        ioScope.launch {
-            val trans = DatabaseManager.queryTransMax(AppUtils.getContext())
-            //获取交易订单号
-            val tid = trans.transId
-            //获取格接口编码
-            val cid = trans.cabinId
-            tid?.let { tidid ->
-                DatabaseManager.upTransCloseStatus(AppUtils.getContext(), 1, tidid)
-                println("调试socket 调试串口 清运门 更新本地交易状态未关闭 ")
-            }
-            //查询当前格口获取重量
-            val lattice = DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cid ?: "")
-
-            //这里应该拿到的是最新称重体重
-            val weightEntity = DatabaseManager.queryWeightMax(AppUtils.getContext())
-            if (weightEntity != null) {
-
-                val doorClose = DoorCloseBean().apply {
-                    cmd = "closeDoor"
-                    transId = tid
-                    cabinId = cid
-                    phoneNumber = ""
-                    //当前设备称重重量
-                    curWeight = weightClearBefore
-
-                    //上称物品的重量
-                    changeWeight = weightClearAfter
-                    refWeight = weightClearAfter
-
-                    //未上称物品前重量
-                    beforeUpWeight = weightClearBefore
-                    afterUpWeight = weightClearBefore
-
-                    //已上称物品前重量
-                    beforeDownWeight = weightClearBefore
-                    afterDownWeight = weightClearBefore
-
-                    timestamp = AppUtils.getDateYMDHMS()
-                }
-                val json = JsonBuilder.convertToJsonString(doorClose)
-                println("调试socket 调试串口 清运门 发送关门成功 $json")
-                vmClient?.sendText(json)
-                lattice.weightMonitor = "${lattice.weight},${weightClearAfter},${weightClearBefore}"
-                val rowCabin = DatabaseManager.upLatticeEntity(AppUtils.getContext(), lattice)
-                println("调试socket 调试串口 清运门 关闭格口 更新格口重量 $rowCabin")
-                val index = when (doorGeX) {
-                    CmdCode.GE1 -> {
-                        0
-                    }
-
-                    CmdCode.GE2 -> {
-                        1
-                    }
-
-                    else -> {
-                        -1
-                    }
-                }
-                val cabinld = when (doorGeX) {
-                    CmdCode.GE1 -> {
-                        cur1Cabinld
-                    }
-
-                    CmdCode.GE2 -> {
-                        cur2Cabinld
-                    }
-
-                    else -> {
-                        ""
-                    }
-                }
-                val stateEntity =
-                        DatabaseManager.queryStateEntity(AppUtils.getContext(), cabinId = cabinld)
-                stateEntity.weigh = weightClearAfter?.toFloat() ?: 0.00f
-                synStateHeart(stateEntity, index)
-                println("调试socket 调试串口 清运门 关闭格口 更新心跳状态")
             }
         }
     }
@@ -2274,6 +2224,92 @@ import kotlin.random.Random
     }
 
     /***
+     * 清运关闭上报数据
+     */
+    fun toGoUpDoorCloseClear() {
+        ioScope.launch {
+            val trans = DatabaseManager.queryTransMax(AppUtils.getContext())
+            //获取交易订单号
+            val tid = trans.transId
+            //获取格接口编码
+            val cid = trans.cabinId
+            tid?.let { tidid ->
+                DatabaseManager.upTransCloseStatus(AppUtils.getContext(), 1, tidid)
+                println("调试socket 调试串口 清运门 更新本地交易状态未关闭 ")
+            }
+            //查询当前格口获取重量
+            val lattice = DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cid ?: "")
+
+            //这里应该拿到的是最新称重体重
+            val weightEntity = DatabaseManager.queryWeightMax(AppUtils.getContext())
+            if (weightEntity != null) {
+
+                val doorClose = DoorCloseBean().apply {
+                    cmd = "closeDoor"
+                    transId = tid
+                    cabinId = cid
+                    phoneNumber = ""
+                    //当前设备称重重量
+                    curWeight = weightClearAfter
+                    //打开清运门前 重量 减去 打开清运门关闭后的重量
+                    val clearWeight =
+                            subtractFloats(weightClearBefore ?: "0.00", weightClearAfter ?: "0.00")
+                    //上称物品的重量
+                    changeWeight = clearWeight
+                    refWeight = clearWeight
+
+                    //未上称物品前重量
+                    beforeUpWeight = weightClearBefore
+                    afterUpWeight = weightClearBefore
+
+                    //已上称物品前重量
+                    beforeDownWeight = weightClearAfter
+                    afterDownWeight = weightClearAfter
+
+                    timestamp = AppUtils.getDateYMDHMS()
+                }
+                val json = JsonBuilder.convertToJsonString(doorClose)
+                println("调试socket 调试串口 清运门 发送关门成功 $json")
+                vmClient?.sendText(json)
+                lattice.weightMonitor = "${lattice.weight},${weightClearAfter},${weightClearBefore}"
+                val rowCabin = DatabaseManager.upLatticeEntity(AppUtils.getContext(), lattice)
+                println("调试socket 调试串口 清运门 关闭格口 更新格口重量 $rowCabin")
+                val index = when (doorGeX) {
+                    CmdCode.GE1 -> {
+                        0
+                    }
+
+                    CmdCode.GE2 -> {
+                        1
+                    }
+
+                    else -> {
+                        -1
+                    }
+                }
+                val cabinld = when (doorGeX) {
+                    CmdCode.GE1 -> {
+                        cur1Cabinld//根据格口编码查询stateEntity
+                    }
+
+                    CmdCode.GE2 -> {
+                        cur2Cabinld//根据格口编码查询stateEntity
+                    }
+
+                    else -> {
+                        ""
+                    }
+                }
+                val stateEntity =
+                        DatabaseManager.queryStateEntity(AppUtils.getContext(), cabinId = cabinld)
+                stateEntity.weigh = weightClearAfter?.toFloat() ?: 0.00f
+                synStateHeart(stateEntity, index)
+                println("调试socket 调试串口 清运门 关闭格口 更新心跳状态")
+            }
+        }
+    }
+
+    /***
      * 刷新当前重量 清运页
      */
     fun refreshViewUIClear() {
@@ -2283,21 +2319,23 @@ import kotlin.random.Random
     }
 
     /**
-     * 刷新重量 格口
+     * 刷新重量 清运
      */
     fun refreshWeightClear() {
         val transId = SPreUtil[AppUtils.getContext(), "transId", curTransId] as String
         val weight = DatabaseManager.queryWeightId(AppUtils.getContext(), transId)
         println("调试socket 调试串口 清运门 刷新 refreshWeightClear refreshWeight $doorGeX")
         if (weight != null) {
-            val clearValue = subtractFloats(weightClearBefore ?: "0.00", weightClearAfter ?: "0.00")
 
             //当前设备称重重量
             weight.curWeight = weightClearAfter
 
+            val clearWeight =
+                    subtractFloats(weightClearBefore ?: "0.00", weightClearAfter ?: "0.00")
+
             //上称物品的重量
-            weight.changeWeight = clearValue
-            weight.refWeight = clearValue
+            weight.changeWeight = clearWeight
+            weight.refWeight = clearWeight
 
             //未上称物品前重量
             weight.beforeUpWeight = weightClearBefore
@@ -2327,14 +2365,14 @@ import kotlin.random.Random
             if (weight != null) {
                 weight.transId?.let { transId ->
                     println("调试socket 调试串口 清运门 刷新本地关闭仓门数据")
-                    DatabaseManager.upWeightStatus(AppUtils.getContext(), 1, transId)
+                    DatabaseManager.upWeightStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_1, transId)
                 }
             }
             val trans = DatabaseManager.queryTransMax(AppUtils.getContext())
             if (trans != null) {
                 trans.transId?.let { transId ->
                     println("调试socket 调试串口 清运门 刷新本地事务数据 ")
-                    DatabaseManager.upTransOpenStatus(AppUtils.getContext(), 1, transId)
+                    DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_1, transId)
                 }
             }
         }
@@ -2618,6 +2656,16 @@ import kotlin.random.Random
             println("调试socket saveInitNet 心跳秒：$heartbeatIntervalMillis")
             vmClient?.config?.heartbeatIntervalMillis1 = TimeUnit.SECONDS.toMillis(10)
             val config = loginModel.config
+
+            //控制终端维护状态
+            when (config.status) {
+                1 -> {
+
+                }
+
+                2 -> {}
+            }
+
             //保存基础配置信息
             loginModel.sn?.let { snCode ->
                 println("调试socket saveInitNet 开始添加配置")
@@ -2950,7 +2998,10 @@ import kotlin.random.Random
                 val cmdType = statusQueue.receive()  // 从Channel中接收指令
                 println("调试socket 调试串口 进来 while $cmdType")
                 if (cmdType == 0) {
-                    CabinetSdk.queryStatus(lockerListStatusCallback, sendCallback)
+                    CabinetSdk.queryStatus(onBoxStatus = { lowerMachines ->
+                        println("调试socket 调试串口 发送查询状态 接收回调 ${lowerMachines.size}")
+                        doorReturnStatus(lowerMachines)
+                    }, sendCallback)
                     if (getCmd05.value) {
                         delay(1000)
                         addQueueCommand(0)
@@ -3064,19 +3115,44 @@ import kotlin.random.Random
                         }
 
                         91 -> {
-                            if (value) "推杆1异常" else null
+                            if (value) {
+                                flowDoor1Value.emit(BusType.BUS_FAULT)
+                                "推杆一异常"
+                            } else {
+                                flowDoor1Value.emit(BusType.BUS_NORMAL)
+                                null
+                            }
                         }
 
                         92 -> {
-                            if (value) "推杆2异常" else null
+                            if (value) {
+                                flowDoor2Value.emit(BusType.BUS_FAULT)
+                                "推杆二异常"
+                            } else {
+                                flowDoor2Value.emit(BusType.BUS_NORMAL)
+                                null
+                            }
+
                         }
 
                         11 -> {
-                            if (value) "格口一满溢" else null
+                            if (value) {
+                                flowDoor1Value.emit(BusType.BUS_OVERFLOW)
+                                "格口一满溢"
+                            } else {
+                                flowDoor1Value.emit(BusType.BUS_NORMAL)
+                                null
+                            }
                         }
 
                         12 -> {
-                            if (value) "格口二满溢" else null
+                            if (value) {
+                                flowDoor2Value.emit(BusType.BUS_OVERFLOW)
+                                "格口二满溢"
+                            } else {
+                                flowDoor2Value.emit(BusType.BUS_NORMAL)
+                                null
+                            }
                         }
 
                         else -> {
@@ -3102,7 +3178,7 @@ import kotlin.random.Random
         ioScope.launch {
             val row = DatabaseManager.upStateEntity(AppUtils.getContext(), state)
             println("调试socket 同步更新心跳上传重量 $row")
-            stateMap[index] = state
+            stateMap[index] = state//刷新格口状态信息
             if (isClearStatus) {
                 refreshViewUIClear()//心跳 刷新重量和事务
             } else {
@@ -3222,8 +3298,9 @@ import kotlin.random.Random
                     Loge.d("芯片升级 是否芯片升级完成 ${isChip.value}")
                     if (isChip.value) {
                         Loge.d("芯片升级 启动计时重启app")
+                        currentUpgrade = 2
                         isChip.value = false
-                        startTimer(5)
+                        firmwareStartTimer(5)
                         delay(500)
                     }
                 }
@@ -3231,20 +3308,52 @@ import kotlin.random.Random
         }
     }
 
-    //固件升级倒计时重启
-    private val timer = CountdownTimer(viewModelScope)
-    val countdownState = timer.countdownState
+    //固件升级倒计时重启 固件
+    private val firmwareTimer = CountdownTimer(viewModelScope)
+    val countdownState = firmwareTimer.countdownState
 
-    fun startTimer(seconds: Int) {
-        timer.startCountdown(seconds)
+    fun firmwareStartTimer(seconds: Int) {
+        firmwareTimer.startCountdown(seconds)
     }
 
-    fun pauseTimer() {
-        timer.pauseCountdown()
+    fun firmwarePauseTimer() {
+        firmwareTimer.pauseCountdown()
     }
 
-    fun resetTimer() {
-        timer.resetCountdown()
+    fun firmwareResetTimer() {
+        firmwareTimer.resetCountdown()
+    }
+
+    //称重倒计时
+    private val deliveryTimer = DeliveryTimer(viewModelScope)
+    val deliveryState = deliveryTimer.countdownState
+
+    fun deliveryStartTimer(seconds: Int) {
+        deliveryTimer.startCountdown(seconds)
+    }
+
+    fun deliveryPauseTimer() {
+        deliveryTimer.pauseCountdown()
+    }
+
+    fun deliveryResetTimer() {
+        deliveryTimer.resetCountdown()
+    }
+
+    //清运倒计时
+    private val clearTimer = ClearTimer(viewModelScope)
+    val clearState = clearTimer.countdownState
+
+    fun clearStartTimer(seconds: Int) {
+        clearTimer.startCountdown(seconds)
+    }
+
+    fun clearPauseTimer() {
+        clearTimer.pauseCountdown()
+    }
+
+    fun clearResetTimer() {
+        clearTimer.resetCountdown()
     }
 
 

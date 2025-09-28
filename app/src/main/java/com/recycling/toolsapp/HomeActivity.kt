@@ -101,13 +101,12 @@ import java.io.File
             initSocket()
         }
 
-//        countdownUI()
 //        lifeUpgradeApk()
 //        netUpdateApk()
 
 //        lifeUpgradeChip()
 //        netUpdateChip()
-//        countdownUI()
+        countdownUI()
     }
 
     private fun initPort() {
@@ -394,7 +393,7 @@ import java.io.File
                             }
 
                             2 -> {
-                                TaskDelDateScheduler.scheduleDaily(AppUtils.getContext(), "21:35", "restart")
+                                TaskRestartScheduler.scheduleDaily(AppUtils.getContext(), "21:35", "daily_restart")
                             }
                         }
                     }
@@ -711,12 +710,14 @@ import java.io.File
     override fun onDetachedFromWindow() {
         println("调试socket home onDestroy")
         cabinetVM.closeSock()
+        cabinetVM.stopDoorControl()
         super.onDetachedFromWindow()
     }
 
     override fun onDestroy() {
         println("调试socket home onDestroy")
         cabinetVM.closeSock()
+        cabinetVM.stopDoorControl()
         super.onDestroy()
     }
 }

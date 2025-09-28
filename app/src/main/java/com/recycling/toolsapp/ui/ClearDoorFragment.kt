@@ -17,6 +17,7 @@ import com.recycling.toolsapp.databinding.FragmentDeliveryBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
+import com.recycling.toolsapp.vm.ClearTimer
 import com.recycling.toolsapp.vm.CountdownTimer
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
@@ -75,7 +76,7 @@ import kotlin.random.Random
         setCountdown(500)
         //倒计时
         binding.cpvView.setMaxProgress(500)
-        cabinetVM.startTimer(500)
+        cabinetVM.clearStartTimer(500)
     }
 
     private fun refresh() {
@@ -95,23 +96,23 @@ import kotlin.random.Random
         // 在 Activity/Fragment 中收集状态
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.countdownState.collect { state ->
+                cabinetVM.clearState.collect { state ->
                     when (state) {
-                        is CountdownTimer.CountdownState.Starting -> {
+                        is ClearTimer.CountdownState.Starting -> {
                             binding.cpvView.setMaxProgress(500)
                         }
 
-                        is CountdownTimer.CountdownState.Running -> {
+                        is ClearTimer.CountdownState.Running -> {
                             // 更新 UI
                             binding.cpvView.setProgress(state.secondsRemaining)
                         }
 
-                        CountdownTimer.CountdownState.Finished -> {
+                        ClearTimer.CountdownState.Finished -> {
                             mActivity?.fragmentCoordinator?.navigateBack()
 
                         }
 
-                        is CountdownTimer.CountdownState.Error -> {
+                        is ClearTimer.CountdownState.Error -> {
                             cabinetVM.tipMessage(state.message)
                         }
                     }

@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.LinearLayoutCompat
-import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -17,6 +16,7 @@ import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.CountdownTimer
+import com.recycling.toolsapp.vm.DeliveryTimer
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
@@ -145,7 +145,7 @@ import kotlin.random.Random
         setCountdown(300)
         //倒计时
         binding.cpvView.setMaxProgress(300)
-        cabinetVM.startTimer(300)
+        cabinetVM.deliveryStartTimer(300)
     }
 
     fun scrollToPosition(position: Int) {
@@ -221,24 +221,24 @@ import kotlin.random.Random
         // 在 Activity/Fragment 中收集状态
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.countdownState.collect { state ->
+                cabinetVM.deliveryState.collect { state ->
                     when (state) {
-                        is CountdownTimer.CountdownState.Starting -> {
+                        is DeliveryTimer.CountdownState.Starting -> {
                             binding.cpvView.setMaxProgress(300)
 
                         }
 
-                        is CountdownTimer.CountdownState.Running -> {
+                        is DeliveryTimer.CountdownState.Running -> {
                             // 更新 UI
                             binding.cpvView.setProgress(state.secondsRemaining)
                         }
 
-                        CountdownTimer.CountdownState.Finished -> {
+                        DeliveryTimer.CountdownState.Finished -> {
                             mActivity?.fragmentCoordinator?.navigateBack()
                             cabinetVM.testTypeEnd(ResultType.RESULT2)
                         }
 
-                        is CountdownTimer.CountdownState.Error -> {
+                        is DeliveryTimer.CountdownState.Error -> {
                             cabinetVM.tipMessage(state.message)
                         }
                     }

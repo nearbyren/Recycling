@@ -22,7 +22,7 @@ import com.recycling.toolsapp.model.WeightEntity
     //删除所有数据
     @Query("delete from WeightEntity") fun deleteAll()
 
-    @Query("select * from WeightEntity WHERE transId = :transId ")
+    @Query("select * from WeightEntity WHERE transId = :transId and time = (select MAX(time) from WeightEntity where transId= :transId)")
     fun queryWeightId(transId: String): WeightEntity
 
     @Update fun upWeightEntity(weightEntity: WeightEntity): Int

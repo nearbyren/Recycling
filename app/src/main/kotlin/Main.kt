@@ -18,13 +18,43 @@ import kotlin.random.Random
 @RequiresApi(Build.VERSION_CODES.O) fun main() {
     //测试重量问题
     val byteArray = HexConverter.intToByteArray(600)
-    println("测试 发送的字节 byte:${ByteUtils.toHexString(byteArray)}")
-    val weight = HexConverter.byteArrayToInt(byteArray)
-    println("测试 发送的字节 weight：${weight}")
+//    println("测试 发送的字节 byte:${ByteUtils.toHexString(byteArray)}")
+//    val weight = HexConverter.byteArrayToInt(byteArray)
+//    println("测试 发送的字节 weight：${weight}")
+//
+//    val weight2 = HexConverter.byteArrayToInt(byteArrayOf(0x01,0x35,0x00,0x68))
+//    println("测试 发送的字节 weight：${weight2}")
 
-    val weight2 = HexConverter.byteArrayToInt(byteArrayOf(0x01,0x35,0x00,0x68))
-    println("测试 发送的字节 weight：${weight2}")
+    val a = ByteUtils.toHexString(HexConverter.intToByteArray(-2))
+    val b = ByteUtils.toHexString(HexConverter.intToByteArray(-122))
+    val c = ByteUtils.toHexString(HexConverter.intToByteArray(-22))
+    println("测试 发送的字节 weight：${a}-- 22")
+    println("测试 发送的字节 weight：${b}-- 122")
+    println("测试 发送的字节 weight：${c}-- 22")
 
+
+    println("测试 发送的字节 weight：${HexConverter.byteArrayToInt(HexConverter.intToByteArray(-2))}-- 2")
+    println("测试 发送的字节 weight：${HexConverter.byteArrayToInt(HexConverter.intToByteArray(-112))}-- 112")
+    println("测试 发送的字节 weight：${HexConverter.byteArrayToInt(HexConverter.intToByteArray(-22))}-- 22")
+
+
+
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2))}-2")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(4))}-4")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(6))}-6")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(8))}-8")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(10))}-10")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(12))}-12")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(14))}-14")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(16))}-16)")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(18))}-18")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(20))}-20")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(22))}-22")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(24))}-24")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(26))}-26")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(28))}-28")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(30))}-30")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(32))}-32")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(34))}-34")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(36))}-36")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(38))}-38")
@@ -34,7 +64,7 @@ import kotlin.random.Random
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(46))}-46")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(48))}-48")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(50))}-50")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(52))}-32")
+    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(52))}-50")
     println("测试 发送的字节 weight：--------------------------------------------------------------")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(800))}")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1000))}")
