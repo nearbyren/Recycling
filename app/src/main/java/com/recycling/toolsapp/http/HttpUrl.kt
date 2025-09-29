@@ -140,6 +140,11 @@ object HttpUrl {
     const val uploadLog = "device/upload/log"
 
     /***
+     * 发行设备
+     */
+    const val issueDevice = "web/deviceIssue/issueDevice"
+
+    /***
      * 获取mac地址
      */
     fun getMaxAddress(): String {

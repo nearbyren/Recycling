@@ -48,6 +48,7 @@
     <!-- 科大讯飞 -->
     <uses-permission
         android:name="android.permission.READ_PRIVILEGED_PHONE_STATE"
+        android:protectionLevel="signature|privileged"
         tools:ignore="ProtectedPermissions" />
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
@@ -103,10 +104,10 @@
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             tools:ignore="Instantiatable">
-          <!--  <intent-filter>
+            <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>-->
+            </intent-filter>
 
         </activity>
         <activity
@@ -115,10 +116,10 @@
             android:configChanges="keyboard|keyboardHidden"
             android:theme="@style/CabinetLauncherTheme"
             tools:ignore="Instantiatable">
-            <intent-filter>
+          <!--  <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            </intent-filter>-->
         </activity>
 
         <activity

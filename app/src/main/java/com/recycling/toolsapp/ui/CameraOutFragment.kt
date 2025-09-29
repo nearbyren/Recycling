@@ -30,7 +30,7 @@ import androidx.fragment.app.viewModels
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentCameraOutBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
-import com.recycling.toolsapp.utils.FualtType
+import com.recycling.toolsapp.utils.FaultType
 import com.recycling.toolsapp.utils.PermissionRequest
 import com.recycling.toolsapp.utils.PermissionsRequester
 import com.recycling.toolsapp.vm.CabinetVM
@@ -128,7 +128,7 @@ import java.util.Collections
     }
 
     private fun toGoFaultDesc(desc: String) {
-        cabinetVM.toGoCmdUpFault(FualtType.TYPE5, 0, desc)
+        cabinetVM.toGoCmdUpFault(FaultType.TYPE5, 0, desc)
     }
 
     private fun setupCameras() {

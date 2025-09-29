@@ -17,7 +17,6 @@
             android:background="@drawable/ic_bug_bg"
             tools:ignore="MissingConstraints">
 
-
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/aciv_ni_hao"
                 android:layout_width="wrap_content"
@@ -38,6 +37,84 @@
                 app:layout_constraintRight_toRightOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_content1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_8"
+                android:layout_marginTop="@dimen/dp_7"
+                android:layout_marginRight="@dimen/dp_8"
+                android:background="@drawable/ic_bg_01"
+                app:layout_constraintTop_toBottomOf="@+id/aciv_logo"
+                tools:ignore="MissingConstraints">
+                <!--  经销商id-->
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/acet_dealer_id"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_32"
+                    android:layout_marginLeft="@dimen/dp_12"
+                    android:layout_marginTop="@dimen/dp_8"
+                    android:layout_marginRight="@dimen/dp_12"
+                    android:background="@drawable/shape_input_delivery_bg"
+                    android:digits="1234567890"
+                    android:gravity="center"
+                    android:hint="请输入经销商id(输入后请对准经销商id是否准确)"
+                    android:imeOptions="actionDone"
+                    android:inputType="number"
+                    android:singleLine="true"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_12"
+                    android:textStyle="bold"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+                <!-- 部门id-->
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/acet_dept_id"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_32"
+                    android:layout_marginLeft="@dimen/dp_12"
+                    android:layout_marginTop="@dimen/dp_8"
+                    android:layout_marginRight="@dimen/dp_12"
+                    android:background="@drawable/shape_input_delivery_bg"
+                    android:digits="1234567890"
+                    android:gravity="center"
+                    android:hint="请输入部门id(输入后请对准部门id是否准确)"
+                    android:imeOptions="actionDone"
+                    android:inputType="number"
+                    android:singleLine="true"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_12"
+                    android:textStyle="bold"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_dealer_id" />
+                <!-- url qr后缀-->
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/acet_qr"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_32"
+                    android:layout_marginLeft="@dimen/dp_12"
+                    android:layout_marginTop="@dimen/dp_8"
+                    android:layout_marginRight="@dimen/dp_12"
+                    android:layout_marginBottom="@dimen/dp_10"
+                    android:background="@drawable/shape_input_delivery_bg"
+                    android:gravity="center"
+                    android:hint="请输入二维码内容信息(输入后请对准内容是否准确)"
+                    android:imeOptions="actionDone"
+                    android:inputType="text"
+                    android:singleLine="true"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_12"
+                    android:textStyle="bold"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_dept_id" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/cl_content2"
                 android:layout_width="match_parent"
@@ -46,7 +123,7 @@
                 android:layout_marginTop="@dimen/dp_14"
                 android:layout_marginRight="@dimen/dp_8"
                 android:background="@drawable/ic_bg_02"
-                app:layout_constraintTop_toBottomOf="@+id/aciv_logo"
+                app:layout_constraintTop_toBottomOf="@+id/cl_content1"
                 tools:ignore="MissingConstraints">
 
                 <androidx.appcompat.widget.AppCompatEditText
@@ -54,12 +131,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/dp_32"
                     android:layout_marginLeft="@dimen/dp_12"
-                    android:layout_marginTop="@dimen/dp_16"
+                    android:layout_marginTop="@dimen/dp_8"
                     android:layout_marginRight="@dimen/dp_12"
                     android:background="@drawable/shape_input_delivery_bg"
                     android:gravity="center"
-                    android:inputType="number"
                     android:hint="请输入出厂配置SN码，(输入后请对准sn是否准确)"
+                    android:imeOptions="actionDone"
+                    android:inputType="text"
+                    android:singleLine="true"
                     android:textColor="@color/white"
                     android:textColorHint="@color/white"
                     android:textSize="@dimen/sp_12"
@@ -67,12 +146,31 @@
                     app:layout_constraintLeft_toLeftOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_flow_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_32"
+                    android:layout_marginLeft="@dimen/dp_12"
+                    android:layout_marginTop="@dimen/dp_8"
+                    android:layout_marginRight="@dimen/dp_12"
+                    android:background="@drawable/shape_input_delivery_bg"
+                    android:gravity="center"
+                    android:inputType="number"
+                    android:text="点击选择流量卡到期时间"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_12"
+                    android:textStyle="bold"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_sn" />
+
                 <androidx.appcompat.widget.AppCompatTextView
                     android:id="@+id/actv_type"
                     android:layout_width="wrap_content"
                     android:layout_height="@dimen/dp_32"
                     android:layout_marginLeft="@dimen/dp_12"
-                    android:layout_marginTop="@dimen/dp_16"
+                    android:layout_marginTop="@dimen/dp_8"
                     android:background="@drawable/shape_input_delivery_bg"
                     android:gravity="center"
                     android:paddingLeft="@dimen/dp_10"
@@ -82,7 +180,7 @@
                     android:textSize="@dimen/sp_12"
                     android:textStyle="bold"
                     app:layout_constraintLeft_toLeftOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/acet_sn" />
+                    app:layout_constraintTop_toBottomOf="@+id/acet_flow_card" />
 
                 <RadioGroup
                     android:id="@+id/rg_lattice"
@@ -166,7 +264,6 @@
             android:scaleType="matrix"
             android:src="@drawable/ic_start2"
             android:visibility="gone" />
-
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

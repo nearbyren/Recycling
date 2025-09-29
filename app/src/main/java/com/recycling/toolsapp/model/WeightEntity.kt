@@ -21,6 +21,10 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "transId", typeAffinity = TEXT, defaultValue = "") var transId: String? = null,
     /***
+     * 仓门编码
+     */
+    @ColumnInfo(name = "cabinId", typeAffinity = TEXT, defaultValue = "") var cabinId: String? = null,
+    /***
      * 物品上称后的体重【关键字段】
      */
     @ColumnInfo(name = "curWeight", typeAffinity = TEXT, defaultValue = "") var curWeight: String? = null,
@@ -69,12 +73,16 @@ import androidx.room.PrimaryKey
         null,
         null,
         null,
+        null,
         -1,
+        null,
     )
 
     override fun toString(): String {
         return "id=$id," +
+                "cmd=${cmd}," +
                 "transId=${transId}," +
+                "cabinId=${cabinId}," +
                 "curWeight=${curWeight}," +
                 "changeWeight=${changeWeight}" +
                 "refWeight=${refWeight}" +

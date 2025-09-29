@@ -30,7 +30,6 @@ object BusType {
      */
     const val BUS_CLEAR_STATUS = "clearStatus"
 
-
     /***
      * 计重页格口异常
      */
@@ -70,6 +69,16 @@ object BusType {
      * 正常
      */
     const val BUS_NORMAL = "normal"
+
+    /**
+     * 维护中
+     */
+    const val BUS_MAINTAINING = "maintaining"
+
+    /**
+     * 维护结束
+     */
+    const val BUS_MAINTAINING_END = "maintaining_end"
 
     /**
      * 刷新数据

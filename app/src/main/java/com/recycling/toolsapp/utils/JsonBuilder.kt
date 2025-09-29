@@ -211,7 +211,7 @@ object JsonBuilder {
 //
 //    // 转换为字节数组
 //    val byteArray = JsonBuilder.toByteArray(jsonObject)
-//    println("调试socket 发送心跳数据：$jsonObject")
+//    Loge.e("调试socket 发送心跳数据：$jsonObject")
 
     // 动态字段示例
 //    val dynamicFields = mapOf(

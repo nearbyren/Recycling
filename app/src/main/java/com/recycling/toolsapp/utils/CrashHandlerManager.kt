@@ -128,7 +128,7 @@ class CrashHandlerManager(private val mContext: Context) : Thread.UncaughtExcept
         throwable.printStackTrace()
         //收集設備信息
         collectDeviceInfo()
-        val crash = SPreUtil.get(AppUtils.getContext(), "crash", 1) as Int
+        val crash = SPreUtil[AppUtils.getContext(), "crash", 1] as Int
         val save = crash + 1
         SPreUtil.put(AppUtils.getContext(), "crash", save)
         //保存異常日誌到文件

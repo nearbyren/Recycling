@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.recycling.toolsapp.model.TransEntity
+import com.recycling.toolsapp.model.WeightEntity
 
 
 /***
@@ -20,6 +21,10 @@ import com.recycling.toolsapp.model.TransEntity
 
     @Query("UPDATE TransEntity SET openStatus = :openStatus WHERE transId = :transId")
     fun upTransOpenStatus(openStatus: Int, transId: String)
+
+
+    @Query("select * from TransEntity WHERE closeStatus = :closeStatus")
+    fun queryTransOpenStatus(closeStatus: Int): List<TransEntity>
 
     @Query("select * from TransEntity ORDER BY ROWID DESC LIMIT 1")
     fun queryTransMax(): TransEntity

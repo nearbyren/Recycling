@@ -91,6 +91,42 @@ object FileMdUtil {
         }
     }
 
+    /***
+     * @param fileNameToDelete
+     * 删除文件
+     */
+    fun delFileName(fileNameToDelete: String) {
+        // 指定目录路径（修改为实际路径）
+        // 要删除的文件名（支持通配符）
+        val dir =
+                File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+
+        if (!dir.exists() || !dir.isDirectory) {
+            Loge.e("指定文件删除 目录不存在或不是有效目录: $dir")
+            return
+        }
+
+        Loge.e("指定文件删除 目录不存在或不是有效目录: ${dir.absolutePath}")
+        val files = dir.listFiles { f, name ->
+            Loge.e("指定文件删除 目录不存在或不是有效目录: ${f.absolutePath}|$name")
+
+            name == fileNameToDelete // 可修改为更复杂的匹配逻辑
+        } ?: emptyArray()
+
+        if (files.isEmpty()) {
+            Loge.e("指定文件删除 未找到匹配文件: $fileNameToDelete")
+            return
+        }
+
+        files.forEach { file ->
+            if (file.delete()) {
+                Loge.e("指定文件删除 成功删除: ${file.absolutePath}")
+            } else {
+                Loge.e("指定文件删除 删除失败: ${file.absolutePath}")
+            }
+        }
+    }
+
     /**
      * 保存 音频 图片资源
      * @param bitmap

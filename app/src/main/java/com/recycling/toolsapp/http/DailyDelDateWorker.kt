@@ -3,7 +3,7 @@ package com.recycling.toolsapp.http
 /**
  * @author: lr
  * @created on: 2025/5/14 上午11:25
- * @description:定时清理非七天内的数据
+ * @description:定时清理非三天内的数据
  */
 import android.content.Context
 import android.os.Environment
@@ -16,7 +16,7 @@ import java.util.Calendar
 import java.util.Locale
 
 /***
- * 定时清理非七天内的数据
+ * 定时清理非三天内的数据
  */
 class DailyDelDateWorker(
     context: Context, params: WorkerParameters,
@@ -39,17 +39,17 @@ class DailyDelDateWorker(
                 val files = dir.listFiles() ?: return@let
                 // 获取一周前的日期
                 val calendar = Calendar.getInstance()
-                calendar.add(Calendar.DAY_OF_YEAR, -7)
+                calendar.add(Calendar.DAY_OF_YEAR, -3)
                 val oneWeekAgo = calendar.time
                 // 日期格式解析器
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 files.forEach { file ->
-                    Loge.d("清理非七天内数据开始 目录 ${file.name}")
+                    Loge.d("清理非三天内数据开始 目录 ${file.name}")
                     if (shouldDeleteDir(file.name)) {
                         file.listFiles()?.forEach { log ->
                             if (log.isFile && log.name.contains("--")) {
                                 try {
-                                    Loge.d("清理非七天内数据开始 文件 ${log.name}")
+                                    Loge.d("清理非三天内数据开始 文件 ${log.name}")
                                     // 提取文件名中的日期部分
                                     val fileName = log.name
                                     val datePart =
@@ -58,17 +58,17 @@ class DailyDelDateWorker(
                                     val fileDate = dateFormat.parse(datePart) ?: return@forEach
                                     // 检查是否超过一周
                                     if (fileDate.before(oneWeekAgo)) {
-                                        Loge.d("清理非七天内数据开始 删除过期文件: ${log.name} (日期: $datePart)")
+                                        Loge.d("清理非三天内数据开始 删除过期文件: ${log.name} (日期: $datePart)")
                                         if (log.delete()) {
-                                            Loge.d("清理非七天内数据开始 文件删除成功")
+                                            Loge.d("清理非三天内数据开始 文件删除成功")
                                         } else {
-                                            Loge.d("清理非七天内数据开始 文件删除失败")
+                                            Loge.d("清理非三天内数据开始 文件删除失败")
                                         }
                                     } else {
-                                        Loge.d("清理非七天内数据开始 保留文件: ${log.name} (日期: $datePart)")
+                                        Loge.d("清理非三天内数据开始 保留文件: ${log.name} (日期: $datePart)")
                                     }
                                 } catch (e: Exception) {
-                                    Loge.d("清理非七天内数据开始 处理文件 ${log.name} 出错: ${e.message}")
+                                    Loge.d("清理非三天内数据开始 处理文件 ${log.name} 出错: ${e.message}")
                                 }
                             }
                         }

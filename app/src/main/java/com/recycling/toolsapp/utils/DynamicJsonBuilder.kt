@@ -4,6 +4,7 @@ package com.recycling.toolsapp.utils
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.serial.port.utils.Loge
 
 class DynamicJsonBuilder {
     private val root = JsonObject()
@@ -71,5 +72,5 @@ fun main() {
         .addPrimitive("timestamp", "1756196615299")
         .build()
 
-    println(json)
+    Loge.e(json)
 }

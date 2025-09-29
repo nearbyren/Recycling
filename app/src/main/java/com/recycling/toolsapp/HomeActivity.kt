@@ -21,7 +21,6 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.recycling.toolsapp.databinding.ActivityHomeBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindActivity
-import com.recycling.toolsapp.http.TaskDelDateScheduler
 import com.recycling.toolsapp.http.TaskRestartScheduler
 import com.recycling.toolsapp.socket.DoorOpenBean
 import com.recycling.toolsapp.socket.ConfigBean
@@ -90,13 +89,7 @@ import java.io.File
         initNetworkState()
         initDoorStatus()
         initPort()
-//        cabinetVM.ioScope.launch {
-//            // 预热相机Provider 快速启动相机能从6秒到2秒
-//            cabinetVM.cameraProviderFuture = ProcessCameraProvider.getInstance(this@HomeActivity)
-//            cabinetVM.cameraProviderFuture2 =
-//                    ProcessCameraProvider.getInstance(this@HomeActivity).get()
-//        }
-        val initSocket = SPreUtil.get(AppUtils.getContext(), "initSocket", false) as Boolean
+        val initSocket = SPreUtil[AppUtils.getContext(), "initSocket", false] as Boolean
         if (initSocket) {
             initSocket()
         }
@@ -112,10 +105,9 @@ import java.io.File
     private fun initPort() {
         // 启动门控制系统
         cabinetVM.startDoorControlSystem()
-
 //        cabinetVM.startPollingDoor()
 //        cabinetVM.addDoorQueue(CmdType.CMD5)
-//        cabinetVM.pollingFault()
+        cabinetVM.pollingFault()
 //        cabinetVM.requestStatusQuery()
 //        cabinetVM.startNewDoor()
     }
@@ -225,11 +217,15 @@ import java.io.File
                     ResultType.RESULT1 -> {
 //                        cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
                         cabinetVM.testSendCmd2(CmdCode.GE_CLOSE)
+                        //这里建议时间定时器去处理
+                        cabinetVM.refreshTimerDoorClose()
                     }
                     //倒计时结束
                     ResultType.RESULT2 -> {
 //                        cabinetVM.testSendCmd(CmdCode.GE_CLOSE)
                         cabinetVM.testSendCmd2(CmdCode.GE_CLOSE)
+                        //这里建议时间定时器去处理
+                        cabinetVM.refreshTimerDoorClose()
                     }
                     //门已经开了
                     ResultType.RESULT310 -> {
@@ -318,7 +314,7 @@ import java.io.File
         lifecycleScope.launch {
             cabinetVM.getLoginCmd.collect {
                 if (it) {
-                    println("调试socket saveInitNet 加载fragment")
+                    Loge.e("调试socket saveInitNet 加载fragment")
                     binding.acivInit.isVisible = false
                     toGoUi()
                 }
@@ -328,30 +324,30 @@ import java.io.File
         lifecycleScope.launch {
             cabinetVM.vmClient = SocketManager.socketClient
             val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
-            println("调试socket OneActivity 当前线程：${Thread.currentThread().name} | state $state")
+            Loge.e("调试socket OneActivity 当前线程：${Thread.currentThread().name} | state $state")
             when (state) {
                 ConnectionState.START -> {
-                    println("调试socket OneActivity 取 开始：${Thread.currentThread().name} | state $state")
+                    Loge.e("调试socket OneActivity 取 开始：${Thread.currentThread().name} | state $state")
 
                 }
 
                 ConnectionState.DISCONNECTED -> {
-                    println("调试socket OneActivity 取 已断开连接：${Thread.currentThread().name} | state $state")
+                    Loge.e("调试socket OneActivity 取 已断开连接：${Thread.currentThread().name} | state $state")
 
                 }
 
                 ConnectionState.CONNECTING -> {
-                    println("调试socket OneActivity 取 正在连接：${Thread.currentThread().name} | state $state")
+                    Loge.e("调试socket OneActivity 取 正在连接：${Thread.currentThread().name} | state $state")
                 }
 
                 ConnectionState.CONNECTED -> {
-                    println("调试socket OneActivity 取 已连接：${Thread.currentThread().name} | state $state")
+                    Loge.e("调试socket OneActivity 取 已连接：${Thread.currentThread().name} | state $state")
                     cabinetVM.toGoCmdLogin()
                 }
             }
-            println("调试socket lifecycleScope ${Thread.currentThread().name} vmClient = ${cabinetVM.vmClient} | state = ${cabinetVM.vmClient?.state}")
+            Loge.e("调试socket lifecycleScope ${Thread.currentThread().name} vmClient = ${cabinetVM.vmClient} | state = ${cabinetVM.vmClient?.state}")
             cabinetVM.vmClient?.incoming?.collect { bytes ->
-                println("调试socket recv: ${String(bytes)}")
+                Loge.e("调试socket recv: ${String(bytes)}")
                 val json = String(bytes)
                 BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, json)
                 val cmd = CommandParser.parseCommand(json)
@@ -413,24 +409,24 @@ import java.io.File
                 }
             }
             cabinetVM.vmClient?.state?.collect {
-                println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
+                Loge.e("调试socket 连接状态: $it | ${Thread.currentThread().name}")
                 when (it) {
                     ConnectionState.START -> {
-                        println("调试socket OneActivity 监 开始：${Thread.currentThread().name} | state $state")
+                        Loge.e("调试socket OneActivity 监 开始：${Thread.currentThread().name} | state $state")
 
                     }
 
                     ConnectionState.DISCONNECTED -> {
-                        println("调试socket OneActivity 监 已断开连接：${Thread.currentThread().name} | state $state")
+                        Loge.e("调试socket OneActivity 监 已断开连接：${Thread.currentThread().name} | state $state")
 
                     }
 
                     ConnectionState.CONNECTING -> {
-                        println("调试socket OneActivity 监 正在连接：${Thread.currentThread().name} | state $state")
+                        Loge.e("调试socket OneActivity 监 正在连接：${Thread.currentThread().name} | state $state")
                     }
 
                     ConnectionState.CONNECTED -> {
-                        println("调试socket OneActivity 监 已连接：${Thread.currentThread().name} | state $state")
+                        Loge.e("调试socket OneActivity 监 已连接：${Thread.currentThread().name} | state $state")
                         cabinetVM.toGoCmdLogin()
                     }
                 }
@@ -551,11 +547,11 @@ import java.io.File
 //                    binding.clFirmwareUpgrade.isVisible = true
 //                    binding.tvFirmwareTitle.text = "固件升级中"
 //                    binding.tvFirmwareDes.text = "正在升级主芯片固件中，耐心等待，请勿进行其他操作。"
-                    Loge.d("芯片升级 主芯片升级 接收指令7 来了回调")
+                    Loge.d("芯片升级 接收指令7 来了回调")
                     cabinetVM.chipSet7()
                 } else {
 //                    binding.clFirmwareUpgrade.isVisible = false
-                    Loge.d("芯片升级 主芯片升级 接收指令7 没来回调")
+                    Loge.d("芯片升级 接收指令7 没来回调")
                 }
             }
         }
@@ -563,10 +559,10 @@ import java.io.File
         lifecycleScope.launch {
             cabinetVM.isFlowSteps8.collect {
                 if (it) {
-                    Loge.d("芯片升级 主芯片升级 接收指令8 来了回调")
+                    Loge.d("芯片升级 接收指令8 来了回调")
                     cabinetVM.chipSet8()
                 } else {
-                    Loge.d("芯片升级 主芯片升级 接收指令8 没来回调")
+                    Loge.d("芯片升级 接收指令8 没来回调")
 //                    binding.clFirmwareUpgrade.isVisible = false
                 }
             }
@@ -575,10 +571,10 @@ import java.io.File
         lifecycleScope.launch {
             cabinetVM.isFlowSteps8f.collect {
                 if (it) {
-                    Loge.d("芯片升级 主芯片升级 接收指令8f 来了回调")
+                    Loge.d("芯片升级 接收指令8f 来了回调")
                     cabinetVM.chipSet8f()
                 } else {
-                    Loge.d("芯片升级 主芯片升级 接收指令8f 没来回调")
+                    Loge.d("芯片升级 接收指令8f 没来回调")
 //                    binding.clFirmwareUpgrade.isVisible = false
                 }
             }
@@ -587,11 +583,11 @@ import java.io.File
         lifecycleScope.launch {
             cabinetVM.isFlowSteps9.collect {
                 if (it) {
-                    Loge.d("芯片升级 主芯片升级 接收指令9 来了回调")
+                    Loge.d("芯片升级 接收指令9 来了回调")
                     delay(5000)
                     cabinetVM.chipSet9()
                 } else {
-                    Loge.d("芯片升级 主芯片升级 接收指令9 没来回调")
+                    Loge.d("芯片升级 接收指令9 没来回调")
 //                    binding.clFirmwareUpgrade.isVisible = false
                 }
             }
@@ -600,10 +596,10 @@ import java.io.File
         lifecycleScope.launch {
             cabinetVM.isFlowSteps10.collect {
                 if (it) {
-                    Loge.d("芯片升级 主芯片升级 接收指令10 来了回调")
+                    Loge.d("芯片升级 接收指令10 来了回调")
                     cabinetVM.chipSet10()
                 } else {
-                    Loge.d("芯片升级 主芯片升级 接收指令10 没来回调")
+                    Loge.d("芯片升级 接收指令10 没来回调")
 //                    binding.clFirmwareUpgrade.isVisible = false
                 }
             }
@@ -612,10 +608,10 @@ import java.io.File
         lifecycleScope.launch {
             cabinetVM.isFlowSteps232Succes.collect {
                 if (it) {
-                    Loge.d("芯片升级 主芯片升级 接收指令success 来了回调")
+                    Loge.d("芯片升级 接收指令success 来了回调")
 //                    binding.clFirmwareUpgrade.isVisible = false
                 } else {
-                    Loge.d("芯片升级 主芯片升级 接收指令success 没来回调")
+                    Loge.d("芯片升级 接收指令success 没来回调")
 //                    binding.clFirmwareUpgrade.isVisible = false
                 }
             }
@@ -682,7 +678,7 @@ import java.io.File
 
     private fun navigateToHome() {
         val typeGrid = SPreUtil[AppUtils.getContext(), "type_grid", -1]
-        println("调试socket navigateToHome $typeGrid")
+        Loge.e("调试socket navigateToHome $typeGrid")
         val initSn = SPreUtil[AppUtils.getContext(), "init_sn", "init_sn"]
         val loginSn = SPreUtil[AppUtils.getContext(), "login_sn", "login_sn"]
         if (initSn == loginSn) {
@@ -708,14 +704,14 @@ import java.io.File
     }
 
     override fun onDetachedFromWindow() {
-        println("调试socket home onDestroy")
+        Loge.e("调试socket home onDestroy")
         cabinetVM.closeSock()
         cabinetVM.stopDoorControl()
         super.onDetachedFromWindow()
     }
 
     override fun onDestroy() {
-        println("调试socket home onDestroy")
+        Loge.e("调试socket home onDestroy")
         cabinetVM.closeSock()
         cabinetVM.stopDoorControl()
         super.onDestroy()

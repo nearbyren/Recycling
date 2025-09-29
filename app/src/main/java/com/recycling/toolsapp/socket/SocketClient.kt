@@ -12,6 +12,7 @@ import com.recycling.toolsapp.utils.JsonBuilder
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.ByteUtils
+import com.serial.port.utils.Loge
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -98,7 +99,7 @@ class SocketClient(
         if (running) return
         running = true
         _state.value = ConnectionState.START
-        println("调试socket start ")
+        Loge.e("调试socket start ")
         clientScope.launch { runMainLoop() }
     }
 
@@ -106,12 +107,12 @@ class SocketClient(
      * 关闭socket连接
      */
     suspend fun stop() {
-        println("调试socket stop ")
+        Loge.e("调试socket stop ")
         running = false
         try {
             clientScope.coroutineContext.job.cancelAndJoin()
         } catch (e: CancellationException) {
-            println("调试socket stop ${e.message}")
+            Loge.e("调试socket stop ${e.message}")
         }
         closeSocketQuietly()
     }
@@ -121,7 +122,7 @@ class SocketClient(
      * 发送字节
      */
     suspend fun send(data: ByteArray) {
-//        println("调试socket send ByteArray  ${ByteUtils.toHexString(data)}")
+//        Loge.e("调试socket send ByteArray  ${ByteUtils.toHexString(data)}")
         require(data.size <= config.maxFrameSizeBytes) { "Frame too large: ${data.size}" }
         // Backpressure control by counting queued bytes
         enqueueSend(data)
@@ -132,7 +133,7 @@ class SocketClient(
      * 发送字符串
      */
     suspend fun sendText(text: String) {
-//        println("调试socket sendText  $text")
+//        Loge.e("调试socket sendText  $text")
         send(text.toByteArray())
     }
 
@@ -142,7 +143,7 @@ class SocketClient(
      *
      */
     private suspend fun enqueueSend(data: ByteArray) {
-//        println("调试socket enqueueSend  ${ByteUtils.toHexString(data)}")
+//        Loge.e("调试socket enqueueSend  ${ByteUtils.toHexString(data)}")
         // Simple soft limit enforcement by suspending when over budget
         val queuedBytes = data.size
         if (queuedBytes > config.maxSendQueueBytes) {
@@ -156,21 +157,21 @@ class SocketClient(
      */
     private suspend fun runMainLoop() {
         var attempt = 0
-        println("调试socket runMainLoop")
+        Loge.e("调试socket runMainLoop")
         while (running && clientScope.isActive) {
             try {
                 _state.value = ConnectionState.CONNECTING
-                println("调试socket runMainLoop 连接中")
+                Loge.e("调试socket runMainLoop 连接中")
                 connectAndServe()
                 attempt = 0 // reset backoff after successful session
             } catch (e: CancellationException) {
-                println("调试socket runMainLoop catch1 ${e.message} running $running")
+                Loge.e("调试socket runMainLoop catch1 ${e.message} running $running")
                 break
             } catch (e: Exception) {
                 // Swallow and backoff
-                println("调试socket runMainLoop catch2 ${e.message} running $running")
+                Loge.e("调试socket runMainLoop catch2 ${e.message} running $running")
             } finally {
-                println("调试socket runMainLoop finally running $running")
+                Loge.e("调试socket runMainLoop finally running $running")
                 closeSocketQuietly()
                 if (!running) break
                 _state.value = ConnectionState.DISCONNECTED
@@ -178,7 +179,7 @@ class SocketClient(
 
             attempt += 1
             val delayMs = computeReconnectDelay(attempt)
-            println("调试socket runMainLoop 重连接延迟 $delayMs")
+            Loge.e("调试socket runMainLoop 重连接延迟 $delayMs")
             delay(delayMs)
         }
     }
@@ -188,7 +189,7 @@ class SocketClient(
      * @param attempt
      */
     private fun computeReconnectDelay(attempt: Int): Long {
-        println("调试socket computeReconnectDelay attempt $attempt")
+        Loge.e("调试socket computeReconnectDelay attempt $attempt")
         val base =
                 config.minReconnectDelayMillis * config.reconnectBackoffMultiplier.pow((attempt - 1).toDouble())
         val clamped = min(base, config.maxReconnectDelayMillis.toDouble()).toLong()
@@ -200,7 +201,7 @@ class SocketClient(
      * 连接和服务
      */
     private suspend fun connectAndServe() {
-        println("调试socket connectAndServe")
+        Loge.e("调试socket connectAndServe")
         val s = Socket()
         s.tcpNoDelay = true
         s.soTimeout = config.readTimeoutMillis
@@ -216,7 +217,7 @@ class SocketClient(
         val reader = clientScope.launch { readLoop(input) }
         val writer = clientScope.launch { writeLoopByte(output) }
 //        val monitor = clientScope.launch { heartbeatAndIdleMonitor() }
-        println("调试socket connectAndServe 已连接")
+        Loge.e("调试socket connectAndServe 已连接")
         _state.value = ConnectionState.CONNECTED
 
         try {
@@ -242,7 +243,7 @@ class SocketClient(
      * 缓冲输入流
      */
     private suspend fun readLoop(input: BufferedInputStream) {
-        println("调试socket readLoop ")
+        Loge.e("调试socket readLoop ")
         val buffer = ByteArray(8 * 1024)
         while (running && clientScope.isActive) {
             try {
@@ -253,10 +254,10 @@ class SocketClient(
                 }
                 lastReceivedAtMillis = System.currentTimeMillis()
                 val frame = buffer.copyOf(read)
-//                println("调试socket readLoop ${ByteUtils.toHexString(frame)}")
+//                Loge.e("调试socket readLoop ${ByteUtils.toHexString(frame)}")
                 _incoming.emit(frame)
             } catch (e: IOException) {
-                println("调试socket readLoop catch ${e.message}")
+                Loge.e("调试socket readLoop catch ${e.message}")
                 break
             }
         }
@@ -268,11 +269,11 @@ class SocketClient(
      * 缓冲输出流
      */
     private suspend fun writeLoopByte(output: BufferedOutputStream) {
-        println("调试socket writeLoop running $running | isActive ${clientScope.isActive}")
+        Loge.e("调试socket writeLoop running $running | isActive ${clientScope.isActive}")
         while (running && clientScope.isActive) {
             try {
                 val data = sendQueueByte.receive()
-//                println("调试socket writeLoopByte byte：${ByteUtils.toHexString(data)}")
+//                Loge.e("调试socket writeLoopByte byte：${ByteUtils.toHexString(data)}")
                 BoxToolLogUtils.recordSocket(CmdValue.SEND, JsonBuilder.toByteArrayToString(data))
                 output.write(data)
                 if (config.writeFlushIntervalMillis == 0L) {
@@ -283,10 +284,10 @@ class SocketClient(
                     output.flush()
                 }
             } catch (e: CancellationException) {
-                println("调试socket writeLoop catch1 ${e.message}")
+                Loge.e("调试socket writeLoop catch1 ${e.message}")
                 break
             } catch (e: IOException) {
-                println("调试socket writeLoop catch2 ${e.message}")
+                Loge.e("调试socket writeLoop catch2 ${e.message}")
                 break
             }
         }
@@ -297,24 +298,24 @@ class SocketClient(
      * 心跳启动
      */
     private suspend fun heartbeatAndIdleMonitor() {
-//        println("调试socket heartbeatAndIdleMonitor $running | ${clientScope.isActive}")
+//       Loge.e("调试socket heartbeatAndIdleMonitor $running | ${clientScope.isActive}")
         val hasHeartbeat =
                 config.heartbeatIntervalMillis1 > 0 /*&& config.heartbeatPayload.isNotEmpty()*/
         while (running && clientScope.isActive) {
             val now = System.currentTimeMillis()
-//            println("调试socket heartbeatAndIdleMonitor 分钟：${config.idleTimeoutMillis} | 当前毫秒：$lastReceivedAtMillis | 当前-最后：${now - lastReceivedAtMillis}")
+//            Loge.e("调试socket heartbeatAndIdleMonitor 分钟：${config.idleTimeoutMillis} | 当前毫秒：$lastReceivedAtMillis | 当前-最后：${now - lastReceivedAtMillis}")
             if (config.idleTimeoutMillis > 0 && now - lastReceivedAtMillis > config.idleTimeoutMillis) {
                 // Force reconnect by closing the socket
-                println("调试socket heartbeatAndIdleMonitor closeSocketQuietly")
+                Loge.e("调试socket heartbeatAndIdleMonitor closeSocketQuietly")
                 closeSocketQuietly()
                 return
             }
-//            println("调试socket heartbeatAndIdleMonitor $hasHeartbeat")
+//            Loge.e("调试socket heartbeatAndIdleMonitor $hasHeartbeat")
             if (hasHeartbeat) {
                 try {
-//                    println("调试socket heartbeatAndIdleMonitor trySend")
+//                    Loge.e("调试socket heartbeatAndIdleMonitor trySend")
                     val stateList = DatabaseManager.queryStateList(AppUtils.getContext())
-//                    println("调试socket stateList：${stateList.size}")
+//                    Loge.e("调试socket stateList：${stateList.size}")
                     // 构建JSON对象
                     val jsonObject = JsonBuilder.build {
                         addProperty("cmd", "heartBeat")
@@ -334,11 +335,11 @@ class SocketClient(
                             }
                         }
                     }
-//                    println("调试socket 发送心跳数据：$jsonObject")
+//                    Loge.e("调试socket 发送心跳数据：$jsonObject")
                     val byteArray = JsonBuilder.toByteArray(jsonObject)
                     sendQueueByte.trySend(byteArray)
                 } catch (e: Exception) {
-                    println("调试socket heartbeatAndIdleMonitor catch ${e.message}")
+                    Loge.e("调试socket heartbeatAndIdleMonitor catch ${e.message}")
                 }
             }
             delay(maxOf(1000L, config.heartbeatIntervalMillis1))
@@ -349,23 +350,23 @@ class SocketClient(
      * 关闭socket
      */
     private fun closeSocketQuietly() {
-        println("调试socket closeSocketQuietly $running | ${clientScope.isActive}")
+        Loge.e("调试socket closeSocketQuietly $running | ${clientScope.isActive}")
         try {
             socketMutex.tryLock()?.let { locked ->
                 if (locked) {
                     try {
                         socket?.close()
                     } catch (e: Exception) {
-                        println("调试socket closeSocketQuietly catch1 ${e.message}")
+                        Loge.e("调试socket closeSocketQuietly catch1 ${e.message}")
                     } finally {
                         socket = null
                         socketMutex.unlock()
-                        println("调试socket closeSocketQuietly finally")
+                        Loge.e("调试socket closeSocketQuietly finally")
                     }
                 }
             }
         } catch (e: Exception) {
-            println("调试socket closeSocketQuietly catch2 ${e.message}")
+            Loge.e("调试socket closeSocketQuietly catch2 ${e.message}")
         }
     }
 }

@@ -13,14 +13,11 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
-import android.hardware.camera2.TotalCaptureResult
 import android.media.ImageReader
-import android.media.MediaRecorder
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.HandlerThread
-import android.text.TextUtils
 import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
@@ -30,29 +27,21 @@ import android.widget.Toast
 import androidx.camera.core.impl.utils.CompareSizesByArea
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
 import com.recycling.toolsapp.R
-import com.recycling.toolsapp.databinding.FragmentCamera2Binding
 import com.recycling.toolsapp.databinding.FragmentCameraInBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
-import com.recycling.toolsapp.utils.CmdValue
-import com.recycling.toolsapp.utils.FualtType
+import com.recycling.toolsapp.utils.FaultType
 import com.recycling.toolsapp.utils.PermissionRequest
 import com.recycling.toolsapp.utils.PermissionsRequester
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
-import com.serial.port.utils.FileMdUtil
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import top.zibin.luban.Luban
-import top.zibin.luban.OnCompressListener
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.Arrays
 import java.util.Collections
-import java.util.Locale
 
 
 /***
@@ -139,7 +128,7 @@ import java.util.Locale
     }
 
     private fun toGoFaultDesc(desc: String) {
-        cabinetVM.toGoCmdUpFault(FualtType.TYPE5, 0, desc)
+        cabinetVM.toGoCmdUpFault(FaultType.TYPE5, 0, desc)
     }
 
     private fun setupCameras() {

@@ -1,9 +1,9 @@
 package com.recycling.toolsapp.utils
 
 /***
- * 指令标识
+ * 故障状态
  */
-object FualtType {
+object FaultType {
     /***
      * 1.投送门开门异常
      * 2.投递门关门异常

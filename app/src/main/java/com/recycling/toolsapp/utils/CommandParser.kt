@@ -3,6 +3,7 @@ package com.recycling.toolsapp.utils
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.serial.port.utils.Loge
 
 class CommandParser {
     companion object {
@@ -25,5 +26,5 @@ class CommandParser {
 
 fun main() {
     val json = """{"cmd":"ota","version":"1.285","url":"","md5":"","sn":"0136004ST00041"}"""
-    println("Extracted command: ${CommandParser.parseCommand(json)}")
+    Loge.e("Extracted command: ${CommandParser.parseCommand(json)}")
 }

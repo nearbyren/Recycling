@@ -35,12 +35,13 @@ import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentCamera2Binding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.utils.CmdValue
-import com.recycling.toolsapp.utils.FualtType
+import com.recycling.toolsapp.utils.FaultType
 import com.recycling.toolsapp.utils.PermissionRequest
 import com.recycling.toolsapp.utils.PermissionsRequester
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.FileMdUtil
+import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -168,7 +169,7 @@ import java.util.Locale
         }
         lifecycleScope.launch {
             cabinetVM.getActive.collect { activeType ->
-                println("调试socket 调试串口 进行拍照 $activeType")
+                Loge.e("调试socket 调试串口 进行拍照 $activeType")
                 cabinetVM.activeType = activeType
                 capturePhotoIn()
                 capturePhotoOut()
@@ -181,7 +182,7 @@ import java.util.Locale
     }
 
     private fun toGoFaultDesc(desc: String) {
-        cabinetVM.toGoCmdUpFault(FualtType.TYPE5, 0, desc)
+        cabinetVM.toGoCmdUpFault(FaultType.TYPE5, 0, desc)
     }
 
     private fun setupCameras() {
@@ -204,6 +205,8 @@ import java.util.Locale
 
             if (cameraIds.isEmpty()) {
                 Toast.makeText(AppUtils.getContext(), "未找到可用摄像头", Toast.LENGTH_SHORT).show()
+                cabinetVM.maptDoorFault[5] = true
+                toGoFaultDesc("找不到摄像头")
                 return
             }
 
@@ -231,6 +234,7 @@ import java.util.Locale
             e.printStackTrace()
             Toast.makeText(AppUtils.getContext(), "摄像头访问错误", Toast.LENGTH_SHORT).show()
             toGoFaultDesc("摄像头访问异常")
+            cabinetVM.maptDoorFault[5] = true
         }
     }
 
@@ -274,6 +278,8 @@ import java.util.Locale
         } catch (e: CameraAccessException) {
             e.printStackTrace()
             toGoFaultDesc("摄像获取尺寸异常")
+            cabinetVM.maptDoorFault[if (cameraNum == 1) 51 else 52]
+
         }
     }
 
@@ -283,6 +289,7 @@ import java.util.Locale
                     // 表面可用，可以开始预览
                     if (isPreviewActiveIn) {
                         startPreview(1)
+                        cabinetVM.maptDoorFault[51] = false
                     }
                 }
 
@@ -304,6 +311,7 @@ import java.util.Locale
                     // 表面可用，可以开始预览
                     if (isPreviewActiveOut) {
                         startPreview(2)
+                        cabinetVM.maptDoorFault[52] = false
                     }
                 }
 
@@ -389,12 +397,14 @@ import java.util.Locale
                         cameraDeviceIn = null
                         isPreviewActiveIn = false
                         toGoFaultDesc("摄像头打开失败内")
+                        cabinetVM.maptDoorFault[51] = true
 
 //                        updatePreviewUI(1, false)
                     } else {
                         cameraDeviceOut = null
                         isPreviewActiveOut = false
                         toGoFaultDesc("摄像头打开失败外")
+                        cabinetVM.maptDoorFault[52] = true
 
 //                        updatePreviewUI(2, false)
                     }
@@ -405,6 +415,7 @@ import java.util.Locale
             e.printStackTrace()
             Toast.makeText(AppUtils.getContext(), "摄像头访问错误", Toast.LENGTH_SHORT).show()
             toGoFaultDesc("摄像头访问错误")
+            cabinetVM.maptDoorFault[if (cameraNum == 1) 51 else 52] = true
         }
     }
 
@@ -433,6 +444,7 @@ import java.util.Locale
                     } catch (e: CameraAccessException) {
                         e.printStackTrace()
                         toGoFaultDesc("摄像头访问错误内")
+                        cabinetVM.maptDoorFault[51] = true
 
                     }
                 }
@@ -440,11 +452,13 @@ import java.util.Locale
                 override fun onConfigureFailed(session: CameraCaptureSession) {
                     Toast.makeText(AppUtils.getContext(), "预览配置失败", Toast.LENGTH_SHORT).show()
                     toGoFaultDesc("预览配置失败内")
+                    cabinetVM.maptDoorFault[51] = true
                 }
             }, backgroundHandler)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
             toGoFaultDesc("预览配置失败内")
+            cabinetVM.maptDoorFault[51] = true
         }
     }
 
@@ -473,19 +487,21 @@ import java.util.Locale
                     } catch (e: CameraAccessException) {
                         e.printStackTrace()
                         toGoFaultDesc("预览配置失败外")
+                        cabinetVM.maptDoorFault[52] = true
+
                     }
                 }
 
                 override fun onConfigureFailed(session: CameraCaptureSession) {
                     Toast.makeText(AppUtils.getContext(), "预览配置失败", Toast.LENGTH_SHORT).show()
                     toGoFaultDesc("预览配置失败外")
-
+                    cabinetVM.maptDoorFault[52] = true
                 }
             }, backgroundHandler)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
             toGoFaultDesc("预览配置失败外")
-
+            cabinetVM.maptDoorFault[52] = true
         }
     }
 
@@ -499,7 +515,7 @@ import java.util.Locale
             val activeType = cabinetVM.activeType
             if (!dir.exists()) dir.mkdirs()
             val fileName =
-                    "yuan_in_${activeType}_${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS()}.jpg"
+                    "y_i_${activeType}_${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS2()}.jpg"
             val destFile = File(dir, fileName)
             val image = reader.acquireNextImage()
             val buffer = image.planes[0].buffer
@@ -513,9 +529,10 @@ import java.util.Locale
             } catch (e: IOException) {
                 e.printStackTrace()
                 toGoFaultDesc("在图像上设置可用监听器失败内")
+                cabinetVM.maptDoorFault[51] = true
             } finally {
                 image.close()
-                compression(destFile.absolutePath, dir.absolutePath, activeType, 0)
+                compression(fileName, destFile.absolutePath, dir.absolutePath, activeType, 0)
             }
         }
     }
@@ -529,7 +546,7 @@ import java.util.Locale
         if (!dir.exists()) dir.mkdirs()
         val activeType = cabinetVM.activeType
         val fileName =
-                "yuan_out_${activeType}_${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS()}.jpg"
+                "y_o_${activeType}_${cabinetVM.curTransId}__${AppUtils.getDateYMDHMS2()}.jpg"
         val destFile = File(dir, fileName)
         val image = reader.acquireNextImage()
         val buffer = image.planes[0].buffer
@@ -543,30 +560,33 @@ import java.util.Locale
         } catch (e: IOException) {
             e.printStackTrace()
             toGoFaultDesc("在图像上设置可用监听器失败外")
+            cabinetVM.maptDoorFault[52] = true
         } finally {
             image.close()
-            compression(destFile.absolutePath, dir.absolutePath, activeType, 1)
+            compression(fileName, destFile.absolutePath, dir.absolutePath, activeType, 1)
         }
 
     }
 
     /**
+     * @param fileName  文件名称
      * @param inputFilePath  源文件
      * @param outputFilePath 输出文件
      * @param activeType  类型
      * @param inOut  内外 0.内 1外
      */
-    fun compression(inputFilePath: String, outputFilePath: String, activeType: String, inOut: Int) {
+    fun compression(dleFileName: String, inputFilePath: String, outputFilePath: String, activeType: String, inOut: Int) {
         Luban.with(requireContext()).load(inputFilePath).ignoreBy(100).setTargetDir(outputFilePath).filter { path ->
             !(TextUtils.isEmpty(path) || path.lowercase(Locale.getDefault()).endsWith(".gif"))
         }.setCompressListener(object : OnCompressListener {
             override fun onStart() {
-                println("测试我来了 onStart")
+                Loge.e("测试我来了 onStart")
 
             }
 
             override fun onSuccess(file: File) {
-                println("测试我来了 onSuccess ${file.absolutePath}")
+                Loge.e("测试我来了 onSuccess ${file.absolutePath}")
+                FileMdUtil.delFileName(dleFileName)
                 Log.e("TestFace", "网络导入用户信息 保存成功")
                 val downloadsDir =
                         AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
@@ -574,11 +594,11 @@ import java.util.Locale
                 val fileName = file.absolutePath.substringAfterLast('/')
                 val inOutValue = when (inOut) {
                     0 -> {
-                        "in"
+                        "i"
                     }
 
                     1 -> {
-                        "out"
+                        "o"
                     }
 
                     else -> {
@@ -587,7 +607,7 @@ import java.util.Locale
                 }
 
                 val toFileName =
-                        "save-${inOutValue}-${activeType}-${cabinetVM.curTransId}--${AppUtils.getDateYMDHMS()}.jpg"
+                        "s-${inOutValue}-${activeType}-${cabinetVM.curTransId}--${AppUtils.getDateYMDHMS2()}.jpg"
                 if (FileMdUtil.renameFileInDir(aitionDir, "$fileName", toFileName)) {
                     val fileValue = FileMdUtil.matchDownloadsName("action", toFileName)
                     when (activeType) {
@@ -617,7 +637,7 @@ import java.util.Locale
                             }
                         }
                     }
-                    println("调试socket toGoInsertPhoto 网络上传拍照 $toFileName")
+                    Loge.e("调试socket toGoInsertPhoto 网络上传拍照 $toFileName")
                     //上传到服务器
 //                    cabinetVM.uploadPhoto(cabinetVM.curSn, cabinetVM.curTransId, 1, toFileName)
                     cabinetVM.taskPicAdd(fileValue)
@@ -627,8 +647,9 @@ import java.util.Locale
             }
 
             override fun onError(e: Throwable) {
-                println("测试我来了 onError")
+                Loge.e("测试我来了 onError")
                 toGoFaultDesc("拍摄压缩图片异常")
+                cabinetVM.maptDoorFault[if (inOut == 0) 51 else 52] = true
             }
         }).launch()
     }

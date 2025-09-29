@@ -1,6 +1,8 @@
 package com.recycling.toolsapp.ui
 
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.text.Spannable
 import android.text.SpannableString
@@ -10,17 +12,26 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import com.blankj.utilcode.util.Utils.Consumer
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentTouSingleBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
+import com.recycling.toolsapp.utils.TelephonyUtils
 import com.recycling.toolsapp.vm.CabinetVM
+import com.serial.port.utils.AppUtils
 import com.serial.port.utils.CmdCode
+import com.serial.port.utils.FileMdUtil
+import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import io.microshow.rxffmpeg.RxFFmpegInvoke
 import io.microshow.rxffmpeg.RxFFmpegSubscriber
+import kotlinx.coroutines.launch
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
 import org.reactivestreams.Subscriber
+import java.io.File
 import java.lang.ref.WeakReference
 
 
@@ -73,9 +84,14 @@ import java.lang.ref.WeakReference
         refresh()
         binding.tvClsoe.setOnClickListener {
 //            runFFmpegRxjava()
-            mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
+//            mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
 //            cabinetVM.testQueryVersion(20250729)
 //            mActivity?.navigateTo(fragmentClass = DeBugTypeFragment::class.java)
+
+            val imei = TelephonyUtils.getImei(AppUtils.getContext())
+            val imsi = TelephonyUtils.getImsi(AppUtils.getContext())
+            val iccid = TelephonyUtils.getIccid(AppUtils.getContext())
+            Loge.e("读取 imei $imei | imsi $imsi | iccid $iccid ")
         }
         LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
             when (msg) {
@@ -86,10 +102,25 @@ import java.lang.ref.WeakReference
 
                 BusType.BUS_FAULT -> {
                     binding.acivStatus.isVisible = true
-                    binding.acivStatus.setBackgroundResource(R.drawable.ic_myda)
+                    binding.acivStatus.setBackgroundResource(R.drawable.ic_gzda)
 
                 }
 
+                BusType.BUS_MAINTAINING -> {
+                    binding.acivStatus.isVisible = true
+                    Glide.with(AppUtils.getContext()).asBitmap()
+                        .load(File("${AppUtils.getContext().filesDir}/res/maintaining.png"))
+                        .into(object : CustomTarget<Bitmap?>() {
+                        override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap?>?) {
+                            binding.acivStatus.setImageBitmap(resource)
+
+                        }
+
+                        override fun onLoadCleared(placeholder: Drawable?) {
+                            // 清理资源
+                        }
+                    })
+                }
                 BusType.BUS_NORMAL -> {
                     binding.acivStatus.isVisible = false
                 }
@@ -110,14 +141,14 @@ import java.lang.ref.WeakReference
             mActivity?.navigateTo(fragmentClass = MobileFragment::class.java)
         }
         binding.acivLogo.setOnClickListener {
-            cabinetVM.testClearCmd()
+//            cabinetVM.testClearCmd()
 //            val data = HexConverter.intToByteArray(6450)
 //            val data2 = HexConverter.intToByteArray(1)
 //            val weight = HexConverter.byteArrayToInt(data)
 //            val result = "%.2f".format(weight / 100.0)
-//            println("测试我来了 $result| ${ByteUtils.toHexString(data)}|${ByteUtils.toHexString(data2)}")
+//            Loge.e("测试我来了 $result| ${ByteUtils.toHexString(data)}|${ByteUtils.toHexString(data2)}")
 //            cabinetVM.downloadRes("http://112.91.141.155:8999/apk/db2432e2c5f34c5cb31db57db29a8c5d", FileMdUtil.matchNewFileName("audio", "opendoor.wav")) { success ->
-//                println("网络 下载音频 $success ")
+//                Loge.e("网络 下载音频 $success ")
 //                if(success){
 //                    MediaPlayerHelper.playAudioFromAppFiles(AppUtils.getContext(), "audio","opendoor.wav")
 //                }
@@ -134,7 +165,7 @@ import java.lang.ref.WeakReference
         }
 
 //        createCode()
-        println("调试socket 进入单格口 ${cabinetVM.mQrCode}")
+        Loge.e("调试socket 进入单格口 ${cabinetVM.mQrCode}")
         cabinetVM.mQrCode?.let { bitmap ->
             binding.acivCode.setImageBitmap(bitmap)
         }
@@ -143,20 +174,20 @@ import java.lang.ref.WeakReference
 
     val s = object : RxFFmpegSubscriber() {
         override fun onFinish() {
-            println("FFmpeg 处理成功")
+            Loge.e("FFmpeg 处理成功")
 
         }
 
         override fun onProgress(progress: Int, progressTime: Long) {
-            println("FFmpeg onProgress $progress $progressTime")
+            Loge.e("FFmpeg onProgress $progress $progressTime")
         }
 
         override fun onCancel() {
-            println("FFmpeg 处理取消")
+            Loge.e("FFmpeg 处理取消")
         }
 
         override fun onError(message: String?) {
-            println("FFmpeg 处理异常 $message")
+            Loge.e("FFmpeg 处理异常 $message")
         }
 
     }
@@ -166,25 +197,25 @@ import java.lang.ref.WeakReference
                 "ffmpeg -y -i /storage/emulated/0/VID_20250915_185430.mp4 -vf boxblur=25:5 -preset superfast /storage/emulated/0/result.mp4"
         val commands = text.split(" ").toTypedArray()
         RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe {
-            println("视频FFmpeg ${it.progress} | ${it.progressTime} | ${it.state}")
+            Loge.e("视频FFmpeg ${it.progress} | ${it.progressTime} | ${it.state}")
 
         }
 
 //        RxFFmpegInvoke.getInstance().runCommand(commands, object : RxFFmpegInvoke.IFFmpegListener {
 //            override fun onFinish() {
-//                println("视频FFmpeg 处理成功")
+//                Loge.e("视频FFmpeg 处理成功")
 //            }
 //
 //            override fun onProgress(progress: Int, progressTime: Long) {
-//                println("视频FFmpeg onProgress $progress $progressTime")
+//                Loge.e("视频FFmpeg onProgress $progress $progressTime")
 //            }
 //
 //            override fun onCancel() {
-//                println("视频FFmpeg 处理取消")
+//                Loge.e("视频FFmpeg 处理取消")
 //            }
 //
 //            override fun onError(message: String?) {
-//                println("视频FFmpeg 处理异常 $message")
+//                Loge.e("视频FFmpeg 处理异常 $message")
 //            }
 //
 //        })
@@ -198,7 +229,7 @@ import java.lang.ref.WeakReference
 
         val curWeight = cabinetVM.curG1Weight//刷新ui当前格口重量
         val votable = cabinetVM.getVot1Weight()
-        println("调试socket 调试串口 刷新Ui $curWeight | $votable")
+        Loge.e("调试socket 调试串口 刷新Ui $curWeight | $votable")
         binding.tvCurWeight.text = "当前重量(kg)：$curWeight"
         //可再投递重量
         binding.tvVotableValue.text = "可再投递(kg)：$votable"

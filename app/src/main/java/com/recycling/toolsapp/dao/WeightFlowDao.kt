@@ -25,6 +25,9 @@ import com.recycling.toolsapp.model.WeightEntity
     @Query("select * from WeightEntity WHERE transId = :transId and time = (select MAX(time) from WeightEntity where transId= :transId)")
     fun queryWeightId(transId: String): WeightEntity
 
+    @Query("select * from WeightEntity WHERE status = :status")
+    fun queryWeightStatus(status: Int): List<WeightEntity>
+
     @Update fun upWeightEntity(weightEntity: WeightEntity): Int
 
     @Query("select * from WeightEntity ORDER BY ROWID DESC LIMIT 1")

@@ -71,9 +71,16 @@ object DatabaseManager {
                     database.execSQL("ALTER TABLE ResEntity ADD COLUMN sn TEXT DEFAULT ''")
                 }
             }
+            val MIGRATION_3_4 = object : Migration(3, 4) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    // 执行 ALTER TABLE 添加新字段
+                    database.execSQL("ALTER TABLE WeightEntity ADD COLUMN cabinId TEXT DEFAULT ''")
+                }
+            }
             // 数据库名称
             val newInstance =
-                    Room.databaseBuilder(context.applicationContext, SQLDatabase::class.java, DATABASE_NAME).addMigrations(MIGRATION_2_3).addCallback(object : RoomDatabase.Callback() {
+                    Room.databaseBuilder(context.applicationContext, SQLDatabase::class.java, DATABASE_NAME)
+                        .addMigrations(MIGRATION_3_4).addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
                             CoroutineScope(Dispatchers.IO).launch {
@@ -337,6 +344,15 @@ object DatabaseManager {
     /***
      * 提供外部 API 方法
      * @param context 上下文
+     * @param openStatus
+     */
+    fun queryTransOpenStatus(context: Context, openStatus: Int):List<TransEntity> {
+        return getTransFlowDao(context).queryTransOpenStatus(openStatus)
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
      */
     fun queryTransMax(context: Context): TransEntity {
         return getTransFlowDao(context).queryTransMax()
@@ -362,7 +378,14 @@ object DatabaseManager {
     fun insertWeight(context: Context, weightEntity: WeightEntity): Long {
         return getWeightFlowDao(context).insert(weightEntity)
     }
-
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param status
+     */
+    fun queryWeightStatus(context: Context, status: Int): List<WeightEntity> {
+        return getWeightFlowDao(context).queryWeightStatus(status)
+    }
     /***
      * 提供外部 API 方法
      * @param context 上下文

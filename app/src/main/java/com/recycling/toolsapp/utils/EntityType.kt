@@ -12,6 +12,6 @@ object EntityType {
     /***
      * 进行中
      */
-    const val WEIGHT_TYPE_10 = 1
+    const val WEIGHT_TYPE_10 = 10
 
 }

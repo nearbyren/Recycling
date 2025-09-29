@@ -357,7 +357,7 @@ open class HttpClient : HttpClientBase() {
                 bodyElement = jsonParser[this["data"]]
             }
         }
-//        println("动态处理请求结果 code = $code  - msg = $msg bodyElement = $bodyElement")
+//        Loge.e("动态处理请求结果 code = $code  - msg = $msg bodyElement = $bodyElement")
         //检测数据返回类型
         val networkDataType = when (bodyElement) {
             is String -> String::class

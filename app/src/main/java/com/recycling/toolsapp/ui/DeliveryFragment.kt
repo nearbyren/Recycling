@@ -77,9 +77,9 @@ import kotlin.random.Random
         upgradeAi()
         lifecycleScope.launch {
             cabinetVM.getTakePic.collect {filepath->
-                println("调试socket 调试串口 接收图片")
+                Loge.e("调试socket 调试串口 接收图片")
                 if (isAdded && mActivity?.isDestroyed != true) {
-                    println("调试socket 调试串口 接收图片 更新显示")
+                    Loge.e("调试socket 调试串口 接收图片 更新显示")
                     val iv = AppCompatImageView(requireActivity()).apply {
                         layoutParams =
                                 LinearLayoutCompat.LayoutParams(0, LinearLayoutCompat.LayoutParams.MATCH_PARENT).apply {
@@ -102,7 +102,7 @@ import kotlin.random.Random
         //按钮
         binding.tvOperation.text
         binding.tvOperation.setOnClickListener {
-            println("调试socket 调试串口 ui 点击关闭")
+            Loge.e("调试socket 调试串口 ui 点击关闭")
             cabinetVM.testTypeEnd(ResultType.RESULT1)
             binding.tvOperation.isEnabled = false
             binding.tvOperation.text = "正在关闭仓门"
@@ -184,7 +184,7 @@ import kotlin.random.Random
         binding.tvWeightValue.text = "$curWeightValue 公斤"
 
         val price = cabinetVM.curGePrice ?: "0.6"
-        println("调试socket 调试串口 ui 重量：${curWeightValue} | $price")
+        Loge.e("调试socket 调试串口 ui 重量：${curWeightValue} | $price")
         val floatValue = cabinetVM.multiplyFloats(price, curWeightValue)
         //当前金额
         binding.tvMoneyValue.text = "$floatValue 元"

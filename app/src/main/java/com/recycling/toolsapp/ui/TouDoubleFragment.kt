@@ -3,6 +3,7 @@ package com.recycling.toolsapp.ui
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.text.Spannable
 import android.text.SpannableString
@@ -11,16 +12,22 @@ import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
 import com.github.sumimakito.awesomeqr.AwesomeQRCode
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.FragmentTouDoubleBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
 import com.recycling.toolsapp.vm.CabinetVM
+import com.serial.port.utils.AppUtils
 import com.serial.port.utils.CmdCode
+import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
+import java.io.File
 
 /**
  * 双投口
@@ -77,6 +84,24 @@ import nearby.lib.signal.livebus.LiveBus
 
                 }
 
+                BusType.BUS_MAINTAINING -> {
+                    binding.acivStatus.isVisible = true
+                    Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/maintaining.png")).into(object : CustomTarget<Bitmap?>() {
+                        override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap?>?) {
+                            binding.acivStatus.setImageBitmap(resource)
+
+                        }
+
+                        override fun onLoadCleared(placeholder: Drawable?) {
+                            // 清理资源
+                        }
+                    })
+                }
+
+                BusType.BUS_MAINTAINING_END -> {
+                    binding.acivStatus.isVisible = false
+                }
+
                 BusType.BUS_NORMAL -> {
                     binding.acivStatusLeft.isVisible = false
                 }
@@ -87,7 +112,7 @@ import nearby.lib.signal.livebus.LiveBus
             }
         }
 
-        LiveBus.get(BusType.BUS_TOU1_DOOR_STATUS).observeForever { msg ->
+        LiveBus.get(BusType.BUS_TOU2_DOOR_STATUS).observeForever { msg ->
             when (msg) {
                 BusType.BUS_OVERFLOW -> {
                     binding.acivStatusRight.isVisible = true
@@ -98,6 +123,24 @@ import nearby.lib.signal.livebus.LiveBus
                     binding.acivStatusRight.isVisible = true
                     binding.acivStatusRight.setBackgroundResource(R.drawable.ic_gz2)
 
+                }
+
+                BusType.BUS_MAINTAINING -> {
+                    binding.acivStatus.isVisible = true
+                    Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/maintaining.png")).into(object : CustomTarget<Bitmap?>() {
+                        override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap?>?) {
+                            binding.acivStatus.setImageBitmap(resource)
+
+                        }
+
+                        override fun onLoadCleared(placeholder: Drawable?) {
+                            // 清理资源
+                        }
+                    })
+                }
+
+                BusType.BUS_MAINTAINING_END -> {
+                    binding.acivStatus.isVisible = false
                 }
 
                 BusType.BUS_NORMAL -> {
@@ -135,7 +178,7 @@ import nearby.lib.signal.livebus.LiveBus
         binding.acivLogo.setOnClickListener {
             cabinetVM.testClearCmd()
         }
-        println("调试socket 进入双格口 ${cabinetVM.mQrCode}")
+        Loge.e("调试socket 进入双格口 ${cabinetVM.mQrCode}")
         cabinetVM.mQrCode?.let { bitmap ->
             binding.acivCode.setImageBitmap(bitmap)
         }

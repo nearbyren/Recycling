@@ -24,6 +24,7 @@ import com.recycling.toolsapp.utils.TelephonyUtils
 import com.recycling.toolsapp.utils.TelephonyUtils.getIccid2
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
+import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +83,7 @@ import kotlin.random.Random
                     SocketClient(SocketClient.Config(host = "58.251.251.79", port = 9095, heartbeatIntervalMillis = 10_000, heartbeatPayload = "PING".toByteArray()))
             job = scope.launch {
                 client?.incoming?.collect { bytes ->
-                    println("调试socket recv: ${String(bytes)}")
+                    Loge.e("调试socket recv: ${String(bytes)}")
                     val json = String(bytes)
                     val cmd = CommandParser.parseCommand(json)
                     when (cmd) {
@@ -125,9 +126,9 @@ import kotlin.random.Random
                 }
             }
             client?.start()
-            println("调试socket client = $client | state = ${client?.state}")
+            Loge.e("调试socket client = $client | state = ${client?.state}")
             client?.state?.collect {
-                println("调试socket 连接状态: $it | ${Thread.currentThread().name}")
+                Loge.e("调试socket 连接状态: $it | ${Thread.currentThread().name}")
                 when (it) {
                     ConnectionState.START -> {
 
@@ -243,17 +244,17 @@ import kotlin.random.Random
 
     private fun createQueueTask(): Int {
         val task = Random.nextInt(1000, 10000)
-        println("队列 createQueueTask task = $task")
+        Loge.e("队列 createQueueTask task = $task")
         return task
     }
 
     private fun consumerQueueTask(task: Int) {
-        println("队列 consumerQueueTask task = $task")
+        Loge.e("队列 consumerQueueTask task = $task")
 //        binding.show.text = "${getScreenParams()}\n task:$task"
         // 获取最后一次位置
         val lastLocation = LocationHelper.getLastKnownLocation(AppUtils.getContext())
         val listener = LocationHelper.requestLocationUpdates(AppUtils.getContext()) { location ->
-            println("纬度：${location.latitude}经度：${location.longitude}")
+            Loge.e("纬度：${location.latitude}经度：${location.longitude}")
         }
         LocationHelper.removeUpdates(AppUtils.getContext(), listener)
     }
