@@ -67,9 +67,9 @@ object SendByteData {
      * @return 构造好的字节数组 包含效验码
      */
     fun createSendCheckSumByte(command: Byte, add: Byte, data: ByteArray): ByteArray {
-        val frameHeader: Byte = 0x8A.toByte()
+        val frameHeader: Byte = SE_FRAME_HEADER
         val address: Byte = add
-        val frameTail: Byte = 0x8B.toByte()
+        val frameTail: Byte = SE_FRAME_END
         val dataLength: Byte = data.size.toByte()
 
         // 构造帧（帧头 + 地址 + 指令 + 长度 + 数据域）

@@ -41,7 +41,7 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "transType", typeAffinity = INTEGER) var transType: Int = -1,
     /***
-     * 关闭 0.关闭成功
+     * 关闭 0.关闭成功 10.进行中 1.流程完成
      */
     @ColumnInfo(name = "closeStatus", typeAffinity = INTEGER) var closeStatus: Int = -1,
     /***

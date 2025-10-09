@@ -38,7 +38,7 @@ object BusType {
     /***
      * 关闭手机页面
      */
-    const val BUS_MOBILE_CLOS = "mobileClose"
+    const val BUS_MOBILE_CLOSE = "mobileClose"
 
     /***
      * 图片

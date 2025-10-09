@@ -5,7 +5,7 @@ package com.recycling.toolsapp.utils
  */
 object EntityType {
     /***
-     * 完成
+     * 流程完成 打开格口成功
      */
     const val WEIGHT_TYPE_1 = 1
 

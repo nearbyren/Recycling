@@ -155,16 +155,5 @@ class CabinetSdk private constructor() {
         fun queryVersion(commandType: Int, byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
             serialPortCore?.firmwareUpgrade78910(commandType, byte, onUpgrade, sendCallback)
         }
-
-        /***
-         * 固件升级
-         * @param byte
-         * @param onUpgrade 返回开仓是否成功
-         * @param sendCallback 发送是否成功
-         */
-        fun firmwareUpgrade232(byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
-            serialPortCore?.firmwareUpgrade232(byte, onUpgrade, sendCallback)
-        }
-
     }
 }

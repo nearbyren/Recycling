@@ -1,27 +1,13 @@
 package com.recycling.toolsapp.ui
 
-import android.graphics.Color
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
-import android.widget.ImageView
-import androidx.appcompat.widget.AppCompatEditText
-import androidx.appcompat.widget.AppCompatImageView
-import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.view.isVisible
-import androidx.core.view.size
 import androidx.fragment.app.viewModels
-import com.blankj.utilcode.util.LogUtils.D
-import com.bumptech.glide.Glide
 import com.recycling.toolsapp.R
-import com.recycling.toolsapp.R.drawable.btn_tab_2_bg
-import com.recycling.toolsapp.databinding.FragmentDebugTypeBinding
 import com.recycling.toolsapp.databinding.FragmentMobileBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindFragment
-import com.recycling.toolsapp.socket.DoorOpenBean
 import com.recycling.toolsapp.utils.HexConverter
 import com.recycling.toolsapp.vm.CabinetVM
-import com.serial.port.utils.AppUtils
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
@@ -87,7 +73,7 @@ import nearby.lib.signal.livebus.LiveBus
             binding.clCastRight.isVisible = true
         }
         //接收图片
-        LiveBus.get(BusType.BUS_MOBILE_CLOS).observeForever { filepath ->
+        LiveBus.get(BusType.BUS_MOBILE_CLOSE).observeForever { filepath ->
             mActivity?.fragmentCoordinator?.navigateBack()
         }
 

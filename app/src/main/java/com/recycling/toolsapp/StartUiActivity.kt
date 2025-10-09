@@ -10,11 +10,13 @@ import android.view.Surface
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
+import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.SocketManager
 import com.recycling.toolsapp.utils.TelephonyUtils
 import com.recycling.toolsapp.utils.TelephonyUtils.getIccid2
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
+import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.Loge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,8 +36,10 @@ class StartUiActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.Main).launch {
             val init = SPreUtil[AppUtils.getContext(), "init", false] as Boolean
             if (init) {
+                val host = SPreUtil[AppUtils.getContext(), "host", "58.251.251.79"] as String
+                val port = SPreUtil[AppUtils.getContext(), "port", 9095] as Int
                 Loge.e("调试socket startUI 进入主界面")
-                initSocket()
+                initSocket(host, port)
 //                startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
             } else {
                 Loge.e("调试socket startUI 进入初始化")
@@ -45,14 +49,17 @@ class StartUiActivity : AppCompatActivity() {
         Loge.e("屏幕尺寸大小 ：${getScreenParams()}")
     }
 
-    private fun initSocket() {
+    private fun initSocket(host: String? = "58.251.251.79", port: Int? = 9095) {
         cabinetVM.ioScope.launch {
-            SocketManager.initializeSocketClient(host = "58.251.251.79", port = 9095)
+            if (host != null && port != null) {
+                SocketManager.initializeSocketClient(host = host, port = port)
+            }
             cabinetVM.vmClient = SocketManager.socketClient
             SocketManager.socketClient.start()
             delay(500)
             val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
             Loge.e("调试socket startUI 当前线程：${Thread.currentThread().name} | state $state")
+            BoxToolLogUtils.recordSocket(CmdValue.CONNECTING, "start,${state.name}")
             when (state) {
                 ConnectionState.START -> {
 
@@ -67,6 +74,12 @@ class StartUiActivity : AppCompatActivity() {
                 }
 
                 ConnectionState.CONNECTED -> {
+                    if (host != null) {
+                        SPreUtil.put(AppUtils.getContext(), "host", host)
+                    }
+                    if (port != null) {
+                        SPreUtil.put(AppUtils.getContext(), "port", port)
+                    }
                     startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
                 }
             }

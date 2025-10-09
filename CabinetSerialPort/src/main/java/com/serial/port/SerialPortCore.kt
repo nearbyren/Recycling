@@ -108,7 +108,8 @@ class SerialPortCore {
         startDoor[code]?.let {
             val command = 0x01.toByte()
             val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+//            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
             SerialPortManager.instance.issuedStatus(byte)
 
         }
@@ -133,7 +134,8 @@ class SerialPortCore {
         startDoorStatus[code]?.let {
             val command = 0x02.toByte()
             val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+//            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
             SerialPortManager.instance.issuedStatus(byte)
         }
     }
@@ -156,7 +158,8 @@ class SerialPortCore {
         clearDoor[code]?.let {
             val command = 0x03.toByte()
             val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+//            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
             SerialPortManager.instance.issuedOpen(code, byte)
         }
     }
@@ -177,7 +180,8 @@ class SerialPortCore {
         weightDoor[code]?.let {
             val command = 0x04.toByte()
             val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+//            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
             SerialPortManager.instance.issuedStatus(byte)
 
         }
@@ -198,7 +202,8 @@ class SerialPortCore {
         deviceStatus[CmdCode.GE_DEVICE_STATUS]?.let {
             val command = 0x05.toByte()
             val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+//            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
             SerialPortManager.instance.issuedStatus(byte)
         }
 
@@ -220,7 +225,8 @@ class SerialPortCore {
         inOutLights[code]?.let {
             val command = 0x06.toByte()
             val data = it
-            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+//            val byte = SendByteData.createSendNotCheckSumByte(command, data)
+            val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
             SerialPortManager.instance.issuedStatus(byte)
 
         }
@@ -256,7 +262,8 @@ class SerialPortCore {
                 }
             }
             val sendByte = HexConverter.combineByteArrays(data2, data)
-            val byte = SendByteData.createSendNotCheckSumByte(command, sendByte)
+//            val byte = SendByteData.createSendNotCheckSumByte(command, sendByte)
+            val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), sendByte)
             SerialPortManager.instance.issuedStatus(byte)
 
         }
@@ -292,7 +299,8 @@ class SerialPortCore {
                 }
             }
             val sendByte = HexConverter.combineByteArrays(data2, data)
-            val byte = SendByteData.createSendNotCheckSumByte(command, sendByte)
+//            val byte = SendByteData.createSendNotCheckSumByte(command, sendByte)
+            val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), sendByte)
             SerialPortManager.instance.issuedStatus(byte)
 
         }
@@ -320,7 +328,8 @@ class SerialPortCore {
         when (commandType) {
             7 -> {
                 val command = 0x07.toByte()
-                val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
+//                val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
+                val sendByte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
                 SerialPortManager.instance.upgrade232(sendByte)
             }
 
@@ -328,25 +337,29 @@ class SerialPortCore {
                 val command = 0x08.toByte()
                 val data2 = byteArrayOf(0xa1.toByte(), 0xa2.toByte(), 0xa3.toByte())
                 val sendByte = HexConverter.combineByteArrays(data2, data)
-                val byte = SendByteData.createSendNotCheckSumByte(command, sendByte)
+//                val byte = SendByteData.createSendNotCheckSumByte(command, sendByte)
+                val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), sendByte)
                 SerialPortManager.instance.upgrade232(byte)
             }
 
             9 -> {
                 val command = 0x09.toByte()
-                val byte = SendByteData.createSendNotCheckSumByte(command, data)
+//                val byte = SendByteData.createSendNotCheckSumByte(command, data)
+                val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
                 SerialPortManager.instance.upgrade232(byte)
             }
 
             10 -> {
                 val command = 0x0a.toByte()
-                val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
+//                val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
+                val sendByte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
                 SerialPortManager.instance.upgrade232(sendByte)
             }
 
             11 -> {
                 val command = 0x0b.toByte()
-                val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
+//                val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
+                val sendByte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
                 SerialPortManager.instance.upgrade232(sendByte)
             }
         }
@@ -368,7 +381,8 @@ class SerialPortCore {
             sendCallback(msg)
         }
         val command = 0x0b.toByte()
-        val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
+//        val sendByte = SendByteData.createSendNotCheckSumByte(command, data)
+        val sendByte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), data)
         SerialPortManager.instance.upgrade232(sendByte)
     }
 
@@ -387,25 +401,8 @@ class SerialPortCore {
             sendCallback(msg)
         }
         val command = 0x12.toByte()
-        val byte = SendByteData.createSendNotCheckSumByte(command, byte)
-        SerialPortManager.instance.upgrade232(byte)
-    }
-
-    /***
-     * 固件升级
-     * @param onUpgrade 下发指令接收反馈信息
-     * @param sendCallback 下发指令是否成功回调
-     */
-    @Synchronized
-    fun firmwareUpgrade232(byte: ByteArray, onUpgrade: (status: Int) -> Unit, sendCallback: (String) -> Unit) {
-        SerialPortManager.instance.serialVM?.addCommandUpgrade232ResultListener { status ->
-            onUpgrade(status)
-        }
-
-        SerialPortManager.instance.serialVM?.addSendCommandStatusListener { msg ->
-            sendCallback(msg)
-        }
-
+//        val byte = SendByteData.createSendNotCheckSumByte(command, byte)
+        val byte = SendByteData.createSendCheckSumByte(command, 0x00.toByte(), byte)
         SerialPortManager.instance.upgrade232(byte)
     }
 

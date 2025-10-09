@@ -95,9 +95,9 @@ import kotlin.random.Random
                             val loginModel = Gson().fromJson(json, ConfigBean::class.java)
                             val heartbeatIntervalMillis =
                                     loginModel.config.heartBeatInterval?.toLong() ?: 3
-                            client?.config?.heartbeatIntervalMillis1 =
+                            client?.config?.heartbeatIntervalMillis =
                                     TimeUnit.SECONDS.toMillis(heartbeatIntervalMillis)
-                            client?.config?.heartbeatIntervalMillis1 = TimeUnit.SECONDS.toMillis(3)
+                            client?.config?.heartbeatIntervalMillis = TimeUnit.SECONDS.toMillis(3)
                             client?.sendHeartbeat()
                         }
 

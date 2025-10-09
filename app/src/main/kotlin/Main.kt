@@ -78,6 +78,10 @@ import kotlin.random.Random
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2600))}")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2800))}")
     println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(3000))}")
+
+    //发送
+    send485(frameHeader = 0x9A.toByte(),command = 0x05.toByte(), add = 0x00.toByte(), data =   byteArrayOf(0x01, 0x01),frameTail = 0x9b.toByte())
+    send485(frameHeader = 0x9B.toByte(),command = 0x05.toByte(), add = 0x00.toByte(), data =   byteArrayOf(0x01, 0x01),frameTail = 0x9A.toByte())
     ///高阶函数
 //    println("${cal(1, 2, ::add)}")
 //    testSend485S()

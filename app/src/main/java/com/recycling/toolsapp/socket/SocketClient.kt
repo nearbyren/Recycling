@@ -53,8 +53,7 @@ class SocketClient(
         val connectTimeoutMillis: Long = TimeUnit.SECONDS.toMillis(10),
         val readTimeoutMillis: Int = TimeUnit.SECONDS.toMillis(30).toInt(),
         val writeFlushIntervalMillis: Long = 0L,
-        var heartbeatIntervalMillis: Long = TimeUnit.SECONDS.toMillis(20),
-        var heartbeatIntervalMillis1: Long = TimeUnit.SECONDS.toMillis(10),
+        var heartbeatIntervalMillis: Long = TimeUnit.SECONDS.toMillis(10),
         val heartbeatPayload: ByteArray = byteArrayOf(),
         val idleTimeoutMillis: Long = TimeUnit.MINUTES.toMillis(2),
         val minReconnectDelayMillis: Long = 500,
@@ -300,7 +299,7 @@ class SocketClient(
     private suspend fun heartbeatAndIdleMonitor() {
 //       Loge.e("调试socket heartbeatAndIdleMonitor $running | ${clientScope.isActive}")
         val hasHeartbeat =
-                config.heartbeatIntervalMillis1 > 0 /*&& config.heartbeatPayload.isNotEmpty()*/
+                config.heartbeatIntervalMillis > 0 /*&& config.heartbeatPayload.isNotEmpty()*/
         while (running && clientScope.isActive) {
             val now = System.currentTimeMillis()
 //            Loge.e("调试socket heartbeatAndIdleMonitor 分钟：${config.idleTimeoutMillis} | 当前毫秒：$lastReceivedAtMillis | 当前-最后：${now - lastReceivedAtMillis}")
@@ -342,7 +341,7 @@ class SocketClient(
                     Loge.e("调试socket heartbeatAndIdleMonitor catch ${e.message}")
                 }
             }
-            delay(maxOf(1000L, config.heartbeatIntervalMillis1))
+            delay(maxOf(1000L, config.heartbeatIntervalMillis))
         }
     }
 

@@ -24,6 +24,7 @@ import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindActivity
 import com.recycling.toolsapp.http.TaskRestartScheduler
 import com.recycling.toolsapp.socket.DoorOpenBean
 import com.recycling.toolsapp.socket.ConfigBean
+import com.recycling.toolsapp.socket.DoorCloseBean
 import com.recycling.toolsapp.socket.OtaBean
 import com.recycling.toolsapp.socket.RestartBean
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
@@ -31,6 +32,7 @@ import com.recycling.toolsapp.ui.Camera2Fragment
 import com.recycling.toolsapp.ui.ClearDoorFragment
 import com.recycling.toolsapp.ui.DeBugTypeFragment
 import com.recycling.toolsapp.ui.DeliveryFragment
+import com.recycling.toolsapp.ui.SelfDeBugTypeFragment
 import com.recycling.toolsapp.ui.TouSingleFragment
 import com.recycling.toolsapp.ui.TouDoubleFragment
 import com.recycling.toolsapp.utils.CmdType
@@ -123,6 +125,26 @@ import java.io.File
                 if (it) {
                     navigateTo(fragmentClass = DeliveryFragment::class.java)
                 }
+            }
+        }
+        //校准状态下的情况
+        lifecycleScope.launch {
+            cabinetVM.isCMD5Status.collect {
+                Loge.d("调试socket 收到状态指令异常 $it")
+                when (it) {
+                    "0" -> {
+                        navigateTo(fragmentClass = SelfDeBugTypeFragment::class.java, args = Bundle().apply {
+                            putInt(SelfDeBugTypeFragment.IS_INDEX, 0)
+                        })
+                    }
+
+                    "1" -> {
+                        navigateTo(fragmentClass = SelfDeBugTypeFragment::class.java, args = Bundle().apply {
+                            putInt(SelfDeBugTypeFragment.IS_INDEX, 1)
+                        })
+                    }
+                }
+
             }
         }
         //清运门打开 打开清运页
@@ -325,6 +347,7 @@ import java.io.File
             cabinetVM.vmClient = SocketManager.socketClient
             val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
             Loge.e("调试socket OneActivity 当前线程：${Thread.currentThread().name} | state $state")
+            BoxToolLogUtils.recordSocket(CmdValue.CONNECTING, "home,${state.name}")
             when (state) {
                 ConnectionState.START -> {
                     Loge.e("调试socket OneActivity 取 开始：${Thread.currentThread().name} | state $state")
@@ -373,7 +396,8 @@ import java.io.File
                     }
 
                     CmdValue.CMD_CLOSE_DOOR -> {
-                        cabinetVM.refreshWeightStatus()
+                        val doorCloseModel = Gson().fromJson(json, DoorCloseBean::class.java)
+                        cabinetVM.refreshWeightStatus(doorCloseModel)
                     }
 
                     CmdValue.CMD_PHONE_NUMBER_LOGIN -> {
@@ -389,7 +413,10 @@ import java.io.File
                             }
 
                             2 -> {
-                                TaskRestartScheduler.scheduleDaily(AppUtils.getContext(), "21:35", "daily_restart")
+                                restartModel.time?.let { time ->
+                                    TaskRestartScheduler.scheduleTodayTimeRange(AppUtils.getContext(), time, time, "morning_cleanup_forced", executeIfMissed = true)
+                                }
+
                             }
                         }
                     }
@@ -410,6 +437,7 @@ import java.io.File
             }
             cabinetVM.vmClient?.state?.collect {
                 Loge.e("调试socket 连接状态: $it | ${Thread.currentThread().name}")
+                BoxToolLogUtils.recordSocket(CmdValue.CONNECTING, "homeCollect,${state.name}")
                 when (it) {
                     ConnectionState.START -> {
                         Loge.e("调试socket OneActivity 监 开始：${Thread.currentThread().name} | state $state")
@@ -707,6 +735,7 @@ import java.io.File
         Loge.e("调试socket home onDestroy")
         cabinetVM.closeSock()
         cabinetVM.stopDoorControl()
+        cabinetVM.cancelDoorJob()
         super.onDetachedFromWindow()
     }
 
@@ -714,6 +743,7 @@ import java.io.File
         Loge.e("调试socket home onDestroy")
         cabinetVM.closeSock()
         cabinetVM.stopDoorControl()
+        cabinetVM.cancelDoorJob()
         super.onDestroy()
     }
 }

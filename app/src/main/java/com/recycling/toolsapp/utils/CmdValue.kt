@@ -2,6 +2,12 @@ package com.recycling.toolsapp.utils
 
 object CmdValue {
     /***
+     *正在连接
+     * connecting
+     */
+    const val CONNECTING = "connecting"
+
+    /***
      *接收
      * receive
      */

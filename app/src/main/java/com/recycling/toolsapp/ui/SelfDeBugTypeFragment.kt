@@ -45,11 +45,33 @@ import kotlinx.coroutines.launch
     override fun doneCountdown() {
         super.doneCountdown()
     }
-
+    companion object {
+        /***
+         * is_index 0.左  1.右
+         */
+        const val IS_INDEX = "is_index"
+    }
+    /***
+     * is_index 0.左  1.右
+     */
+    private var isIndex: Int = -1
     override fun initialize(savedInstanceState: Bundle?) {
+        arguments?.let { args ->
+            isIndex = args.getInt(IS_INDEX, -1)
+            when(isIndex){
+                0->{
+                    binding.actvLeft.isSelected = true
+                    binding.actvRight.isSelected = false
+                    currentGe = CmdCode.GE1
+                }
+                1->{
+                    binding.actvLeft.isSelected = false
+                    binding.actvRight.isSelected = true
+                    currentGe = CmdCode.GE2
+                }
+            }
+        }
         cabinetVM.flowCmd05.value = false
-        binding.actvLeft.isSelected = true
-        binding.actvRight.isSelected = false
         binding.actvLeft.setOnClickListener {
             currentGe = CmdCode.GE1
             binding.actvLeft.isSelected = true

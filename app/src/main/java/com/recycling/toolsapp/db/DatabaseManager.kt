@@ -302,7 +302,7 @@ object DatabaseManager {
 
     /***************************************获取 初始化配置 实例*************************************************/
 
-    /***************************************获取 打开仓 实例*************************************************/
+    /***************************************获取 事务记录 实例*************************************************/
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -358,6 +358,24 @@ object DatabaseManager {
         return getTransFlowDao(context).queryTransMax()
     }
 
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param transId
+     */
+    fun queryTransEntity(context: Context, transId: String): TransEntity {
+        return getTransFlowDao(context).queryTransEntity(transId)
+    }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param transEntity
+     * @return
+     */
+    fun upTransEntity(context: Context, transEntity: TransEntity): Int {
+        return getTransFlowDao(context).upTransEntity(transEntity)
+    }
     /***************************************获取 打开仓 实例*************************************************/
 
     /***************************************获取 记录当前重量 实例*************************************************/

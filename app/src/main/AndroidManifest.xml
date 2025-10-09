@@ -104,10 +104,10 @@
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             tools:ignore="Instantiatable">
-            <intent-filter>
+          <!--  <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            </intent-filter>-->
 
         </activity>
         <activity
@@ -116,10 +116,10 @@
             android:configChanges="keyboard|keyboardHidden"
             android:theme="@style/CabinetLauncherTheme"
             tools:ignore="Instantiatable">
-          <!--  <intent-filter>
+            <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>-->
+            </intent-filter>
         </activity>
 
         <activity

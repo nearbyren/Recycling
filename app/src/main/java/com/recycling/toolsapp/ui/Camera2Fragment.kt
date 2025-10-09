@@ -639,7 +639,7 @@ import java.util.Locale
                     }
                     Loge.e("调试socket toGoInsertPhoto 网络上传拍照 $toFileName")
                     //上传到服务器
-//                    cabinetVM.uploadPhoto(cabinetVM.curSn, cabinetVM.curTransId, 1, toFileName)
+                    cabinetVM.uploadPhoto(cabinetVM.curSn, cabinetVM.curTransId, 1, toFileName)
                     cabinetVM.taskPicAdd(fileValue)
                     cabinetVM.toGoInsertPhoto(activeType, inOut)
 //                    LiveBus.get(BusType.BUS_DELIVERY_PHOTO).post(fileValue)

@@ -35,10 +35,12 @@ import com.recycling.toolsapp.http.RepoImpl
 import com.recycling.toolsapp.http.TaskRestartScheduler
 import com.recycling.toolsapp.model.LogEntity
 import com.recycling.toolsapp.socket.SocketClient.ConnectionState
+import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.SocketManager
 import com.recycling.toolsapp.utils.TelephonyUtils
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
+import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.Loge
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -63,23 +65,143 @@ class InitFactoryActivity : AppCompatActivity() {
     private var dialog: SimpleCalendarDialogFragment? = null
     private var selectedDateStr: String? = null
     private val httpRepo by lazy { RepoImpl() }
-    private fun newInit() {
-        acivInit = findViewById(R.id.aciv_init)
-        val init = SPreUtil[AppUtils.getContext(), "init", false] as Boolean
-        if (init) {
-            Loge.e("调试socket startUI 进入主界面")
-            initSocket()
-        } else {
-            Loge.e("调试socket startUI 进入初始化")
-            acivInit?.isVisible = false
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_init_fractory)
 //        newInit()
         initFactory()
+    }
+
+    private fun initFactory() {
+        acetDealerId = findViewById(R.id.acet_dealer_id)
+        acetDeptId = findViewById(R.id.acet_dept_id)
+        acetQr = findViewById(R.id.acet_qr)
+        acetSn = findViewById(R.id.acet_sn)
+        acetSn?.setAlphanumericLimit()
+        acetQr?.setAlphanumericLimit2()
+        rgLattice = findViewById(R.id.rg_lattice)
+        acetFlowCard = findViewById(R.id.acet_flow_card)
+        val selectedId = rgLattice?.checkedRadioButtonId
+        selectedId?.let { sid ->
+            selectedText(sid)
+        }
+        val actvInit = findViewById<AppCompatTextView>(R.id.actv_init)
+        acetFlowCard?.setOnClickListener {
+            acetQr?.let { qr ->
+                hideKeyboard(qr)
+            }
+            onSimpleCalendarDialogClick()
+        }
+        actvInit.setOnClickListener {
+            Loge.e("调试socket 点击初始化 ")
+//            test()   //调试1
+            initSocket()//调试2
+//            submit()
+
+        }
+        rgLattice?.setOnCheckedChangeListener { _, checkedId ->
+            selectedText(checkedId)
+        }
+        Loge.e("屏幕尺寸大小 ：${getScreenParams()}")
+    }
+
+    /***
+     * 获取socket业务ip
+     */
+    private fun getSocketIp() {
+        cabinetVM.ioScope.launch {
+
+        }
+    }
+
+    /***
+     * 设备出厂初始化
+     */
+    private fun submit() {
+        //外部提供的
+        val dealerId = acetDealerId?.text.toString()
+        val deptId = acetDeptId?.text.toString()
+        val qr = acetQr?.text.toString()
+        if (TextUtils.isEmpty(dealerId)) {
+            Toast.makeText(AppUtils.getContext(), "请输入经销商id", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (TextUtils.isEmpty(deptId)) {
+            Toast.makeText(AppUtils.getContext(), "请输入部门id", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (TextUtils.isEmpty(qr)) {
+            Toast.makeText(AppUtils.getContext(), "请输入二维码内容信息", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        //自己内部的
+        val flowCard = acetFlowCard?.text.toString()
+        val sn = acetSn?.text.toString()
+        if (TextUtils.isEmpty(flowCard)) {
+            Toast.makeText(AppUtils.getContext(), "请选择流量卡到期时间", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (TextUtils.isEmpty(sn)) {
+            Toast.makeText(AppUtils.getContext(), "请输入出厂配置sn码", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (mRecycleType == -1) {
+            Toast.makeText(AppUtils.getContext(), "请输入出厂回收箱格口类型", Toast.LENGTH_LONG).show()
+            return
+        }
+        val from = mutableMapOf<String, Any>()
+        //客户提供
+        from["dealerId"] = dealerId
+        from["deptId"] = deptId
+        from["urlQrSuffix"] = qr
+        from["debugPasswd"] = 123456 ////设备调试密码
+        from["expirationDate"] = acetFlowCard?.text.toString()    //流量卡到期时间
+        from["imei"] = TelephonyUtils.getImei(AppUtils.getContext()) ?: ""
+        from["recycleType"] = mRecycleType  ////回收箱类型 1单个投口  2 双投口  3子母口
+        from["sn"] = acetSn?.text.toString()
+        from["weightSensorMode"] = 1//	//2颗称重芯片工作模式(0独立, 1协同)
+        val headers = mutableMapOf<String, String>()
+        headers["token"] = "c2f5de4f-93de-4195-9c74-aa6ad9b2edd8"
+        Loge.e("from $from | headers $headers")
+        cabinetVM.ioScope.launch {
+            httpRepo.issueDevice(headers, from).onCompletion {
+                Loge.d("网络请求 出厂化配置 onCompletion $headers | $from")
+
+            }.onSuccess { user ->
+                Loge.d("网络请求 出厂化配置 onSuccess ${Thread.currentThread().name} ${user.toString()}")
+                cabinetVM.insertInfoLog(LogEntity().apply {
+                    cmd = "issueDevice"
+                    msg = "出厂化配置成功"
+                    time = AppUtils.getDateYMDHMS()
+                })
+                getSocketIp()
+            }.onFailure { code, message ->
+                Loge.d("网络请求 出厂化配置 onFailure $code $message")
+                cabinetVM.insertInfoLog(LogEntity().apply {
+                    cmd = "issueDevice"
+                    msg = "$code,$message"
+                    time = AppUtils.getDateYMDHMS()
+                })
+
+            }.onCatch { e ->
+                Loge.d("网络请求 出厂化配置 onCatch ${e.errorMsg}")
+                cabinetVM.insertInfoLog(LogEntity().apply {
+                    cmd = "issueDevice"
+                    msg = "${e.errorCode},${e.errorMsg}"
+                    time = AppUtils.getDateYMDHMS()
+                })
+            }
+        }
+    }
+
+    private fun test() {
+        //SPreUtil.put(AppUtils.getContext(), "init", true)
+        SPreUtil.put(AppUtils.getContext(), "initSocket", false)
+        val snText = acetSn?.text.toString()
+        SPreUtil.put(AppUtils.getContext(), "init_sn", snText)
+        startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
+        finish()
     }
 
 
@@ -89,7 +211,8 @@ class InitFactoryActivity : AppCompatActivity() {
             dialog?.show(it, "show-date-calendar")
             //            dialog?.setButtonSize()
             dialog?.setOnDateSelectedListener(object : SimpleCalendarDialogFragment.OnDateSelectedListener {
-                @RequiresApi(Build.VERSION_CODES.O) override fun onDateSelected(calendarDay: CalendarDay) {
+                @RequiresApi(Build.VERSION_CODES.O)
+                override fun onDateSelected(calendarDay: CalendarDay) {
                     val selectedDateStr = "${calendarDay.year}-${
                         calendarDay.month.toString().padStart(2, '0')
                     }-${
@@ -97,10 +220,18 @@ class InitFactoryActivity : AppCompatActivity() {
                     }"
                     Loge.e("selectedDateStr $selectedDateStr")
                     acetFlowCard?.text = selectedDateStr
-                    val dealerId = acetDealerId?.text.toString()
-                    val deptId = acetDeptId?.text.toString()
-                    TaskRestartScheduler.scheduleSpecificDate(AppUtils.getContext(), selectedDateStr, "${dealerId}:${deptId}", "christmas_special")
-                    TaskRestartScheduler.triggerImmediately(AppUtils.getContext(), "urgent_cleanup")
+//                    val dealerId = acetDealerId?.text.toString()
+//                    val deptId = acetDeptId?.text.toString()
+//                    TaskRestartScheduler.scheduleTodayTimeRange(
+//                        AppUtils.getContext(),
+//                        "${dealerId}:${deptId}",
+//                        "${dealerId}:${deptId}",
+//                        "morning_cleanup_forced",
+//                        executeIfMissed = true
+//                    )
+
+//                    TaskRestartScheduler.scheduleSpecificDate(AppUtils.getContext(), selectedDateStr, "${dealerId}:${deptId}", "christmas_special")
+//                    TaskRestartScheduler.triggerImmediately(AppUtils.getContext(), "urgent_cleanup")
                     //                    val tools = binding.toolsSearch.text.toString()
                     //                    binding.dateSearch.text = selectedDateStr
                     //                    filterData(tools, selectedDateStr)
@@ -142,7 +273,7 @@ class InitFactoryActivity : AppCompatActivity() {
             val widget = view.findViewById<MaterialCalendarView>(R.id.calendarView)
             val today = CalendarDay.today()
             widget.state().edit().setMinimumDate(CalendarDay.from(2025, 1, 1)) // 设置最小可选日期
-                .setMaximumDate(today) // 设置最大可选日期为今天
+//                .setMaximumDate(today) // 设置最大可选日期为今天
                 .commit()
             widget.setOnDateChangedListener(this)
             alertDialog =
@@ -166,111 +297,6 @@ class InitFactoryActivity : AppCompatActivity() {
             }日"
             textView?.text = selectedDateStr
         }
-    }
-
-    private fun initFactory() {
-        acetDealerId = findViewById(R.id.acet_dealer_id)
-        acetDeptId = findViewById(R.id.acet_dept_id)
-        acetQr = findViewById(R.id.acet_qr)
-        acetSn = findViewById(R.id.acet_sn)
-        acetSn?.setAlphanumericLimit()
-        acetQr?.setAlphanumericLimit2()
-        rgLattice = findViewById(R.id.rg_lattice)
-        acetFlowCard = findViewById(R.id.acet_flow_card)
-        val selectedId = rgLattice?.checkedRadioButtonId
-        selectedId?.let { sid ->
-            selectedText(sid)
-        }
-        val actvInit = findViewById<AppCompatTextView>(R.id.actv_init)
-        acetFlowCard?.setOnClickListener {
-            acetQr?.let { qr->
-                hideKeyboard(qr)
-            }
-            onSimpleCalendarDialogClick()
-        }
-        actvInit.setOnClickListener {
-            Loge.e("调试socket 点击初始化 ")
-//            test()   //调试1
-            initSocket()//调试2
-//            submit()
-
-        }
-        rgLattice?.setOnCheckedChangeListener { _, checkedId ->
-            selectedText(checkedId)
-        }
-        Loge.e("屏幕尺寸大小 ：${getScreenParams()}")
-    }
-
-    private fun submit() {
-        //外部提供的
-        val dealerId = acetDealerId?.text.toString()
-        val deptId = acetDeptId?.text.toString()
-        val qr = acetQr?.text.toString()
-        if (TextUtils.isEmpty(dealerId)) {
-            Toast.makeText(AppUtils.getContext(),"请输入经销商id",Toast.LENGTH_LONG).show()
-            return
-        }
-        if (TextUtils.isEmpty(deptId)) {
-            Toast.makeText(AppUtils.getContext(),"请输入部门id",Toast.LENGTH_LONG).show()
-            return
-        }
-        if (TextUtils.isEmpty(qr)) {
-            Toast.makeText(AppUtils.getContext(),"请输入二维码内容信息",Toast.LENGTH_LONG).show()
-            return
-        }
-
-        //自己内部的
-        val flowCard = acetFlowCard?.text.toString()
-        val sn = acetSn?.text.toString()
-        if (TextUtils.isEmpty(flowCard)) {
-            Toast.makeText(AppUtils.getContext(),"请选择流量卡到期时间",Toast.LENGTH_LONG).show()
-            return
-        }
-        if (TextUtils.isEmpty(sn)) {
-            Toast.makeText(AppUtils.getContext(),"请输入出厂配置sn码",Toast.LENGTH_LONG).show()
-            return
-        }
-        if (mRecycleType == -1) {
-            Toast.makeText(AppUtils.getContext(),"请输入出厂回收箱格口类型",Toast.LENGTH_LONG).show()
-            return
-        }
-        val from = mutableMapOf<String, Any>()
-        //客户提供
-        from["dealerId"] = dealerId
-        from["deptId"] = deptId
-        from["urlQrSuffix"] = qr
-        from["debugPasswd"] = 123456 ////设备调试密码
-        from["expirationDate"] = acetFlowCard?.text.toString()    //流量卡到期时间
-        from["imei"] = TelephonyUtils.getImei(AppUtils.getContext()) ?: ""
-        from["recycleType"] = mRecycleType  ////回收箱类型 1单个投口  2 双投口  3子母口
-        from["sn"] = acetSn?.text.toString()
-        from["weightSensorMode"] = 1//	//2颗称重芯片工作模式(0独立, 1协同)
-        val headers = mutableMapOf<String, String>()
-        headers["token"] = "c2f5de4f-93de-4195-9c74-aa6ad9b2edd8"
-        Loge.e("from $from | headers $headers")
-//        cabinetVM.ioScope.launch {
-//            httpRepo.issueDevice(headers, from).onCompletion {
-//                Loge.d("网络请求 出厂化配置 onCompletion $headers | $from")
-//
-//            }.onSuccess { user ->
-//                Loge.d("网络请求 出厂化配置 onSuccess ${Thread.currentThread().name} ${user.toString()}")
-//
-//            }.onFailure { code, message ->
-//                Loge.d("网络请求 出厂化配置 onFailure $code $message")
-//
-//            }.onCatch { e ->
-//                Loge.d("网络请求 出厂化配置 onCatch ${e.errorMsg}")
-//            }
-//        }
-    }
-
-    private fun test() {
-        //SPreUtil.put(AppUtils.getContext(), "init", true)
-        SPreUtil.put(AppUtils.getContext(), "initSocket", false)
-        val snText = acetSn?.text.toString()
-        SPreUtil.put(AppUtils.getContext(), "init_sn", snText)
-        startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
-        finish()
     }
 
     private fun selectedText(checkedId: Int) {
@@ -338,20 +364,22 @@ class InitFactoryActivity : AppCompatActivity() {
     }
 
     private fun hideKeyboard(view: View) {
-        val imm =
-                baseContext!!.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val imm = baseContext!!.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
-    private fun initSocket() {
+    private fun initSocket(host: String? = "58.251.251.79", port: Int? = 9095) {
         cabinetVM.ioScope.launch {
             SPreUtil.put(AppUtils.getContext(), "initSocket", true)
-            SocketManager.initializeSocketClient(host = "58.251.251.79", port = 9095)
+            if (host != null && port != null) {
+                SocketManager.initializeSocketClient(host = host, port = port)
+            }
             cabinetVM.vmClient = SocketManager.socketClient
             SocketManager.socketClient.start()
             delay(500)
             val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
             Loge.e("调试socket startUI 当前线程：${Thread.currentThread().name} | state $state")
+            BoxToolLogUtils.recordSocket(CmdValue.CONNECTING, "init,${state.name}")
             when (state) {
                 ConnectionState.START -> {
 
@@ -367,6 +395,12 @@ class InitFactoryActivity : AppCompatActivity() {
 
                 ConnectionState.CONNECTED -> {
                     SPreUtil.put(AppUtils.getContext(), "init", true)
+                    if (host != null) {
+                        SPreUtil.put(AppUtils.getContext(), "host", host)
+                    }
+                    if (port != null) {
+                        SPreUtil.put(AppUtils.getContext(), "port", port)
+                    }
                     startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
                     finish()
                 }

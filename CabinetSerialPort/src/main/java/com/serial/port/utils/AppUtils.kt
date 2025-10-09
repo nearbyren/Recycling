@@ -232,7 +232,6 @@ import kotlin.random.Random
         return formattedNow
     }
 
-
     /***
      * 获取UUID
      */
