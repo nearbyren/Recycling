@@ -27,7 +27,7 @@ class DailyRestartWorker(
 
     private fun restart() {
         try {
-//            HexConverter.restartApp2(AppUtils.getContext(), 2 * 1000L)
+            HexConverter.restartApp2(AppUtils.getContext(), 2 * 1000L)
             Loge.d("指定时间重启动app... ")
         } catch (e: Exception) {
             Loge.d("指定时间重启动app... ${e.message}")

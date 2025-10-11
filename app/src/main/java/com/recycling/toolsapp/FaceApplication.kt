@@ -14,6 +14,7 @@ import com.hzmct.enjoysdkv2.transform.McStateCode
 import com.orhanobut.logger.AndroidLogAdapter
 import com.orhanobut.logger.Logger
 import com.orhanobut.logger.PrettyFormatStrategy
+import com.recycling.toolsapp.http.TaskRestartScheduler
 import com.recycling.toolsapp.utils.CrashHandlerManager
 import com.recycling.toolsapp.utils.CurrentActivity.Config.Companion.CURRENT_ROOM_TYPE
 import com.recycling.toolsapp.utils.NetworkStateMonitor
@@ -104,6 +105,7 @@ import java.io.IOException
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ioScope.launch {
                 delay(500)
+//                TaskRestartScheduler.scheduleDaily(this@FaceApplication, "06:30","restart")
                 TaskDelScheduler.scheduleDaily(this@FaceApplication, "21:30", "del")
                 TaskDelDateScheduler.scheduleDaily(this@FaceApplication, "21:35", "delDate")
             }

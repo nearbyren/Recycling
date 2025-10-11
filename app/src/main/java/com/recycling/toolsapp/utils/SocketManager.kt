@@ -14,7 +14,7 @@ object SocketManager {
                 SocketClient.Config(
                     host = host,
                     port = port,
-                    heartbeatIntervalMillis = 10_000,
+                    heartbeatIntervalMillis = 20,
                     heartbeatPayload = "PING".toByteArray()
                 )
             )

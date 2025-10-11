@@ -38,7 +38,7 @@ class StartUiActivity : AppCompatActivity() {
             if (init) {
                 val host = SPreUtil[AppUtils.getContext(), "host", "58.251.251.79"] as String
                 val port = SPreUtil[AppUtils.getContext(), "port", 9095] as Int
-                Loge.e("调试socket startUI 进入主界面")
+                Loge.e("调试socket startUI 进入主界面 $host $port")
                 initSocket(host, port)
 //                startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
             } else {
@@ -49,38 +49,38 @@ class StartUiActivity : AppCompatActivity() {
         Loge.e("屏幕尺寸大小 ：${getScreenParams()}")
     }
 
-    private fun initSocket(host: String? = "58.251.251.79", port: Int? = 9095) {
+    private fun initSocket(mHost: String? = "58.251.251.79", mPort: Int? = 9095) {
         cabinetVM.ioScope.launch {
-            if (host != null && port != null) {
-                SocketManager.initializeSocketClient(host = host, port = port)
-            }
-            cabinetVM.vmClient = SocketManager.socketClient
-            SocketManager.socketClient.start()
-            delay(500)
-            val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
-            Loge.e("调试socket startUI 当前线程：${Thread.currentThread().name} | state $state")
-            BoxToolLogUtils.recordSocket(CmdValue.CONNECTING, "start,${state.name}")
-            when (state) {
-                ConnectionState.START -> {
+            if (mHost != null && mPort != null) {
+                SocketManager.initializeSocketClient(host = mHost, port = mPort)
+                cabinetVM.vmClient = SocketManager.socketClient
+                SocketManager.socketClient.start()
+                delay(500)
+                val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
+                Loge.e("调试socket startUI 当前线程：${Thread.currentThread().name} | state $state")
+                BoxToolLogUtils.recordSocket(CmdValue.CONNECTING, "start,${state.name}")
+                when (state) {
+                    ConnectionState.START -> {
 
-                }
-
-                ConnectionState.DISCONNECTED -> {
-
-                }
-
-                ConnectionState.CONNECTING -> {
-
-                }
-
-                ConnectionState.CONNECTED -> {
-                    if (host != null) {
-                        SPreUtil.put(AppUtils.getContext(), "host", host)
                     }
-                    if (port != null) {
-                        SPreUtil.put(AppUtils.getContext(), "port", port)
+
+                    ConnectionState.DISCONNECTED -> {
+
                     }
-                    startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
+
+                    ConnectionState.CONNECTING -> {
+
+                    }
+
+                    ConnectionState.CONNECTED -> {
+                        if (mHost != null) {
+                            SPreUtil.put(AppUtils.getContext(), "host", mHost)
+                        }
+                        if (mPort != null) {
+                            SPreUtil.put(AppUtils.getContext(), "port", mPort)
+                        }
+                        startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
+                    }
                 }
             }
         }

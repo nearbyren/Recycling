@@ -11,6 +11,7 @@ import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -36,6 +37,7 @@ import com.recycling.toolsapp.ui.TouSingleFragment
 import com.recycling.toolsapp.ui.TouDoubleFragment
 import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.CommandParser
+import com.recycling.toolsapp.utils.FragmentCoordinator
 import com.recycling.toolsapp.utils.HexConverter
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.utils.SnackbarUtils
@@ -333,7 +335,7 @@ import java.io.File
                 if (it) {
                     Loge.e("调试socket saveInitNet 加载fragment")
                     binding.acivInit.isVisible = false
-                    toGoUi()
+                    navigateToHome()
                 }
             }
         }
@@ -456,15 +458,6 @@ import java.io.File
             }
         }
     }
-
-    fun toGoUi() {
-        intent.data?.toString()?.let { deepLink ->
-            if (!fragmentCoordinator.handleDeepLink(deepLink)) {
-                navigateToHome()
-            }
-        } ?: navigateToHome()
-    }
-
     private fun lifeUpgradeApk() {
         //触发有版本更新
         lifecycleScope.launch {
@@ -739,11 +732,29 @@ import java.io.File
         binding.tvVersion.text = "版本号：v${AppUtils.getVersionName()}"
         when (typeGrid) {
             1, 3 -> {
-                navigateTo(fragmentClass = TouSingleFragment::class.java, addToBackStack = true)
+                Loge.d("FragmentCoordinator navigateTo one navigateToHome")
+                fragmentCoordinator.setRootFragment(TouSingleFragment::class.java, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
+                    override fun onFragmentResumed(fragment: Fragment) {
+                        Loge.d("FragmentCoordinator navigateTo one navigateToHome onFragmentResumed $fragment | ")
+                        super.onFragmentResumed(fragment)
+                        if (fragmentCoordinator.getCurrentFragment() is TouSingleFragment) {
+                            hide()
+                        }
+                    }
+                })
             }
 
             2 -> {
                 navigateTo(fragmentClass = TouDoubleFragment::class.java, addToBackStack = true)
+                fragmentCoordinator.setRootFragment(TouDoubleFragment::class.java, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
+                    override fun onFragmentResumed(fragment: Fragment) {
+                        Loge.d("FragmentCoordinator navigateTo one navigateToHome onFragmentResumed $fragment | ")
+                        super.onFragmentResumed(fragment)
+                        if (fragmentCoordinator.getCurrentFragment() is TouDoubleFragment) {
+                            hide()
+                        }
+                    }
+                })
             }
         }
     }

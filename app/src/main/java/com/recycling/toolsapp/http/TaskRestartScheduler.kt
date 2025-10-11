@@ -3,7 +3,7 @@ package com.recycling.toolsapp.http
 /**
  * @author: lr
  * @created on: 2025/5/14 上午11:26
- * @description: 每日删除db数据库文件
+ * @description: 指定时间重启
  */
 import android.content.Context
 import android.os.Build

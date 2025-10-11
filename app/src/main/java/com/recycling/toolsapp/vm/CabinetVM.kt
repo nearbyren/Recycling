@@ -390,10 +390,34 @@ import kotlin.random.Random
     /***
      * 业务通信前，先登录
      */
-    fun toGoCmdLogin(sn: String? = null, imsi: String? = null, imei: String? = null, iccid: String? = null) {
+    fun toGoCmdLogin(sn: String? = "0136004ST00041", imsi: String? = "460086096808642", imei: String? = "868408061812125", iccid: String? = "898604A70821C0049781") {
         ioScope.launch {
             val m =
-                    mapOf("cmd" to CmdValue.CMD_LOGIN, "sn" to "0136004ST00041", "imsi" to "460086096808642", "imei" to "868408061812125", "iccid" to "898604A70821C0049781", "version" to "1.0.0", "timestamp" to System.currentTimeMillis())
+                    mapOf("cmd" to CmdValue.CMD_LOGIN, "sn" to sn, "imsi" to imsi, "imei" to imei, "iccid" to iccid, "version" to AppUtils.getVersionName(), "timestamp" to System.currentTimeMillis())
+            val json = JsonBuilder.convertToJsonString(m)
+            vmClient?.sendText(json)
+        }
+    }
+
+    /***
+     * OTA apk
+     */
+    fun toGoCmdOtaAPK() {
+        ioScope.launch {
+            val m =
+                    mapOf("cmd" to CmdValue.CMD_OTA, "retCode" to 0, "timestamp" to System.currentTimeMillis())
+            val json = JsonBuilder.convertToJsonString(m)
+            vmClient?.sendText(json)
+        }
+    }
+
+    /***
+     * OTA bin
+     */
+    fun toGoCmdOtaBin() {
+        ioScope.launch {
+            val m =
+                    mapOf("cmd" to CmdValue.CMD_OTA, "retCode" to 0, "timestamp" to System.currentTimeMillis())
             val json = JsonBuilder.convertToJsonString(m)
             vmClient?.sendText(json)
         }
@@ -454,6 +478,7 @@ import kotlin.random.Random
                                     md5 = otaModel.md5
                                     time = AppUtils.getDateYMDHMS()
                                 })
+                                toGoCmdOtaAPK()
                                 //去安装
                                 toGoApkInstall()
                             } else {
@@ -486,6 +511,7 @@ import kotlin.random.Random
                             if (success) {
                                 queryResource.status = 2
                                 upNetResDb("下载APK成功更新", queryResource)
+                                toGoCmdOtaAPK()
                                 //去安装
                                 toGoApkInstall()
                             } else {
@@ -553,6 +579,7 @@ import kotlin.random.Random
                                     md5 = otaModel.md5
                                     time = AppUtils.getDateYMDHMS()
                                 })
+                                toGoCmdOtaBin()
                                 chipMasterV = otaModel.version?.toInt() ?: 0
                                 toGoBinInstall()
                             } else {
@@ -587,6 +614,7 @@ import kotlin.random.Random
                                 queryResource.status = 2
                                 upNetResDb("下载BIN成功更新", queryResource)
                                 chipMasterV = otaModel.version?.toInt() ?: 0
+                                toGoCmdOtaBin()
                                 toGoBinInstall()
                             } else {
                                 queryResource.status = 4

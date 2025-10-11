@@ -368,11 +368,11 @@ class InitFactoryActivity : AppCompatActivity() {
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
-    private fun initSocket(host: String? = "58.251.251.79", port: Int? = 9095) {
+    private fun initSocket(mHost: String? = "58.251.251.79", mPort: Int? = 9095) {
         cabinetVM.ioScope.launch {
             SPreUtil.put(AppUtils.getContext(), "initSocket", true)
-            if (host != null && port != null) {
-                SocketManager.initializeSocketClient(host = host, port = port)
+            if (mHost != null && mPort != null) {
+                SocketManager.initializeSocketClient(host = mHost, port = mPort)
             }
             cabinetVM.vmClient = SocketManager.socketClient
             SocketManager.socketClient.start()
@@ -395,11 +395,11 @@ class InitFactoryActivity : AppCompatActivity() {
 
                 ConnectionState.CONNECTED -> {
                     SPreUtil.put(AppUtils.getContext(), "init", true)
-                    if (host != null) {
-                        SPreUtil.put(AppUtils.getContext(), "host", host)
+                    if (mHost != null) {
+                        SPreUtil.put(AppUtils.getContext(), "host", mHost)
                     }
-                    if (port != null) {
-                        SPreUtil.put(AppUtils.getContext(), "port", port)
+                    if (mPort != null) {
+                        SPreUtil.put(AppUtils.getContext(), "port", mPort)
                     }
                     startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
                     finish()
