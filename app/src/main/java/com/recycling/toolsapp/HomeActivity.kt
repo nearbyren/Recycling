@@ -745,7 +745,6 @@ import java.io.File
             }
 
             2 -> {
-                navigateTo(fragmentClass = TouDoubleFragment::class.java, addToBackStack = true)
                 fragmentCoordinator.setRootFragment(TouDoubleFragment::class.java, lifecycleCallback = object : FragmentCoordinator.FragmentLifecycleCallback {
                     override fun onFragmentResumed(fragment: Fragment) {
                         Loge.d("FragmentCoordinator navigateTo one navigateToHome onFragmentResumed $fragment | ")
