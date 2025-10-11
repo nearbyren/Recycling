@@ -79,16 +79,15 @@ object DatabaseManager {
             }
             // 数据库名称
             val newInstance =
-                    Room.databaseBuilder(context.applicationContext, SQLDatabase::class.java, DATABASE_NAME)
-                        .addMigrations(MIGRATION_3_4).addCallback(object : RoomDatabase.Callback() {
-                        override fun onCreate(db: SupportSQLiteDatabase) {
-                            super.onCreate(db)
-                            CoroutineScope(Dispatchers.IO).launch {
-                                //初始化信息
+                    Room.databaseBuilder(context.applicationContext, SQLDatabase::class.java, DATABASE_NAME).addMigrations(MIGRATION_3_4).addCallback(object : RoomDatabase.Callback() {
+                            override fun onCreate(db: SupportSQLiteDatabase) {
+                                super.onCreate(db)
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    //初始化信息
 //                                    initState()
+                                }
                             }
-                        }
-                    }).build()
+                        }).build()
             instance = newInstance
             newInstance
         }
@@ -346,7 +345,7 @@ object DatabaseManager {
      * @param context 上下文
      * @param openStatus
      */
-    fun queryTransOpenStatus(context: Context, openStatus: Int):List<TransEntity> {
+    fun queryTransOpenStatus(context: Context, openStatus: Int): List<TransEntity> {
         return getTransFlowDao(context).queryTransOpenStatus(openStatus)
     }
 
@@ -396,6 +395,7 @@ object DatabaseManager {
     fun insertWeight(context: Context, weightEntity: WeightEntity): Long {
         return getWeightFlowDao(context).insert(weightEntity)
     }
+
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -404,6 +404,7 @@ object DatabaseManager {
     fun queryWeightStatus(context: Context, status: Int): List<WeightEntity> {
         return getWeightFlowDao(context).queryWeightStatus(status)
     }
+
     /***
      * 提供外部 API 方法
      * @param context 上下文
@@ -526,12 +527,31 @@ object DatabaseManager {
     /***
      * 提供外部 API 方法
      * @param context 上下文
+     * @param version
      * @param sn
      * @param cmd
      * @return
      */
     fun queryResCmd(context: Context, version: String, sn: String, cmd: String): ResEntity {
         return getResFlowDao(context).queryResCmd(version, sn, cmd)
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param version
+     * @return
+     */
+    fun queryResVersion(context: Context, version: String): ResEntity {
+        return getResFlowDao(context).queryResVersion(version)
+    }
+
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     */
+    fun queryResMax(context: Context): ResEntity {
+        return getResFlowDao(context).queryResEntityMax()
     }
 
     /**

@@ -38,7 +38,7 @@ import androidx.room.PrimaryKey
     @ColumnInfo(name = "md5", typeAffinity = TEXT, defaultValue = "") var md5: String? = null,
 
     /***
-     * 状态 -1. 1.需要刷新 0.不需要刷新 2.还未升级 3.升级 4.下载失败
+     * 状态 -1. 1.需要刷新 0.不需要刷新 2.还未升级 3.升级完成 4.下载失败
      */
     @ColumnInfo(name = "status", typeAffinity = INTEGER) var status: Int = -1,
     /***

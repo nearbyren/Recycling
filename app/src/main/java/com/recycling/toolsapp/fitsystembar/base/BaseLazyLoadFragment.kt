@@ -9,10 +9,17 @@ import android.os.Message
 import android.view.MotionEvent
 import android.view.View
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.lifecycleScope
 import com.recycling.toolsapp.ui.TouSingleFragment
 import com.recycling.toolsapp.ui.TouDoubleFragment
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
 import nearby.lib.signal.livebus.LiveBus
@@ -60,17 +67,28 @@ abstract class BaseLazyLoadFragment : Fragment() {
     protected var mContext: Context? = null
     var mActivity: BaseActivity? = null
 
-    // 倒计时相关
-    private val LOCK_COUNTDOWN = Any()
 
     //2分钟半150 1分钟半90
-    val DEFAULT_COUNTDOWN: Int = 520
+    val DEFAULT_COUNTDOWN: Int = 20
     private var mSaveCountdown = DEFAULT_COUNTDOWN
-    private var mCountdown = DEFAULT_COUNTDOWN
     protected var mCancelCountdown: Boolean = false
-    val MSG_COUNTDOWN: Int = 131
     private var mShowActionBar = true // 是否显示动作栏
     private val mShowActionBarBack = true // 是否显示动作栏上的返回键
+
+
+    // 协程倒计时相关
+    private var countdownJob: Job? = null
+    private var isCountdownPaused = false
+    private var remainingCountdownTime = DEFAULT_COUNTDOWN
+
+    // 应用前后台状态监听
+    private var appForegroundObserver: LifecycleEventObserver? = null
+    private var isAppInForeground = true
+
+    //2分钟半150 1分钟半90
+    companion object {
+        const val DEFAULT_COUNTDOWN: Int = 6
+    }
 
 
     override fun onAttach(context: Context) {
@@ -87,7 +105,38 @@ abstract class BaseLazyLoadFragment : Fragment() {
         startCountdown()
     }
 
+    /**
+     * 设置应用前后台状态监听
+     */
+    private fun setupAppForegroundObserver() {
+        appForegroundObserver = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> {
+                    // 应用进入后台
+                    isAppInForeground = false
+                    pauseCountdown()
+                    Loge.d("FragmentCoordinator App moved to background, countdown paused")
+                }
+                Lifecycle.Event.ON_CREATE->{
+                    Loge.d("FragmentCoordinator App moved to background, countdown ON_CREATE")
+                }
+                Lifecycle.Event.ON_RESUME->{
+                    Loge.d("FragmentCoordinator App moved to background, countdown ON_RESUME")
+                    // 应用回到前台
+                    isAppInForeground = true
+                    resumeCountdown()
+                    Loge.d("FragmentCoordinator App moved to foreground, countdown resumed")
+                }
+                Lifecycle.Event.ON_START -> {
 
+                }
+                else -> {}
+            }
+        }
+
+        // 注册到Activity的生命周期
+        activity?.lifecycle?.addObserver(appForegroundObserver!!)
+    }
     open fun showActionBarBack() {
         mActivity?.showActionBarBack()
     }
@@ -111,50 +160,77 @@ abstract class BaseLazyLoadFragment : Fragment() {
     }
 
     protected fun startCountdown(countdown: Int) {
-        Loge.d("FragmentCoordinator startCountdown $countdown")
+        Loge.d("FragmentCoordinator startCountdown $countdown mCancelCountdown = $mCancelCountdown")
         if (countdown >= 0) {
-            setCountdown(countdown.also { mSaveCountdown = it })
+            setCountdown(countdown)
         }
         mCancelCountdown = false
-        mHandler.removeMessages(MSG_COUNTDOWN)
-        mHandler.sendEmptyMessageDelayed(MSG_COUNTDOWN, 1000)
+        startCountdownCoroutine()
+    }
+
+    /**
+     * 使用协程启动倒计时
+     */
+    private fun startCountdownCoroutine() {
+        // 取消之前的倒计时
+        countdownJob?.cancel()
+
+        countdownJob = lifecycleScope.launch {
+            var currentCountdown = remainingCountdownTime
+
+            Loge.d("FragmentCoordinator currentCountdown $currentCountdown isActive $isActive mCancelCountdown $mCancelCountdown")
+            while (currentCountdown >= 0 && isActive && !mCancelCountdown) {
+                Loge.d("FragmentCoordinator currentCountdown isAppInForeground $isAppInForeground isSupportVisible $isSupportVisible")
+                if (isAppInForeground && isSupportVisible) {
+                    // 只有在应用在前台且Fragment可见时才更新倒计时
+                    updateCountdown(currentCountdown)
+
+                    if (currentCountdown <= 0) {
+                        doneCountdown()
+                        break
+                    }
+
+                    currentCountdown--
+                    remainingCountdownTime = currentCountdown
+                    Loge.d("FragmentCoordinator currentCountdown $remainingCountdownTime")
+
+                }
+
+                // 等待1秒，但会检查取消状态
+                delay(1000)
+            }
+        }
+    }
+
+    /**
+     * 暂停倒计时
+     */
+    private fun pauseCountdown() {
+        isCountdownPaused = true
+        countdownJob?.cancel()
+        Loge.d("FragmentCoordinator Countdown paused, remaining: $remainingCountdownTime")
+    }
+
+    /**
+     * 恢复倒计时
+     */
+    private fun resumeCountdown() {
+        Loge.d("FragmentCoordinator isCountdownPaused: $isCountdownPaused isSupportVisible: $isSupportVisible mCancelCountdown: $mCancelCountdown")
+        if (isCountdownPaused && isSupportVisible && !mCancelCountdown) {
+            isCountdownPaused = false
+            startCountdownCoroutine()
+            Loge.d("FragmentCoordinator Countdown resumed from: $remainingCountdownTime")
+        }
     }
 
     // 取消倒计时
     protected fun cancelCountdown() {
-        mHandler.removeMessages(MSG_COUNTDOWN)
+        countdownJob?.cancel()
         mCancelCountdown = true
+        remainingCountdownTime = DEFAULT_COUNTDOWN
 
         if (mActivity != null) {
             mActivity!!.cancelCountdown()
-        }
-    }
-
-    private val mHandler: Handler = object : Handler(Looper.getMainLooper()) {
-        override fun handleMessage(msg: Message) {
-            if (!isAdded) {
-                return
-            }
-
-            when (msg.what) {
-                MSG_COUNTDOWN -> {
-                    synchronized(LOCK_COUNTDOWN) {
-                        Loge.d("FragmentCoordinator MSG_COUNTDOWN $mCountdown")
-                        if (mCountdown <= 0) {
-                            doneCountdown()
-                            return
-                        }
-                        setCountdown(mCountdown - 1)
-                        updateCountdown(mCountdown)
-                    }
-
-                    if (mCancelCountdown) {
-                        return
-                    }
-                    this.removeMessages(MSG_COUNTDOWN)
-                    sendEmptyMessageDelayed(MSG_COUNTDOWN, 1000)
-                }
-            }
         }
     }
 
@@ -165,8 +241,9 @@ abstract class BaseLazyLoadFragment : Fragment() {
 
     // 设置倒计时
     fun setCountdown(mCountdown: Int) {
-        synchronized(LOCK_COUNTDOWN) {
-            this.mCountdown = mCountdown
+        remainingCountdownTime = mCountdown
+        if (isAppInForeground && isSupportVisible) {
+            updateCountdown(remainingCountdownTime)
         }
     }
 
@@ -180,12 +257,13 @@ abstract class BaseLazyLoadFragment : Fragment() {
     }
 
     // 完成倒计时
-    open fun doneCountdown() {
+    open protected fun doneCountdown() {
         if (mCancelCountdown || !isAdded) {
             return
         }
         navigateToHome()
     }
+
 
     private fun navigateToHome() {
         Loge.d("FragmentCoordinator navigateToHome")
@@ -440,6 +518,15 @@ abstract class BaseLazyLoadFragment : Fragment() {
         isViewCreated = false
         mIsFirstVisible = true
         Loge.d("测试 onDestroyView ${this.classname}")
+        Loge.d("测试 onDestroyView ${this.classname}")
+        // 取消倒计时
+        countdownJob?.cancel()
+        countdownJob = null
+
+        // 移除观察者
+        appForegroundObserver?.let {
+            activity?.lifecycle?.removeObserver(it)
+        }
         super.onDestroyView()
     }
 

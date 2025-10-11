@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.recycling.toolsapp.model.ResEntity
+import com.recycling.toolsapp.model.WeightEntity
 
 
 /***
@@ -20,13 +21,18 @@ import com.recycling.toolsapp.model.ResEntity
     fun queryResName(filename: String): ResEntity
 
     @Query("select * from ResEntity WHERE version = :version and sn = :sn and cmd = :cmd")
-    fun queryResCmd(version:String,sn: String, cmd: String): ResEntity
+    fun queryResCmd(version: String, sn: String, cmd: String): ResEntity
+
+    @Query("select * from ResEntity WHERE version = :version ")
+    fun queryResVersion(version: String): ResEntity
+
+    @Query("select * from ResEntity ORDER BY ROWID DESC LIMIT 1")
+    fun queryResEntityMax(): ResEntity
 
     @Update fun upResEntity(resEntity: ResEntity): Int
 
     @Query("UPDATE ResEntity SET status = :status WHERE id = :id")
     fun upResStatus(id: Long, status: Int)
-
 
     //删除所有数据
     @Query("delete from ResEntity") fun deleteAll()

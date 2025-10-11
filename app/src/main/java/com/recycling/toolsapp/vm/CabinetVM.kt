@@ -399,6 +399,24 @@ import kotlin.random.Random
         }
     }
 
+
+    fun toGoApkInstall() {
+        ioScope.launch {
+            while (isActive) {
+                val queryResource = DatabaseManager.queryResMax(AppUtils.getContext())
+                //版本一致更新安装了
+                val verName = AppUtils.getVersionName()
+                val oldVs = verName.replace(".", "").toInt()
+                val newVs = queryResource.version?.toInt() ?: 0
+                if (newVs > oldVs) {
+                    val fileName = "hsg-${queryResource.version}.apk"
+                    val dir = FileMdUtil.matchNewFileName("apk", fileName)
+                    flowDownSuccess.emit(File(dir))
+                }
+            }
+        }
+    }
+
     /***
      * ota更新 apk
      */
@@ -428,7 +446,7 @@ import kotlin.random.Random
                             if (success) {
                                 upNetResDb("下载APK成功插入", ResEntity().apply {
                                     id = row
-                                    ResType.TYPE_2
+                                    status = ResType.TYPE_2
                                     sn = otaModel.sn
                                     version = otaModel.version
                                     cmd = otaModel.cmd
@@ -436,10 +454,12 @@ import kotlin.random.Random
                                     md5 = otaModel.md5
                                     time = AppUtils.getDateYMDHMS()
                                 })
+                                //去安装
+                                toGoApkInstall()
                             } else {
                                 upNetResDb("下载APK失败插入", ResEntity().apply {
                                     id = row
-                                    ResType.TYPE_4
+                                    status = ResType.TYPE_4
                                     sn = otaModel.sn
                                     version = otaModel.version
                                     cmd = otaModel.cmd
@@ -454,11 +474,11 @@ import kotlin.random.Random
                     Loge.e("调试socket 下载APK失败插入失败 $row")
                 }
             } else {
-                queryResource.version = otaModel.version
-                queryResource.url = otaModel.url
-                queryResource.md5 = otaModel.md5
                 //资源不一致下载到本地
                 if (queryResource.md5 != otaModel.md5 && queryResource.version != otaModel.version) {
+                    queryResource.version = otaModel.version
+                    queryResource.url = otaModel.url
+                    queryResource.md5 = otaModel.md5
                     val fileName = "hsg-${otaModel.version}.apk"
                     val dir = FileMdUtil.matchNewFileName("apk", fileName)
                     queryResource.url?.let { url ->
@@ -466,6 +486,8 @@ import kotlin.random.Random
                             if (success) {
                                 queryResource.status = 2
                                 upNetResDb("下载APK成功更新", queryResource)
+                                //去安装
+                                toGoApkInstall()
                             } else {
                                 queryResource.status = 4
                                 upNetResDb("下载APK失败更新", queryResource)
@@ -473,7 +495,23 @@ import kotlin.random.Random
                         }
                     }
                 } else {
+                    //版本一致更新安装了
+                    val verName = AppUtils.getVersionName()
+                    if (verName == otaModel.version && queryResource.status == 2) {
+                        queryResource.status = 3
+                        upNetResDb("已经是最新版本", queryResource)
+                    }
                     Loge.e("调试socket md5 版本相同 Ota 文件不处理")
+                }
+            }
+        }
+    }
+
+    fun toGoBinInstall() {
+        ioScope.launch {
+            while (isActive) {
+                if (chipMasterV > chipMasterVC) {
+                    upgradeChip()
                 }
             }
         }
@@ -484,7 +522,7 @@ import kotlin.random.Random
      */
     fun toGoCmdOtaBin(otaModel: OtaBean) {
         ioScope.launch {
-
+            testQueryVersion(otaModel.version?.toInt() ?: 20250101)
             val saveResource = ResEntity().apply {
                 sn = otaModel.sn
                 version = otaModel.version
@@ -507,7 +545,7 @@ import kotlin.random.Random
                             if (success) {
                                 upNetResDb("下载BIN成功插入", ResEntity().apply {
                                     id = row
-                                    ResType.TYPE_2
+                                    status = ResType.TYPE_2
                                     sn = otaModel.sn
                                     version = otaModel.version
                                     cmd = otaModel.cmd
@@ -515,10 +553,12 @@ import kotlin.random.Random
                                     md5 = otaModel.md5
                                     time = AppUtils.getDateYMDHMS()
                                 })
+                                chipMasterV = otaModel.version?.toInt() ?: 0
+                                toGoBinInstall()
                             } else {
                                 upNetResDb("下载BIN失败插入", ResEntity().apply {
                                     id = row
-                                    ResType.TYPE_4
+                                    status = ResType.TYPE_4
                                     sn = otaModel.sn
                                     version = otaModel.version
                                     cmd = otaModel.cmd
@@ -534,11 +574,11 @@ import kotlin.random.Random
                     Loge.e("调试socket 下载BIN失败插入失败 $row")
                 }
             } else {
-                queryResource.version = otaModel.version
-                queryResource.url = otaModel.url
-                queryResource.md5 = otaModel.md5
                 //资源不一致下载到本地
                 if (queryResource.md5 != otaModel.md5 && queryResource.version != otaModel.version) {
+                    queryResource.version = otaModel.version
+                    queryResource.url = otaModel.url
+                    queryResource.md5 = otaModel.md5
                     val fileName = "hsg-${otaModel.version}.bin"
                     val dir = FileMdUtil.matchNewFileName("bin", fileName)
                     queryResource.url?.let { url ->
@@ -546,6 +586,8 @@ import kotlin.random.Random
                             if (success) {
                                 queryResource.status = 2
                                 upNetResDb("下载BIN成功更新", queryResource)
+                                chipMasterV = otaModel.version?.toInt() ?: 0
+                                toGoBinInstall()
                             } else {
                                 queryResource.status = 4
                                 upNetResDb("下载BIN失败更新", queryResource)
@@ -553,6 +595,11 @@ import kotlin.random.Random
                         }
                     }
                 } else {
+                    //版本一致更新安装了
+                    if (chipMasterVC == (otaModel.version?.toInt() ?: 0) && queryResource.status == 2) {
+                        queryResource.status = 3
+                        upNetResDb("已经是最新版本", queryResource)
+                    }
                     Loge.e("调试socket md5 版本相同 Ota 文件不处理")
                 }
             }
@@ -1911,7 +1958,8 @@ import kotlin.random.Random
                         SPreUtil.put(AppUtils.getContext(), "userId", curUserId)
                         LiveBus.get(BusType.BUS_MOBILE_CLOSE).post(BusType.BUS_MOBILE_CLOSE)
 
-                        val row = DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)//门开 格口 记录事务数据
+                        val row =
+                                DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)//门开 格口 记录事务数据
 //            //匹配当前投口几
 //            val lattices = DatabaseManager.queryLattices(AppUtils.getContext())
 //            lattices.withIndex().forEach { (index, lattice) ->
@@ -2007,7 +2055,8 @@ import kotlin.random.Random
                         SPreUtil.put(AppUtils.getContext(), "transId", curTransId)
                         SPreUtil.put(AppUtils.getContext(), "userId", curUserId)
 
-                        val row = DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)//门开清运门 记录事务数据
+                        val row =
+                                DatabaseManager.insertTrans(AppUtils.getContext(), trensEntity)//门开清运门 记录事务数据
 
                         //匹配当前投口几
                         val states = DatabaseManager.queryStateList(AppUtils.getContext())
@@ -2104,7 +2153,8 @@ import kotlin.random.Random
                         Loge.e("调试socket 调试串口 更新本地打开状态 ")
                     }
 
-                    val weightEntity = DatabaseManager.queryWeightMax(AppUtils.getContext())//门开状态 查询最新查询一条上报称重信息
+                    val weightEntity =
+                            DatabaseManager.queryWeightMax(AppUtils.getContext())//门开状态 查询最新查询一条上报称重信息
                     if (weightEntity != null) {
                         val doorOpen = DoorOpenBean().apply {
                             cmd = CmdValue.CMD_OPEN_DOOR//回应服务器
@@ -2224,7 +2274,8 @@ import kotlin.random.Random
             val lattice = DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cid ?: "")
 
             //这里应该拿到的是最新称重体重
-            val weightEntity = DatabaseManager.queryWeightMax(AppUtils.getContext())//查询到最后称重信息 格口 查询最新查询一条上报称重信息
+            val weightEntity =
+                    DatabaseManager.queryWeightMax(AppUtils.getContext())//查询到最后称重信息 格口 查询最新查询一条上报称重信息
             if (weightEntity != null) {
                 //未上称物品的重量
                 val curWeightValueBefore = when (doorGeX) {
@@ -2406,7 +2457,8 @@ import kotlin.random.Random
             val lattice = DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cid ?: "")
 
             //这里应该拿到的是最新称重体重
-            val weightEntity = DatabaseManager.queryWeightMax(AppUtils.getContext())//查询到最后称重信息 清运 查询最新查询一条上报称重信息
+            val weightEntity =
+                    DatabaseManager.queryWeightMax(AppUtils.getContext())//查询到最后称重信息 清运 查询最新查询一条上报称重信息
             if (weightEntity != null) {
 
                 val doorClose = DoorCloseBean().apply {
@@ -2612,7 +2664,8 @@ import kotlin.random.Random
             Loge.e("调试socket 调试串口 刷新 流程完成 refreshWeightStatus weight：${weight}")
             if (weight != null) {
                 weight.status = EntityType.WEIGHT_TYPE_1 //接收服务器关闭完成
-                val s = DatabaseManager.upWeightEntity(AppUtils.getContext(), weight) //刷新称重信息 根据事务id来
+                val s =
+                        DatabaseManager.upWeightEntity(AppUtils.getContext(), weight) //刷新称重信息 根据事务id来
                 Loge.e("调试socket 调试串口 刷新 流程完成 刷新本地上报称重数据 $s")
             }
             val trans = transId?.let { tid ->
@@ -2662,11 +2715,11 @@ import kotlin.random.Random
         Loge.e("调试socket 调试串口 testQueryVersion")
         executeVersion(true, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
             Loge.e("芯片升级 调试串口 testQueryVersion $netVersion - $version")
-            chipMasterV = netVersion
-            if (netVersion > version) {
-                //执行更新、显示提示图
-                upgradeChip()
-            }
+            chipMasterVC = version
+//            if (netVersion > version) {
+//                //执行更新、显示提示图
+//                upgradeChip()
+//            }
         })
     }
 
@@ -2818,6 +2871,7 @@ import kotlin.random.Random
             }, sendCallback)
         }
     }
+
     /***
      * 打开清运门
      */
@@ -3127,14 +3181,14 @@ import kotlin.random.Random
                                 }
                             }
                         } else {
-                            Loge.e("调试socket 下载资源失败插入失败 $row")
+                            Loge.e("调试socket 字段为空 $row")
                         }
                     } else {
-                        queryResource.filename = resource.filename
-                        queryResource.url = resource.filename
-                        queryResource.md5 = resource.md5
                         //资源不一致下载到本地
                         if (queryResource.md5 != resource.md5) {
+                            queryResource.filename = resource.filename
+                            queryResource.url = resource.url
+                            queryResource.md5 = resource.md5
                             val fileName = resource.filename ?: ""
                             var dir = FileMdUtil.matchNewFileName("audio", fileName)
                             if (FileMdUtil.shouldAudio(fileName)) {
@@ -3147,6 +3201,7 @@ import kotlin.random.Random
                                     if (success) {
                                         queryResource.status = 0
                                         upNetResDb("下载资源成功更新", queryResource)
+                                        //这里同步去刷新ui
                                     } else {
                                         queryResource.status = 4
                                         upNetResDb("下载资源失败更新", queryResource)
@@ -3498,6 +3553,11 @@ import kotlin.random.Random
 
     /*******************************************固件升级开始*************************************************/
     //232方式
+
+    private val flowSteps232New = MutableSharedFlow<Int>(replay = 1)
+    val isFlowSteps232New: SharedFlow<Int> = flowSteps232New.asSharedFlow()
+
+    //232方式
     private val flowSteps7 = MutableSharedFlow<Boolean>(replay = 1)
     val isFlowSteps7: SharedFlow<Boolean> = flowSteps7.asSharedFlow()
 
@@ -3646,9 +3706,11 @@ import kotlin.random.Random
         pollingUpgradeChip()
         ioScope.launch {
             if (!isChip.value) {
-                flowSteps7.emit(true)
+                flowSteps232New.emit(7)
+//                flowSteps7.emit(true)
             } else {
-                flowSteps7.emit(false)
+                flowSteps232New.emit(-7)
+//                flowSteps7.emit(false)
                 tipMessage("主芯片已经升级完成")
             }
         }
@@ -3683,6 +3745,12 @@ import kotlin.random.Random
         }
     }
 
+    fun resetMasterFrom(type: Int) {
+        ioScope.launch {
+            flowSteps232New.emit(-1)
+        }
+    }
+
     fun chipSet7() {
         isLoweUpgrade232 = true
         val head = byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte())
@@ -3690,9 +3758,11 @@ import kotlin.random.Random
             ioScope.launch {
                 Loge.d("芯片升级 接收指令回调 status7 = $status")
                 if (status == 1) {
-                    flowSteps8.emit(true)
+                    flowSteps232New.emit(8)
+//                    flowSteps8.emit(true)
                 } else {
-                    flowSteps8.emit(false)
+                    flowSteps232New.emit(-8)
+//                    flowSteps8.emit(false)
                 }
                 Loge.d("芯片升级 发送升级指令结束, 数据：${ByteUtils.toHexString(head)}")
             }
@@ -3721,9 +3791,11 @@ import kotlin.random.Random
                 ioScope.launch {
                     Loge.d("芯片升级 接收指令回调 status8 = $status")
                     if (status == 1) {
-                        flowSteps8f.emit(true)
+                        flowSteps232New.emit(81)
+//                        flowSteps8f.emit(true)
                     } else {
-                        flowSteps8f.emit(false)
+                        flowSteps232New.emit(-81)
+//                        flowSteps8f.emit(false)
                     }
                     Loge.d("芯片升级 发送状态指令结束 文件大小字节：${ByteUtils.toHexString(sendByte)}")
                 }
@@ -3796,10 +3868,12 @@ import kotlin.random.Random
                                         Loge.d("芯片升级 sendByteList = ${sendByteList232.size} | send8fCount = $send8fCount232 |  bytes = $${ByteUtils.toHexString(bytes)} ")
                                         addFileByteQueue232(sendByteList232[send8fCount232])
                                     } else {
-                                        flowSteps9.emit(true)
+                                        flowSteps232New.emit(9)
+//                                        flowSteps9.emit(true)
                                     }
                                 } else {
-                                    flowSteps9.emit(false)
+                                    flowSteps232New.emit(-9)
+//                                    flowSteps9.emit(false)
                                 }
                             }
                         }, sendCallback)
@@ -3819,9 +3893,11 @@ import kotlin.random.Random
             Loge.d("芯片升级 接收指令回调 status9 = $status")
             ioScope.launch {
                 if (status == 1) {
-                    flowSteps10.emit(true)
+                    flowSteps232New.emit(10)
+//                    flowSteps10.emit(true)
                 } else {
-                    flowSteps10.emit(false)
+                    flowSteps232New.emit(-10)
+//                    flowSteps10.emit(false)
                 }
             }
         }, sendCallback)
@@ -3833,9 +3909,12 @@ import kotlin.random.Random
             ioScope.launch {
                 Loge.d("芯片升级 接收指令回调 status10 = $status")
                 if (status == 1) {
-                    flowSteps232Succes.emit(true)
+                    flowSteps232New.emit(11)
+//                    flowSteps232Succes.emit(true)
                     isChip.value = true
                     tipMessage("芯片升级完成")
+                } else {
+                    flowSteps232New.emit(11)
                 }
                 Loge.d("芯片升级 接收重启指令完成 文件大小字节：${ByteUtils.toHexString(cmd7)}")
             }

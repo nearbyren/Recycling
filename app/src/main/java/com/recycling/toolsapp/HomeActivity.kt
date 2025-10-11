@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.FragmentManager
@@ -35,7 +34,6 @@ import com.recycling.toolsapp.ui.DeliveryFragment
 import com.recycling.toolsapp.ui.SelfDeBugTypeFragment
 import com.recycling.toolsapp.ui.TouSingleFragment
 import com.recycling.toolsapp.ui.TouDoubleFragment
-import com.recycling.toolsapp.utils.CmdType
 import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.HexConverter
@@ -96,12 +94,9 @@ import java.io.File
             initSocket()
         }
 
-//        lifeUpgradeApk()
-//        netUpdateApk()
-
-//        lifeUpgradeChip()
-//        netUpdateChip()
-        countdownUI()
+        lifeUpgradeApk()
+        lifeUpgradeChip()
+        countdownChipUI()
     }
 
     private fun initPort() {
@@ -470,22 +465,6 @@ import java.io.File
         } ?: navigateToHome()
     }
 
-    private fun getMasterVersion(isUpgrade: Boolean = false) {
-        cabinetVM.executeVersion(isUpgrade, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()), onUpgrade232 = { version ->
-            cabinetVM.mainScope.launch {
-//                binding.tvUpgradeMasterCode.text = "主芯片版本：$version"
-                cabinetVM.chipMasterVC = version
-                if (isUpgrade) {
-                }
-            }
-        })
-
-    }
-
-    private fun netUpdateApk() {
-        cabinetVM.downloadApk("", System.currentTimeMillis().toString())
-    }
-
     private fun lifeUpgradeApk() {
         //触发有版本更新
         lifecycleScope.launch {
@@ -544,10 +523,6 @@ import java.io.File
         }
     }
 
-    private fun netUpdateChip() {
-        cabinetVM.downloadChip("https://cdn.chenair.com/d/down/nvdata_bin.zip", "masterChip")
-    }
-
     //固件下载和升级监听
     private fun lifeUpgradeChip() {
         //下载完成
@@ -568,8 +543,55 @@ import java.io.File
                 }
             }
         }
-        //232方式执行步骤升级
+        //232方式
         lifecycleScope.launch {
+            cabinetVM.isFlowSteps232New.collect {
+                when (it) {
+                    7 -> {
+                        //                    binding.clFirmwareUpgrade.isVisible = true
+//                    binding.tvFirmwareTitle.text = "固件升级中"
+//                    binding.tvFirmwareDes.text = "正在升级主芯片固件中，耐心等待，请勿进行其他操作。"
+                        Loge.d("芯片升级 接收指令7 来了回调")
+                        cabinetVM.chipSet7()
+                    }
+
+                    8 -> {
+                        Loge.d("芯片升级 主芯片升级 接收指令7 来了回调")
+                        cabinetVM.chipSet8()
+                    }
+
+                    81 -> {
+                        Loge.d("芯片升级 主芯片升级 接收指令8 来了回调")
+                        cabinetVM.chipSet8f()
+                    }
+
+                    9 -> {
+                        Loge.d("芯片升级 主芯片升级 接收指令8 来了回调")
+                        delay(5000)
+                        cabinetVM.chipSet9()
+                    }
+
+                    10 -> {
+                        Loge.d("芯片升级 主芯片升级 接收指令9 来了回调")
+                        cabinetVM.chipSet10()
+                        cabinetVM.resetMasterFrom(1)
+                    }
+
+                    11 -> {
+                        Loge.d("芯片升级 主芯片升级 接收指令10 来了回调")
+//                        binding.clFirmwareUpgrade.isVisible = false
+                        cabinetVM.resetMasterFrom(1)
+                    }
+
+                    -1, -7, -8, -81, -9, -10 -> {
+                        Loge.d("芯片升级 主芯片升级 接收指令${it} 没来回调")
+//                        binding.clFirmwareUpgrade.isVisible = false
+                    }
+                }
+            }
+        }
+        //232方式执行步骤升级
+     /*   lifecycleScope.launch {
             cabinetVM.isFlowSteps7.collect {
                 if (it) {
 //                    binding.clFirmwareUpgrade.isVisible = true
@@ -643,10 +665,10 @@ import java.io.File
 //                    binding.clFirmwareUpgrade.isVisible = false
                 }
             }
-        }
+        }*/
     }
 
-    private fun countdownUI() {
+    private fun countdownChipUI() {
         // 在 Activity/Fragment 中收集状态
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
